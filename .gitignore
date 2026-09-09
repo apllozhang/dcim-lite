@@ -11,3 +11,6 @@ vendor/
 pgdata/
 backups/
 *.crdownload
+
+# ALE skin: trademark + legacy compiled bundle — keep local only
+frontend/ale/

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dcim-lite</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- login -->
+      <div v-if="!token" class="login-wrap">
+        <form class="login-card" @submit.prevent="doLogin">
+          <h1>dcim-lite</h1>
+          <p class="sub">轻量 DCIM · 机房资源台账</p>
+          <label>用户名
+            <input v-model="login.username" autocomplete="username" required />
+          </label>
+          <label>密码
+            <input v-model="login.password" type="password" autocomplete="current-password" required />
+          </label>
+          <div class="captcha-row">
+            <input v-model="login.captcha" maxlength="4" inputmode="numeric" placeholder="4 位数字验证码" required />
+            <img :src="captchaImage" alt="captcha" @click="loadCaptcha" title="点击刷新" />
+          </div>
+          <button type="submit" :disabled="loading">登录</button>
+          <p v-if="error" class="error">{{ error }}</p>
+        </form>
+      </div>
+
+      <!-- app shell -->
+      <div v-else class="shell">
+        <aside class="side">
+          <div class="brand">dcim-lite</div>
+          <nav>
+            <button :class="{on: page==='dashboard'}" @click="page='dashboard'">总览</button>
+            <button :class="{on: page==='resources'}" @click="page='resources'">资源层级</button>
+            <button :class="{on: page==='racks'}" @click="openRacks">机柜台账</button>
+            <button :class="{on: page==='devices'}" @click="openDevices">设备台账</button>
+          </nav>
+          <button class="logout" @click="doLogout">退出</button>
+        </aside>
+
+        <main class="main">
+          <header class="top">
+            <strong>{{ pageTitle }}</strong>
+            <span class="muted">{{ user?.displayName || user?.username }}</span>
+          </header>
+
+          <!-- dashboard -->
+          <section v-if="page==='dashboard'" class="cards">
+            <div class="card"><div class="k">数据中心</div><div class="v">{{ stats.dc }}</div></div>
+            <div class="card"><div class="k">机房</div><div class="v">{{ stats.room }}</div></div>
+            <div class="card"><div class="k">机柜</div><div class="v">{{ stats.rack }}</div></div>
+            <div class="card"><div class="k">设备</div><div class="v">{{ stats.device }}</div></div>
+          </section>
+
+          <!-- resources -->
+          <section v-else-if="page==='resources'" class="panel">
+            <div class="toolbar">
+              <button @click="loadTree">刷新</button>
+            </div>
+            <ul class="tree">
+              <li v-for="dc in tree" :key="dc.id">
+                <div class="node dc">DC {{ dc.code }} · {{ dc.name }} <em>{{ dc.status }}</em></div>
+                <ul>
+                  <li v-for="room in dc.rooms||[]" :key="room.id">
+                    <div class="node room">机房 {{ room.code }} · {{ room.name }}</div>
+                    <ul>
+                      <li v-for="rack in room.racks||[]" :key="rack.id">
+                        <div class="node rack">机柜 {{ rack.code }} · {{ rack.name }} · {{ rack.uHeight }}U · {{ rack.status }}</div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li v-if="!tree.length" class="muted">暂无数据</li>
+            </ul>
+          </section>
+
+          <!-- racks -->
+          <section v-else-if="page==='racks'" class="panel">
+            <div class="toolbar">
+              <input v-model="rackQ.search" placeholder="搜索编码/名称/位置/负责人" @keyup.enter="loadRacks(1)" />
+              <select v-model="rackQ.status" @change="loadRacks(1)">
+                <option value="">全部状态</option>
+                <option>AVAILABLE</option>
+                <option>PARTIAL</option>
+                <option>FULL</option>
+                <option>MAINTENANCE</option>
+                <option>DISABLED</option>
+                <option>PLANNING</option>
+              </select>
+              <select v-model="rackQ.sortBy" @change="loadRacks(1)">
+                <option value="code">按编码</option>
+                <option value="name">按名称</option>
+                <option value="status">按状态</option>
+                <option value="uHeight">按 U 高</option>
+              </select>
+              <button @click="loadRacks(1)">查询</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th @click="toggleRackSort('code')">编码</th>
+                  <th @click="toggleRackSort('name')">名称</th>
+                  <th>规格</th>
+                  <th @click="toggleRackSort('status')">状态</th>
+                  <th>负责人</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in racks.items" :key="r.id">
+                  <td>{{ r.code }}</td>
+                  <td>{{ r.name }}</td>
+                  <td>{{ r.uHeight }}U · {{ r.widthMm }}×{{ r.depthMm }}×{{ r.heightMm }}</td>
+                  <td><span class="tag">{{ r.status }}</span></td>
+                  <td>{{ r.manager || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="pager">
+              <span>共 {{ racks.total }} 条</span>
+              <button :disabled="racks.page<=1" @click="loadRacks(racks.page-1)">上一页</button>
+              <span>{{ racks.page }} / {{ rackPages }}</span>
+              <button :disabled="racks.page>=rackPages" @click="loadRacks(racks.page+1)">下一页</button>
+              <select v-model.number="rackQ.pageSize" @change="loadRacks(1)">
+                <option :value="10">10</option>
+                <option :value="20">20</option>
+                <option :value="30">30</option>
+              </select>
+            </div>
+          </section>
+
+          <!-- devices -->
+          <section v-else-if="page==='devices'" class="panel">
+            <div class="toolbar">
+              <input v-model="devQ.search" placeholder="搜索编码/名称/序列号/IP" @keyup.enter="loadDevices(1)" />
+              <select v-model="devQ.lifecycleStatus" @change="loadDevices(1)">
+                <option value="">全部生命周期</option>
+                <option>WAITING_RACK</option>
+                <option>RUNNING</option>
+                <option>MAINTENANCE</option>
+                <option>PENDING_REMOVAL</option>
+                <option>OFF_RACK</option>
+                <option>SCRAPPED</option>
+              </select>
+              <button @click="loadDevices(1)">查询</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th @click="toggleDevSort('code')">编码</th>
+                  <th @click="toggleDevSort('name')">名称</th>
+                  <th>类型</th>
+                  <th @click="toggleDevSort('lifecycleStatus')">状态</th>
+                  <th @click="toggleDevSort('heightU')">U</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="d in devices.items" :key="d.id">
+                  <td>{{ d.code }}</td>
+                  <td>{{ d.name }}</td>
+                  <td>{{ d.type?.name || d.typeId }}</td>
+                  <td><span class="tag">{{ d.lifecycleStatus }}</span></td>
+                  <td>{{ d.heightU }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="pager">
+              <span>共 {{ devices.total }} 条</span>
+              <button :disabled="devices.page<=1" @click="loadDevices(devices.page-1)">上一页</button>
+              <span>{{ devices.page }} / {{ devPages }}</span>
+              <button :disabled="devices.page>=devPages" @click="loadDevices(devices.page+1)">下一页</button>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
