@@ -1,0 +1,13 @@
+bin/
+*.exe
+*.log
+.env
+.env.*
+!.env.example
+vendor/
+.idea/
+.vscode/
+.DS_Store
+pgdata/
+backups/
+*.crdownload

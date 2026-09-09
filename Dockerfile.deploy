@@ -1,0 +1,12 @@
+FROM alpine:latest
+RUN apk add --no-cache ca-certificates tzdata
+WORKDIR /app
+COPY bin/cabinet-server-linux /app/cabinet-server
+COPY migrations /app/migrations
+RUN chmod +x /app/cabinet-server
+ENV MIGRATIONS_DIR=/app/migrations \
+    HTTP_ADDR=:8080 \
+    APP_ENV=production
+EXPOSE 8080
+USER nobody
+ENTRYPOINT ["/app/cabinet-server"]
