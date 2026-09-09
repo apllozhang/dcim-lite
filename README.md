@@ -59,6 +59,15 @@ go run ./cmd/server
 
 Envelope: `{ "code", "message", "data", "requestId" }` + header `X-Request-Id`.
 
+## Frontends
+
+| Path | Description |
+| --- | --- |
+| `frontend/clean/` | Open-source UI (vanilla JS): login + captcha, tree, racks, devices |
+| `frontend/ale/` | Internal ALE-skinned package — **gitignored**, do not publish |
+
+See `frontend/README.md`.
+
 ## Smoke test
 
 ```bash
