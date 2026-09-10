@@ -15,4 +15,4 @@ backups/
 # ALE package is included for internal code review only.
 # Do not redistribute commercially; contains third-party brand assets
 # and compiled application bundles that are not Apache/MIT licensed.
-"_*.py"  
+_*.py
