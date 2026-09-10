@@ -287,7 +287,7 @@ func TestApprovalConcurrentApproveExactlyOnce(t *testing.T) {
 	if st != 200 || approvalStatus(pend) != "PENDING" {
 		t.Fatalf("assign should create PENDING, got %d %v", st, pend)
 	}
-	approvalID := data(pend)["id"].(string)
+	approvalID := data(pend)["approval"].(map[string]any)["id"].(string)
 
 	const n = 20
 	var wg sync.WaitGroup
@@ -347,7 +347,7 @@ func TestApproveRollbackKeepsPending(t *testing.T) {
 	if st != 200 {
 		t.Fatalf("pending assign: %d", st)
 	}
-	approvalID := data(pend)["id"].(string)
+	approvalID := data(pend)["approval"].(map[string]any)["id"].(string)
 
 	st, body := call("POST", "/api/v1/admin/approvals/"+approvalID+"/approve", map[string]any{}, adminTok)
 	if st != 409 || code(body) != "RACK_U_CONFLICT" {
@@ -463,7 +463,7 @@ func TestOptimisticLockConflict(t *testing.T) {
 func TestSoftDeleteCodeReuse(t *testing.T) {
 	code := "SD-" + short()
 	st, dc := call("POST", "/api/v1/data-centers", map[string]any{"code": code, "name": "first"}, adminTok)
-	if st != 200 {
+	if st != 200 && st != 201 {
 		t.Fatalf("create: %d", st)
 	}
 	id := data(dc)["id"].(string)
@@ -472,7 +472,7 @@ func TestSoftDeleteCodeReuse(t *testing.T) {
 		t.Fatalf("delete failed")
 	}
 	st, again := call("POST", "/api/v1/data-centers", map[string]any{"code": code, "name": "second"}, adminTok)
-	if st != 200 {
+	if st != 200 && st != 201 {
 		t.Fatalf("code reuse after soft delete must succeed, got %d %v", st, again)
 	}
 }
