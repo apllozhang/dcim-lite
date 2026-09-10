@@ -75,18 +75,11 @@ func TestMain(m *testing.M) {
 }
 
 // applyMigrations 在全新测试库上按文件名顺序执行 migrations/*.up.sql。
-// 优先找源码树（本地 go test），其次找工作目录（编译后的测试二进制）。
+// 目录定位见 FindMigrationsDir（兼容 go test / CI 嵌套检出 / 独立二进制）。
 func applyMigrations(db *gorm.DB) error {
-	candidates := []string{"../../../migrations", "migrations", "../migrations"}
-	var dir string
-	for _, c := range candidates {
-		if st, err := os.Stat(c); err == nil && st.IsDir() {
-			dir = c
-			break
-		}
-	}
-	if dir == "" {
-		return fmt.Errorf("migrations directory not found (cwd=%s)", func() string { d, _ := os.Getwd(); return d }())
+	dir, err := FindMigrationsDir()
+	if err != nil {
+		return err
 	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -99,6 +92,9 @@ func applyMigrations(db *gorm.DB) error {
 		}
 	}
 	sort.Strings(files)
+	if len(files) == 0 {
+		return fmt.Errorf("no .up.sql files under %s", dir)
+	}
 	for _, name := range files {
 		body, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
