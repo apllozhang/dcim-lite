@@ -117,6 +117,8 @@ type PDUStore struct{ db *gorm.DB }
 
 func NewPDUStore(db *gorm.DB) *PDUStore { return &PDUStore{db: db} }
 
+func (s *PDUStore) WithTx(tx *gorm.DB) *PDUStore { return &PDUStore{db: tx} }
+
 func (s *PDUStore) DB() *gorm.DB { return s.db }
 
 func (s *PDUStore) ListByRack(rackID uuid.UUID) ([]model.PDU, error) {

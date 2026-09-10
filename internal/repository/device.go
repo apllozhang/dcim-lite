@@ -15,6 +15,9 @@ type DeviceStore struct{ db *gorm.DB }
 
 func NewDeviceStore(db *gorm.DB) *DeviceStore { return &DeviceStore{db: db} }
 
+// WithTx 返回绑定外部事务的存储副本；在事务内调用其 Transaction 方法会退化为 savepoint。
+func (s *DeviceStore) WithTx(tx *gorm.DB) *DeviceStore { return &DeviceStore{db: tx} }
+
 func (s *DeviceStore) DB() *gorm.DB { return s.db }
 
 func (s *DeviceStore) ListDeviceTypes() ([]model.DeviceType, error) {
@@ -125,7 +128,8 @@ func deviceOrderClause(sortBy, sortDir string) string {
 	if strings.EqualFold(sortDir, "desc") {
 		dir = "DESC"
 	}
-	return col + " " + dir
+	// id 作为稳定 tie-breaker：相同排序键时 offset 分页不重不漏
+	return col + " " + dir + ", id ASC"
 }
 
 func (s *DeviceStore) ListDevices(q DeviceQuery) ([]model.Device, int64, error) {

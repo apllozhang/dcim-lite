@@ -92,71 +92,79 @@ func (s *AdminService) CreateUser(in UserAdminInput) (*model.User, error) {
 }
 
 func (s *AdminService) UpdateUser(id uuid.UUID, version uint, in UserAdminInput) (*model.User, error) {
-	existing, err := s.users.FindByID(id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperr.NotFound("用户")
-		}
-		return nil, err
-	}
-	in.Username = strings.TrimSpace(in.Username)
-	in.DisplayName = strings.TrimSpace(in.DisplayName)
-	if in.Username == "" || in.DisplayName == "" {
-		return nil, apperr.InvalidResource("用户名和显示名称不能为空")
-	}
-	if in.AuthSource == "" {
-		in.AuthSource = existing.AuthSource
-	}
-	enabled := existing.Enabled
-	if in.Enabled != nil {
-		enabled = *in.Enabled
-	}
-	roles, err := s.resolveRoles(in.RoleCodes)
-	if err != nil {
-		return nil, err
-	}
-	// 最后管理员保护：禁止停用或去掉 system_admin
-	if existing.HasRole("system_admin") && (!enabled || !hasRoleCode(roles, "system_admin")) {
-		n, err := s.users.CountEnabledAdminsExcluding(id)
+	// 事务 + 目标用户行锁：并发修改/删除最后管理员时，不变量校验与写入串行化
+	err := s.users.DB().Transaction(func(tx *gorm.DB) error {
+		users := s.users.WithTx(tx)
+		existing, err := users.FindByIDLock(tx, id)
 		if err != nil {
-			return nil, err
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("用户")
+			}
+			return err
 		}
-		if n == 0 {
-			return nil, apperr.New(409, "LAST_ADMIN", "不能停用或降级最后一个管理员")
+		in.Username = strings.TrimSpace(in.Username)
+		in.DisplayName = strings.TrimSpace(in.DisplayName)
+		if in.Username == "" || in.DisplayName == "" {
+			return apperr.InvalidResource("用户名和显示名称不能为空")
 		}
-	}
-	// 用户名冲突
-	if in.Username != existing.Username {
-		if other, err := s.users.FindByUsername(in.Username); err == nil && other.ID != id {
-			return nil, apperr.New(409, "USER_CONFLICT", "用户名已存在")
-		} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
+		if in.AuthSource == "" {
+			in.AuthSource = existing.AuthSource
 		}
-	}
-	if err := s.users.UpdateUser(id, version, in.Username, in.DisplayName, strings.TrimSpace(in.Email), in.AuthSource, enabled, roles); err != nil {
-		return nil, mapStoreErr(err)
+		enabled := existing.Enabled
+		if in.Enabled != nil {
+			enabled = *in.Enabled
+		}
+		roles, err := s.resolveRoles(in.RoleCodes)
+		if err != nil {
+			return err
+		}
+		// 最后管理员保护：禁止停用或去掉 system_admin
+		if existing.HasRole("system_admin") && (!enabled || !hasRoleCode(roles, "system_admin")) {
+			n, err := users.CountEnabledAdminsExcluding(id)
+			if err != nil {
+				return err
+			}
+			if n == 0 {
+				return apperr.New(409, "LAST_ADMIN", "不能停用或降级最后一个管理员")
+			}
+		}
+		// 用户名冲突
+		if in.Username != existing.Username {
+			if other, err := users.FindByUsername(in.Username); err == nil && other.ID != id {
+				return apperr.New(409, "USER_CONFLICT", "用户名已存在")
+			} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+		}
+		return mapStoreErr(users.UpdateUser(id, version, in.Username, in.DisplayName, strings.TrimSpace(in.Email), in.AuthSource, enabled, roles))
+	})
+	if err != nil {
+		return nil, err
 	}
 	return s.users.FindByID(id)
 }
 
 func (s *AdminService) DeleteUser(id uuid.UUID, version uint) error {
-	existing, err := s.users.FindByID(id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperr.NotFound("用户")
-		}
-		return err
-	}
-	if existing.HasRole("system_admin") {
-		n, err := s.users.CountEnabledAdminsExcluding(id)
+	return s.users.DB().Transaction(func(tx *gorm.DB) error {
+		users := s.users.WithTx(tx)
+		existing, err := users.FindByIDLock(tx, id)
 		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("用户")
+			}
 			return err
 		}
-		if n == 0 {
-			return apperr.New(409, "LAST_ADMIN", "不能删除最后一个管理员")
+		if existing.HasRole("system_admin") {
+			n, err := users.CountEnabledAdminsExcluding(id)
+			if err != nil {
+				return err
+			}
+			if n == 0 {
+				return apperr.New(409, "LAST_ADMIN", "不能删除最后一个管理员")
+			}
 		}
-	}
-	return mapStoreErr(s.users.SoftDeleteUser(id, version))
+		return mapStoreErr(users.SoftDeleteUser(id, version))
+	})
 }
 
 func (s *AdminService) ResetPassword(id uuid.UUID, version uint, password string) error {

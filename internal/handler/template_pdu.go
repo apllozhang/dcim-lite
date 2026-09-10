@@ -277,7 +277,9 @@ func (h *PDUHandler) Disconnect(c *gin.Context) {
 		var body struct {
 			Version uint `json:"version"`
 		}
-		_ = c.ShouldBindJSON(&body)
+		if !bindOptionalJSON(c, &body) {
+			return
+		}
 		if body.Version == 0 {
 			writeAppError(c, apperr.InvalidResource("缺少 version 参数"))
 			return

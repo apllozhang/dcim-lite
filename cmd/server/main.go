@@ -1,19 +1,25 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
 	"dcim-lite/internal/config"
 	"dcim-lite/internal/handler"
+	"dcim-lite/internal/middleware"
 	"dcim-lite/internal/repository"
 	"dcim-lite/internal/router"
 	"dcim-lite/internal/service"
@@ -33,6 +39,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("db sql: %v", err)
 	}
+	// 连接池上限：避免突发流量打满 Postgres 连接
+	sqlDB.SetMaxOpenConns(25)
+	sqlDB.SetMaxIdleConns(5)
+	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 	if err := sqlDB.Ping(); err != nil {
 		log.Fatalf("db ping: %v", err)
 	}
@@ -60,7 +70,8 @@ func main() {
 	pduStore := repository.NewPDUStore(db)
 	apprStore := repository.NewApprovalStore(db)
 	ldapStore := repository.NewLDAPStore(db)
-	authSvc := service.NewAuthService(users, cfg.JWTSecret, cfg.JWTExpiresIn)
+	revoker := middleware.NewMemoryTokenRevoker()
+	authSvc := service.NewAuthService(users, cfg.JWTSecret, cfg.JWTExpiresIn, revoker)
 	captchaSvc := service.NewCaptchaService()
 	resSvc := service.NewResourceService(resStore)
 	devSvc := service.NewDeviceService(devStore, resStore)
@@ -79,6 +90,7 @@ func main() {
 	r := router.New(router.Deps{
 		Secret:    cfg.JWTSecret,
 		Users:     users,
+		Revoker:   revoker,
 		Health:    handler.NewHealthHandler(db),
 		Auth:      handler.NewAuthHandler(authSvc, captchaSvc),
 		Res:       handler.NewResourceHandler(resSvc),
@@ -93,10 +105,33 @@ func main() {
 		GinMode:   mode,
 	})
 
-	log.Printf("dcim-lite listening on %s (env=%s)", cfg.HTTPAddr, cfg.AppEnv)
-	if err := http.ListenAndServe(cfg.HTTPAddr, r); err != nil {
-		log.Fatal(err)
+	// 生产级 HTTP 生命周期：显式超时 + 优雅停机（SIGTERM/SIGINT 内限期 drain）
+	srv := &http.Server{
+		Addr:              cfg.HTTPAddr,
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
+	go func() {
+		log.Printf("dcim-lite listening on %s (env=%s)", cfg.HTTPAddr, cfg.AppEnv)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal(err)
+		}
+	}()
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Printf("shutting down (drain up to 10s)...")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("shutdown: %v", err)
+	}
+	_ = sqlDB.Close()
+	log.Printf("stopped")
 }
 
 func runMigrations(db *gorm.DB, dir string) error {

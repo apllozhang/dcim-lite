@@ -53,11 +53,13 @@ func (h *ApprovalHandler) Approve(c *gin.Context) {
 		return
 	}
 	var in service.DecisionInput
-	_ = c.ShouldBindJSON(&in)
+	if !bindOptionalJSON(c, &in) {
+		return
+	}
 	actor := middleware.UserID(c)
 	rid, _ := c.Get(response.RequestIDKey)
 	requestID, _ := rid.(string)
-	dev, err := h.service.Approve(id, in.Comment, &actor, requestID)
+	dev, err := h.service.Approve(id, in.Version, in.Comment, &actor, requestID)
 	if err != nil {
 		writeAppError(c, err)
 		return
@@ -71,9 +73,11 @@ func (h *ApprovalHandler) Reject(c *gin.Context) {
 		return
 	}
 	var in service.DecisionInput
-	_ = c.ShouldBindJSON(&in)
+	if !bindOptionalJSON(c, &in) {
+		return
+	}
 	actor := middleware.UserID(c)
-	rec, err := h.service.Reject(id, in.Comment, &actor)
+	rec, err := h.service.Reject(id, in.Version, in.Comment, &actor)
 	if err != nil {
 		writeAppError(c, err)
 		return

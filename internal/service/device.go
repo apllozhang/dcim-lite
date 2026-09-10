@@ -23,6 +23,11 @@ func NewDeviceService(devices *repository.DeviceStore, acks *repository.Resource
 	return &DeviceService{devices: devices, acks: acks}
 }
 
+// withTx 返回绑定同一事务的 service 副本，供跨聚合命令（审批、导入）复用。
+func (s *DeviceService) withTx(tx *gorm.DB) *DeviceService {
+	return &DeviceService{devices: s.devices.WithTx(tx), acks: s.acks.WithTx(tx)}
+}
+
 type DeviceTypeInput struct {
 	Code               string   `json:"code" binding:"required,max=50"`
 	Name               string   `json:"name" binding:"required,max=150"`
@@ -367,7 +372,31 @@ func (s *DeviceService) Move(id uuid.UUID, in PositionChangeInput, actor *uuid.U
 	return s.place(id, in, actor, requestID, "MOVE", false)
 }
 
+// PlaceTx 在外部事务内执行上架/移位（位置+占用+生命周期+履历原子提交）。
+func (s *DeviceService) PlaceTx(tx *gorm.DB, id uuid.UUID, in PositionChangeInput, actor *uuid.UUID, requestID, op string, requireOff bool) (*model.Device, error) {
+	return s.withTx(tx).place(id, in, actor, requestID, op, requireOff)
+}
+
+// place 位置写入、生命周期更新与履历记录在同一事务中提交；
+// 任何一步失败整体回滚，不存在“位置已写入但生命周期/履历缺失”的中间态。
 func (s *DeviceService) place(id uuid.UUID, in PositionChangeInput, actor *uuid.UUID, requestID, op string, requireOff bool) (*model.Device, error) {
+	var result *model.Device
+	err := s.devices.DB().Transaction(func(tx *gorm.DB) error {
+		svc := s.withTx(tx)
+		dev, err := svc.placeInTx(id, in, actor, requestID, op, requireOff)
+		if err != nil {
+			return err
+		}
+		result = dev
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s *DeviceService) placeInTx(id uuid.UUID, in PositionChangeInput, actor *uuid.UUID, requestID, op string, requireOff bool) (*model.Device, error) {
 	dev, err := s.devices.GetDevice(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -454,11 +483,31 @@ func (s *DeviceService) place(id uuid.UUID, in PositionChangeInput, actor *uuid.
 		RackID: rack.ID, RoomID: rack.RoomID, DataCenterID: rack.DataCenterID,
 		StartU: in.StartU, HeightU: dev.HeightU, EndU: endU, Orientation: orient,
 	}
-	s.writeHistory(id, op, fromSnap, &toSnap, in.Reason, actor, requestID)
+	if err := s.writeHistory(id, op, fromSnap, &toSnap, in.Reason, actor, requestID); err != nil {
+		return nil, err
+	}
 	return s.devices.GetDevice(id)
 }
 
+// Decommission 下架位置移除、生命周期更新与履历记录在同一事务中提交。
 func (s *DeviceService) Decommission(id uuid.UUID, in DecommissionInput, actor *uuid.UUID, requestID string) (*model.Device, error) {
+	var result *model.Device
+	err := s.devices.DB().Transaction(func(tx *gorm.DB) error {
+		svc := s.withTx(tx)
+		dev, err := svc.decommissionInTx(id, in, actor, requestID)
+		if err != nil {
+			return err
+		}
+		result = dev
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s *DeviceService) decommissionInTx(id uuid.UUID, in DecommissionInput, actor *uuid.UUID, requestID string) (*model.Device, error) {
 	dev, err := s.devices.GetDevice(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -481,7 +530,9 @@ func (s *DeviceService) Decommission(id uuid.UUID, in DecommissionInput, actor *
 	if err := s.devices.UpdateDeviceLifecycle(id, model.DeviceOffRack); err != nil {
 		return nil, err
 	}
-	s.writeHistory(id, "DECOMMISSION", fromSnap, nil, in.Reason, actor, requestID)
+	if err := s.writeHistory(id, "DECOMMISSION", fromSnap, nil, in.Reason, actor, requestID); err != nil {
+		return nil, err
+	}
 	return s.devices.GetDevice(id)
 }
 
@@ -510,14 +561,31 @@ func (s *DeviceService) ULayout(rackID uuid.UUID) (*ULayout, error) {
 		Order("start_u asc").Find(&positions).Error; err != nil {
 		return nil, err
 	}
+	// 一次批量取回全部设备，避免逐个查询（N+1）
+	deviceIDs := make([]uuid.UUID, 0, len(positions))
+	for _, p := range positions {
+		deviceIDs = append(deviceIDs, p.DeviceID)
+	}
+	devicesByID := map[uuid.UUID]*model.Device{}
+	if len(deviceIDs) > 0 {
+		var devs []model.Device
+		if err := s.devices.DB().Preload("Type").
+			Where("id IN ? AND deleted_at IS NULL", deviceIDs).
+			Find(&devs).Error; err != nil {
+			return nil, err
+		}
+		for i := range devs {
+			devicesByID[devs[i].ID] = &devs[i]
+		}
+	}
 	out := &ULayout{
 		RackID: rack.ID, UHeight: rack.UHeight,
 		RackCode: rack.Code, RackName: rack.Name, Status: rack.Status,
 		Positions: make([]ULayoutPosition, 0, len(positions)),
 	}
 	for _, p := range positions {
-		dev, err := s.devices.GetDevice(p.DeviceID)
-		if err != nil {
+		dev, ok := devicesByID[p.DeviceID]
+		if !ok {
 			continue
 		}
 		out.Positions = append(out.Positions, ULayoutPosition{
@@ -530,16 +598,14 @@ func (s *DeviceService) ULayout(rackID uuid.UUID) (*ULayout, error) {
 	return out, nil
 }
 
-func (s *DeviceService) writeHistory(deviceID uuid.UUID, op string, from, to *model.PositionSnapshot, reason string, actor *uuid.UUID, requestID string) {
+// writeHistory 与业务写入同事务调用：履历是业务可信链的一部分，失败即回滚。
+func (s *DeviceService) writeHistory(deviceID uuid.UUID, op string, from, to *model.PositionSnapshot, reason string, actor *uuid.UUID, requestID string) error {
 	h := &model.DevicePositionHistory{
 		DeviceID: deviceID, Operation: op, Reason: reason,
 		ActorID: actor, RequestID: requestID,
 		FromPosition: from, ToPosition: to,
 	}
-	if err := s.devices.WriteHistory(h); err != nil {
-		// 履历失败不阻塞业务主路径，但需可观测
-		fmt.Printf("write history failed device=%s op=%s err=%v\n", deviceID, op, err)
-	}
+	return s.devices.WriteHistory(h)
 }
 
 func rangesOverlap(aStart, aEnd, bStart, bEnd int) bool {

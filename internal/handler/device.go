@@ -248,7 +248,9 @@ func (h *DeviceHandler) Decommission(c *gin.Context) {
 		return
 	}
 	var in service.DecommissionInput
-	_ = c.ShouldBindJSON(&in)
+	if !bindOptionalJSON(c, &in) {
+		return
+	}
 	actor := middleware.UserID(c)
 	rid, _ := c.Get(response.RequestIDKey)
 	requestID, _ := rid.(string)

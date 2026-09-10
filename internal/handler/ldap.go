@@ -39,7 +39,9 @@ func (h *LDAPHandler) Update(c *gin.Context) {
 
 func (h *LDAPHandler) Test(c *gin.Context) {
 	var in service.LDAPInput
-	_ = c.ShouldBindJSON(&in)
+	if !bindOptionalJSON(c, &in) {
+		return
+	}
 	item, err := h.service.Test(in)
 	if err != nil {
 		writeAppError(c, err)

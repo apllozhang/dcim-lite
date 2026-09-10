@@ -21,6 +21,7 @@ type User struct {
 	AuthSource   string     `gorm:"size:20;not null;default:local" json:"authSource"`
 	Enabled      bool       `gorm:"not null;default:true" json:"enabled"`
 	FailedLogins int        `gorm:"not null;default:0" json:"-"`
+	LockedUntil  *time.Time `json:"-"`
 	LastLoginAt  *time.Time `json:"lastLoginAt"`
 	Roles        []Role     `gorm:"many2many:user_roles" json:"roles,omitempty"`
 }

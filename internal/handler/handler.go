@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -92,6 +94,11 @@ func (h *AuthHandler) Me(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
+	// 吊销当前 token（jti 黑名单），登出后旧 token 立即失效
+	header := c.GetHeader("Authorization")
+	if strings.HasPrefix(header, "Bearer ") {
+		_ = h.service.Logout(strings.TrimPrefix(header, "Bearer "))
+	}
 	response.OK(c, gin.H{"loggedOut": true})
 }
 
@@ -497,4 +504,13 @@ func bindMessage(err error) string {
 		return "参数校验失败"
 	}
 	return "请求体格式错误或缺少必填字段"
+}
+
+// bindOptionalJSON 绑定可选请求体：空 body（EOF）合法，格式错误返回 false 并已写响应。
+func bindOptionalJSON(c *gin.Context, obj any) bool {
+	if err := c.ShouldBindJSON(obj); err != nil && !errors.Is(err, io.EOF) {
+		writeAppError(c, apperr.InvalidResource("%s", bindMessage(err)))
+		return false
+	}
+	return true
 }

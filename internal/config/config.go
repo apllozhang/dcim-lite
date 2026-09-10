@@ -45,6 +45,13 @@ func Load() (*Config, error) {
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")
 	}
+	// 生产环境强制密钥强度：>= 32 字节；开发环境仅告警，便于本地快速启动
+	if len(cfg.JWTSecret) < 32 {
+		if cfg.AppEnv == "production" {
+			return nil, fmt.Errorf("JWT_SECRET must be at least 32 bytes in production (got %d)", len(cfg.JWTSecret))
+		}
+		fmt.Printf("[WARN] JWT_SECRET is shorter than 32 bytes (%d); generate a long random secret before production\n", len(cfg.JWTSecret))
+	}
 	return cfg, nil
 }
 

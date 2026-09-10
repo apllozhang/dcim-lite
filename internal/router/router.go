@@ -1,6 +1,8 @@
 package router
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"dcim-lite/internal/handler"
@@ -11,6 +13,7 @@ import (
 type Deps struct {
 	Secret    string
 	Users     middleware.UserFinder
+	Revoker   middleware.TokenRevoker
 	Health    *handler.HealthHandler
 	Auth      *handler.AuthHandler
 	Res       *handler.ResourceHandler
@@ -41,48 +44,75 @@ func New(d Deps) *gin.Engine {
 
 	v1 := r.Group("/api/v1")
 	{
-		v1.POST("/auth/login", d.Auth.Login)
-		v1.GET("/auth/captcha", d.Auth.Captcha)
+		// 登录端点：每 IP 每分钟最多 10 次（含验证码），防定向爆破
+		login := v1.Group("", middleware.NewRateLimit(10, time.Minute))
+		{
+			login.POST("/auth/login", d.Auth.Login)
+			login.GET("/auth/captcha", d.Auth.Captcha)
+		}
 
 		authed := v1.Group("")
-		authed.Use(middleware.Auth(d.Secret, d.Users))
+		authed.Use(middleware.Auth(d.Secret, d.Users, d.Revoker))
 		{
+			// 只读查询：登录即可
 			authed.GET("/auth/me", d.Auth.Me)
 			authed.POST("/auth/logout", d.Auth.Logout)
 			authed.GET("/resource-tree", d.Res.Tree)
 			// 注意：不能注册 GET /racks，会与 /racks/:id/* 抢路由
 			authed.GET("/racks-page", d.Res.ListRacks)
-			authed.POST("/data-centers", d.Res.CreateDataCenter)
-			authed.PUT("/data-centers/:id", d.Res.UpdateDataCenter)
-			authed.DELETE("/data-centers/:id", d.Res.DeleteDataCenter)
-			authed.POST("/data-centers/:id/rooms", d.Res.CreateRoom)
-			authed.POST("/data-centers/:id/copy", d.Res.CopyDataCenter)
-			authed.PUT("/rooms/:id", d.Res.UpdateRoom)
-			authed.DELETE("/rooms/:id", d.Res.DeleteRoom)
-			authed.POST("/rooms/:id/racks", d.Res.CreateRack)
-			authed.POST("/rooms/:id/copy", d.Res.CopyRoom)
-			authed.POST("/rooms/:id/move", d.Res.MoveRoom)
-			authed.POST("/rooms/:id/rack-diagram-import/validate", d.Import.Validate)
-			authed.POST("/rooms/:id/rack-diagram-import/commit", d.Import.Commit)
-			authed.PUT("/racks/:id", d.Res.UpdateRack)
-			authed.DELETE("/racks/:id", d.Res.DeleteRack)
-			authed.POST("/racks/:id/copy", d.Res.CopyRack)
-			authed.POST("/racks/:id/move", d.Res.MoveRack)
 			authed.GET("/device-types", d.Device.ListDeviceTypes)
-			authed.POST("/device-types", d.Device.CreateDeviceType)
-			authed.PUT("/device-types/:id", d.Device.UpdateDeviceType)
-			authed.DELETE("/device-types/:id", d.Device.DeleteDeviceType)
 			authed.GET("/devices", d.Device.ListDevices)
 			authed.GET("/devices/import-template", d.ImportTpl.Download)
 			authed.GET("/devices/:id", d.Device.GetDevice)
-			authed.POST("/devices", d.Device.CreateDevice)
-			authed.PUT("/devices/:id", d.Device.UpdateDevice)
-			authed.DELETE("/devices/:id", d.Device.DeleteDevice)
-			authed.POST("/devices/:id/assign", d.Device.Assign)
-			authed.POST("/devices/:id/move", d.Device.Move)
-			authed.POST("/devices/:id/decommission", d.Device.Decommission)
 			authed.GET("/devices/:id/history", d.Device.History)
 			authed.GET("/racks/:id/u-layout", d.Device.ULayout)
+			authed.GET("/rack-templates", d.Template.List)
+			authed.GET("/racks/:id/pdus", d.PDU.ListByRack)
+			authed.GET("/pdus/:id/sockets", d.PDU.ListSockets)
+			authed.GET("/racks/:id/pdu-connections", d.PDU.ListConnections)
+
+			// 业务写操作：要求 system_admin（授权边界收紧，见 docs/COMPAT-DECISIONS.md）
+			writes := authed.Group("")
+			writes.Use(middleware.RequireAdmin())
+			{
+				writes.POST("/data-centers", d.Res.CreateDataCenter)
+				writes.PUT("/data-centers/:id", d.Res.UpdateDataCenter)
+				writes.DELETE("/data-centers/:id", d.Res.DeleteDataCenter)
+				writes.POST("/data-centers/:id/rooms", d.Res.CreateRoom)
+				writes.POST("/data-centers/:id/copy", d.Res.CopyDataCenter)
+				writes.PUT("/rooms/:id", d.Res.UpdateRoom)
+				writes.DELETE("/rooms/:id", d.Res.DeleteRoom)
+				writes.POST("/rooms/:id/racks", d.Res.CreateRack)
+				writes.POST("/rooms/:id/copy", d.Res.CopyRoom)
+				writes.POST("/rooms/:id/move", d.Res.MoveRoom)
+				writes.POST("/rooms/:id/rack-diagram-import/validate", d.Import.Validate)
+				writes.POST("/rooms/:id/rack-diagram-import/commit", d.Import.Commit)
+				writes.PUT("/racks/:id", d.Res.UpdateRack)
+				writes.DELETE("/racks/:id", d.Res.DeleteRack)
+				writes.POST("/racks/:id/copy", d.Res.CopyRack)
+				writes.POST("/racks/:id/move", d.Res.MoveRack)
+				writes.POST("/device-types", d.Device.CreateDeviceType)
+				writes.PUT("/device-types/:id", d.Device.UpdateDeviceType)
+				writes.DELETE("/device-types/:id", d.Device.DeleteDeviceType)
+				writes.POST("/devices", d.Device.CreateDevice)
+				writes.PUT("/devices/:id", d.Device.UpdateDevice)
+				writes.DELETE("/devices/:id", d.Device.DeleteDevice)
+				writes.POST("/devices/:id/assign", d.Device.Assign)
+				writes.POST("/devices/:id/move", d.Device.Move)
+				writes.POST("/devices/:id/decommission", d.Device.Decommission)
+				writes.POST("/rack-templates", d.Template.Create)
+				writes.PUT("/rack-templates/:id", d.Template.Update)
+				writes.DELETE("/rack-templates/:id", d.Template.Delete)
+				writes.POST("/rack-templates/:id/versions", d.Template.CreateVersion)
+				writes.POST("/racks/:id/pdus", d.PDU.Create)
+				writes.PUT("/pdus/:id", d.PDU.Update)
+				writes.DELETE("/pdus/:id", d.PDU.Delete)
+				writes.POST("/pdus/:id/sockets", d.PDU.CreateSocket)
+				writes.PUT("/pdu-sockets/:id", d.PDU.UpdateSocket)
+				writes.DELETE("/pdu-sockets/:id", d.PDU.DeleteSocket)
+				writes.POST("/pdu-sockets/:id/connection", d.PDU.Connect)
+				writes.DELETE("/pdu-connections/:id", d.PDU.Disconnect)
+			}
 
 			admin := authed.Group("/admin")
 			admin.Use(middleware.RequireAdmin())
@@ -102,24 +132,6 @@ func New(d Deps) *gin.Engine {
 				admin.PUT("/ldap", d.LDAP.Update)
 				admin.POST("/ldap/test", d.LDAP.Test)
 			}
-
-			authed.GET("/rack-templates", d.Template.List)
-			authed.POST("/rack-templates", d.Template.Create)
-			authed.PUT("/rack-templates/:id", d.Template.Update)
-			authed.DELETE("/rack-templates/:id", d.Template.Delete)
-			authed.POST("/rack-templates/:id/versions", d.Template.CreateVersion)
-
-			authed.GET("/racks/:id/pdus", d.PDU.ListByRack)
-			authed.POST("/racks/:id/pdus", d.PDU.Create)
-			authed.PUT("/pdus/:id", d.PDU.Update)
-			authed.DELETE("/pdus/:id", d.PDU.Delete)
-			authed.GET("/pdus/:id/sockets", d.PDU.ListSockets)
-			authed.POST("/pdus/:id/sockets", d.PDU.CreateSocket)
-			authed.PUT("/pdu-sockets/:id", d.PDU.UpdateSocket)
-			authed.DELETE("/pdu-sockets/:id", d.PDU.DeleteSocket)
-			authed.POST("/pdu-sockets/:id/connection", d.PDU.Connect)
-			authed.GET("/racks/:id/pdu-connections", d.PDU.ListConnections)
-			authed.DELETE("/pdu-connections/:id", d.PDU.Disconnect)
 		}
 	}
 	return r
