@@ -200,6 +200,61 @@ func (s *PDUStore) CodeExistsPDU(code string, exclude uuid.UUID) (bool, error) {
 	return n > 0, err
 }
 
+// PDUImpactRow 描述一条受影响的供电连接（供强制归档的影响清单）。
+type PDUImpactRow struct {
+	ConnectionID   uuid.UUID `json:"connectionId"`
+	SocketNo       int       `json:"socketNo"`
+	DeviceID       uuid.UUID `json:"deviceId"`
+	DeviceCode     string    `json:"deviceCode"`
+	DeviceName     string    `json:"deviceName"`
+	RedundancyRole string    `json:"redundancyRole"`
+}
+
+// PDUImpact 统计 PDU 的影响面：插座数、活动连接数及其明细。
+func (s *PDUStore) PDUImpact(pduID uuid.UUID) (int64, []PDUImpactRow, error) {
+	var sockets int64
+	if err := s.db.Model(&model.PDUSocket{}).Where("pdu_id = ?", pduID).Count(&sockets).Error; err != nil {
+		return 0, nil, err
+	}
+	var rows []PDUImpactRow
+	err := s.db.Table("pdu_connections c").
+		Select("c.id AS connection_id, so.socket_no, c.device_id, d.code AS device_code, "+
+			"d.name AS device_name, c.redundancy_role").
+		Joins("JOIN pdu_sockets so ON so.id = c.socket_id AND so.deleted_at IS NULL").
+		Joins("JOIN devices d ON d.id = c.device_id").
+		Where("so.pdu_id = ? AND c.deleted_at IS NULL", pduID).
+		Order("so.socket_no asc").
+		Scan(&rows).Error
+	return sockets, rows, err
+}
+
+// ForceArchivePDU 管理员强制归档：断开全部连接、下线插座、归档 PDU（单事务）。
+// 仅在调用方已确认影响清单后使用（服务层强制二次确认）。
+func (s *PDUStore) ForceArchivePDU(id uuid.UUID, expected uint) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		if err := tx.Model(&model.PDUConnection{}).
+			Where("socket_id IN (SELECT id FROM pdu_sockets WHERE pdu_id = ?)", id).
+			Updates(map[string]any{"deleted_at": now, "version": gorm.Expr("version + 1")}).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&model.PDUSocket{}).Where("pdu_id = ?", id).
+			Updates(map[string]any{"deleted_at": now, "version": gorm.Expr("version + 1")}).Error; err != nil {
+			return err
+		}
+		res := tx.Model(&model.PDU{}).
+			Where("id = ? AND version = ?", id, expected).
+			Updates(map[string]any{"deleted_at": now, "version": gorm.Expr("version + 1")})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errVersion()
+		}
+		return nil
+	})
+}
+
 func (s *PDUStore) ListSockets(pduID uuid.UUID) ([]model.PDUSocket, error) {
 	var items []model.PDUSocket
 	err := s.db.Where("pdu_id = ?", pduID).Order("socket_no asc").Find(&items).Error

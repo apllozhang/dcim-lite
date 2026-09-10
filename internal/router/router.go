@@ -120,6 +120,8 @@ func New(d Deps) *gin.Engine {
 				writes.DELETE("/pdu-sockets/:id", d.PDU.DeleteSocket)
 				writes.POST("/pdu-sockets/:id/connection", d.PDU.Connect)
 				writes.DELETE("/pdu-connections/:id", d.PDU.Disconnect)
+				writes.GET("/pdus/:id/archive-impact", d.PDU.Impact)
+				writes.POST("/pdus/:id/force-archive", d.PDU.ForceArchive)
 			}
 
 			admin := authed.Group("/admin")

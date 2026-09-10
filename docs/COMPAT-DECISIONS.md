@@ -31,3 +31,11 @@
 
 - 验证码、导入草稿、token 黑名单、登录限流均为单实例内存实现；水平扩展需迁移到 Redis。
 - LDAP Test 仍为 TCP 连通性探测，不能证明 bind/搜索可用（接口语义见 docs/CODE-REVIEW-GUIDE.md）。
+### D5 补充：强制归档出口（现场处置）
+
+正常删除在「有活动连接」时返回 409 `PDU_IN_USE`。对「PDU 报废但设备仍在用」（如分批搬迁先拆 PDU）这一低频但真实的场景，提供受控出口：
+
+- `GET /api/v1/pdus/{id}/archive-impact`：先取影响清单（插座数、活动连接数、受影响设备明细）
+- `POST /api/v1/pdus/{id}/force-archive`：须回报 `confirmConnections`（等于清单中的连接数，否则 409 `IMPACT_CONFIRMATION_REQUIRED`）且 `reason` 必填
+- 执行：断开全部连接 + 下线插座 + 归档 PDU（单事务）
+- 留痕：影响清单与原因写入 `audit_logs`（action=`FORCE_ARCHIVE`）

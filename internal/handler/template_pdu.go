@@ -293,4 +293,37 @@ func (h *PDUHandler) Disconnect(c *gin.Context) {
 	response.OK(c, gin.H{"deleted": true})
 }
 
+func (h *PDUHandler) Impact(c *gin.Context) {
+	id, ok := pathUUID(c, "id")
+	if !ok {
+		return
+	}
+	item, err := h.service.Impact(id)
+	if err != nil {
+		writeAppError(c, err)
+		return
+	}
+	response.OK(c, item)
+}
+
+func (h *PDUHandler) ForceArchive(c *gin.Context) {
+	id, ok := pathUUID(c, "id")
+	if !ok {
+		return
+	}
+	var in service.ForceArchiveInput
+	if !bindOptionalJSON(c, &in) {
+		return
+	}
+	actor := middleware.UserID(c)
+	rid, _ := c.Get(response.RequestIDKey)
+	requestID, _ := rid.(string)
+	item, err := h.service.ForceArchive(id, in, &actor, requestID)
+	if err != nil {
+		writeAppError(c, err)
+		return
+	}
+	response.OK(c, item)
+}
+
 var _ = strconv.Itoa
