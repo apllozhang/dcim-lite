@@ -7,12 +7,14 @@
 package integration
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -110,8 +112,28 @@ func applyMigrations(db *gorm.DB) error {
 }
 
 func mustLogin(user, pass string) string {
+	// 取验证码并从 SVG 明文数字中解析（与 scripts/smoke-all.sh 同法）
+	st, cap := call("GET", "/api/v1/auth/captcha", nil, "")
+	if st != 200 {
+		fmt.Printf("captcha failed: %d\n", st)
+		os.Exit(1)
+	}
+	img := data(cap)["image"].(string)
+	if i := strings.Index(img, ","); i >= 0 {
+		img = img[i+1:]
+	}
+	svg, err := base64.StdEncoding.DecodeString(img)
+	if err != nil {
+		fmt.Println("captcha decode:", err)
+		os.Exit(1)
+	}
+	var digits strings.Builder
+	for _, m := range reDigits.FindAllStringSubmatch(string(svg), -1) {
+		digits.WriteString(m[1])
+	}
 	st, body := call("POST", "/api/v1/auth/login", map[string]string{
 		"username": user, "password": pass,
+		"captchaId": data(cap)["id"].(string), "captcha": digits.String(),
 	}, "")
 	if st != 200 {
 		fmt.Printf("login failed: %d %v\n", st, body)
@@ -119,6 +141,8 @@ func mustLogin(user, pass string) string {
 	}
 	return data(body)["token"].(string)
 }
+
+var reDigits = regexp.MustCompile(`>(\d)</text>`)
 
 func call(method, path string, payload any, token string) (int, map[string]any) {
 	var body []byte
@@ -303,6 +327,12 @@ func TestApproveRollbackKeepsPending(t *testing.T) {
 	dev := createDevice(t, fx, "RB-D"+short(), 1)
 	blocker := createDevice(t, fx, "RB-B"+short(), 1)
 
+	// blocker 必须在开启审批策略前占位，否则它的 assign 也会进审批流
+	if st, _ := call("POST", "/api/v1/devices/"+blocker+"/assign",
+		map[string]any{"targetRackId": fx.rackID, "startU": 8}, adminTok); st != 200 {
+		t.Fatalf("blocker assign failed")
+	}
+
 	if st, _ := call("PUT", "/api/v1/admin/approval-policy", map[string]any{"assignApprovalEnabled": true}, adminTok); st != 200 {
 		t.Fatal("enable policy failed")
 	}
@@ -314,12 +344,6 @@ func TestApproveRollbackKeepsPending(t *testing.T) {
 		t.Fatalf("pending assign: %d", st)
 	}
 	approvalID := data(pend)["id"].(string)
-
-	// 申请后、批准前：目标 U 位被其他设备占据
-	if st, _ := call("POST", "/api/v1/devices/"+blocker+"/assign",
-		map[string]any{"targetRackId": fx.rackID, "startU": 8}, adminTok); st != 200 {
-		t.Fatalf("blocker assign failed")
-	}
 
 	st, body := call("POST", "/api/v1/admin/approvals/"+approvalID+"/approve", map[string]any{}, adminTok)
 	if st != 409 || code(body) != "U_SLOT_CONFLICT" {
@@ -375,12 +399,15 @@ func TestImportCommitRollbackZeroResidue(t *testing.T) {
 	}
 
 	// 破坏更新项：提交前删除源设备 → commitUpdate 失败 → 整体回滚
+	// （decommission 与删除都会递增 version，最后再取一次）
+	if st, _ := call("POST", "/api/v1/devices/"+src+"/decommission", map[string]any{"reason": "破坏"}, adminTok); st != 200 {
+		t.Fatalf("decommission src failed")
+	}
 	st, devBody := call("GET", "/api/v1/devices/"+src, nil, adminTok)
 	if st != 200 {
 		t.Fatalf("get src: %d", st)
 	}
 	version := fmt.Sprintf("%.0f", data(devBody)["version"].(float64))
-	call("POST", "/api/v1/devices/"+src+"/decommission", map[string]any{"reason": "破坏"}, adminTok)
 	if st, _ := call("DELETE", "/api/v1/devices/"+src+"?version="+version, nil, adminTok); st != 200 {
 		t.Fatalf("delete src failed")
 	}
@@ -446,23 +473,19 @@ func TestSoftDeleteCodeReuse(t *testing.T) {
 	}
 }
 
-// P1-03 验收：并发降级同一个唯一管理员 → 恰一成功，系统始终保留管理员。
+// P1-03 验收：8 路并发降级第二个管理员（itadmin 保持管理员），恰一成功（其余乐观锁 409）。
 func TestLastAdminConcurrentDemote(t *testing.T) {
-	st, list := call("GET", "/api/v1/admin/users?search=itadmin", nil, adminTok)
+	// 建第二个管理员：它的降级是合法操作（itadmin 仍在），竞争发生在 version 乐观锁
+	suffix := short()
+	st, created := call("POST", "/api/v1/admin/users", map[string]any{
+		"username": "itadmin2-" + suffix, "displayName": "二号管理员",
+		"password": "ItAdmin2#2026!", "roleCodes": []string{"system_admin", "user"}, "enabled": true,
+	}, adminTok)
 	if st != 200 {
-		t.Fatalf("list users: %d", st)
+		t.Fatalf("create second admin: %d %v", st, created)
 	}
-	var adminID, version string
-	for _, it := range data(list)["items"].([]any) {
-		m := it.(map[string]any)
-		if m["username"] == "itadmin" {
-			adminID = m["id"].(string)
-			version = fmt.Sprintf("%.0f", m["version"].(float64))
-		}
-	}
-	if adminID == "" {
-		t.Fatal("itadmin not found")
-	}
+	adminID := data(created)["id"].(string)
+	version := fmt.Sprintf("%.0f", data(created)["version"].(float64))
 
 	const n = 8
 	var wg sync.WaitGroup
@@ -473,7 +496,7 @@ func TestLastAdminConcurrentDemote(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			st, _ := call("PUT", "/api/v1/admin/users/"+adminID+"?version="+version,
-				map[string]any{"username": "itadmin", "displayName": "集成测试管理员",
+				map[string]any{"username": "itadmin2-" + suffix, "displayName": "二号管理员",
 					"authSource": "local", "enabled": true, "roleCodes": []string{"user"}}, adminTok)
 			mu.Lock()
 			defer mu.Unlock()
@@ -489,17 +512,14 @@ func TestLastAdminConcurrentDemote(t *testing.T) {
 		t.Fatalf("exactly one demote must win, got %d", ok)
 	}
 
-	// 收尾：恢复 itadmin 管理员角色
-	st, me := call("GET", "/api/v1/admin/users?search=itadmin", nil, adminTok)
+	// 收尾：删除二号管理员，保持环境干净
+	st, me := call("GET", "/api/v1/admin/users?search=itadmin2-"+suffix, nil, adminTok)
 	if st == 200 {
 		for _, it := range data(me)["items"].([]any) {
 			m := it.(map[string]any)
 			if m["id"] == adminID {
 				v := fmt.Sprintf("%.0f", m["version"].(float64))
-				call("PUT", "/api/v1/admin/users/"+adminID+"?version="+v,
-					map[string]any{"username": "itadmin", "displayName": "集成测试管理员",
-						"authSource": "local", "enabled": true,
-						"roleCodes": []string{"system_admin", "user"}}, adminTok)
+				call("DELETE", "/api/v1/admin/users/"+adminID+"?version="+v, nil, adminTok)
 			}
 		}
 	}
