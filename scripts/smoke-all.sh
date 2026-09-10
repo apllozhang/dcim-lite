@@ -123,7 +123,7 @@ st, d2 = call("POST", "/api/v1/devices", {"typeId": tid, "code": f"S2{sfx}", "na
 check("create-devices", st in (200, 201))
 st, a1 = call("POST", f"/api/v1/devices/{d1['data']['id']}/assign",
               {"targetRackId": rack_id, "startU": 1})
-check("assign", st == 200 and a1["data"]["lifecycleStatus"] == "RUNNING")
+check("assign", st == 200 and a1["data"]["device"]["lifecycleStatus"] == "RUNNING")
 st, a2 = call("POST", f"/api/v1/devices/{d2['data']['id']}/assign",
               {"targetRackId": rack_id, "startU": 2})
 check("u-conflict-409", st == 409 and a2.get("code") == "RACK_U_CONFLICT")
@@ -159,8 +159,8 @@ check("policy-on", st == 200 and pol["data"]["assignApprovalEnabled"] is True)
 st, d3 = call("POST", "/api/v1/devices", {"typeId": tid, "code": f"S3{sfx}", "name": "待批", "heightU": 1})
 st, pend = call("POST", f"/api/v1/devices/{d3['data']['id']}/assign",
                 {"targetRackId": rack_id, "startU": 10, "reason": "审批"})
-check("assign-pending", st == 200 and pend["data"].get("status") == "PENDING")
-st, ap_ok = call("POST", f"/api/v1/admin/approvals/{pend['data']['id']}/approve", {"comment": "ok"})
+check("assign-pending", st == 200 and pend["data"].get("approval", {}).get("status") == "PENDING")
+st, ap_ok = call("POST", f"/api/v1/admin/approvals/{pend['data']['approval']['id']}/approve", {"comment": "ok"})
 check("approve", st == 200 and ap_ok["data"]["lifecycleStatus"] == "RUNNING")
 call("PUT", "/api/v1/admin/approval-policy", {"assignApprovalEnabled": False})
 

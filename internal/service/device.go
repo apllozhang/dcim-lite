@@ -371,6 +371,18 @@ func (s *DeviceService) DeleteDevice(id uuid.UUID, version uint) error {
 	return mapStoreErr(s.devices.SoftDeleteDevice(id, version))
 }
 
+// ActivePosition 返回设备当前在位记录（供响应组装，厂商 assign 返回 position 对象）。
+func (s *DeviceService) ActivePosition(id uuid.UUID) (*model.RackDevicePosition, error) {
+	pos, err := s.devices.GetActivePosition(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return pos, nil
+}
+
 func (s *DeviceService) GetDevice(id uuid.UUID) (*model.Device, error) {
 	dev, err := s.devices.GetDevice(id)
 	if err != nil {

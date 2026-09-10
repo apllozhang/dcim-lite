@@ -92,12 +92,18 @@ func (s *ApprovalService) CreatePending(op string, device *model.Device, in Posi
 			StartU: pos.StartU, HeightU: pos.HeightU, EndU: pos.EndU, Orientation: pos.Orientation,
 		}
 	}
+	// 兼容厂商的 rackId 字段：直接用 in.TargetRackID 时，传 rackId 会写入零 UUID，
+	// 触发 approval_records_target_rack_id_fkey 外键违约（500）。
+	targetRackID, err := in.desiredRackID()
+	if err != nil {
+		return nil, err
+	}
 	rec := &model.ApprovalRecord{
 		DeviceID: device.ID, Operation: op, Status: model.ApprovalPending,
 		RequestedBy: actor, RequestedAt: time.Now(),
 		RequestedDeviceVersion: device.Version,
 		SourcePosition:         src,
-		TargetRackID:           in.TargetRackID,
+		TargetRackID:           targetRackID,
 		TargetStartU:           in.StartU,
 		TargetHeightU:          device.HeightU,
 		TargetOrientation:      orient,

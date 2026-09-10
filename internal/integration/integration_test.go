@@ -162,6 +162,14 @@ func call(method, path string, payload any, token string) (int, map[string]any) 
 	return resp.StatusCode, out
 }
 
+// approvalStatus 取 assign 响应中的审批单状态（厂商形状：{executed,approval}）
+func approvalStatus(body map[string]any) any {
+	if ap, ok := data(body)["approval"].(map[string]any); ok {
+		return ap["status"]
+	}
+	return data(body)["status"]
+}
+
 func data(body map[string]any) map[string]any {
 	if d, ok := body["data"].(map[string]any); ok {
 		return d
@@ -276,7 +284,7 @@ func TestApprovalConcurrentApproveExactlyOnce(t *testing.T) {
 
 	st, pend := call("POST", "/api/v1/devices/"+dev+"/assign",
 		map[string]any{"targetRackId": fx.rackID, "startU": 3}, adminTok)
-	if st != 200 || data(pend)["status"] != "PENDING" {
+	if st != 200 || approvalStatus(pend) != "PENDING" {
 		t.Fatalf("assign should create PENDING, got %d %v", st, pend)
 	}
 	approvalID := data(pend)["id"].(string)
