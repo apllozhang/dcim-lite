@@ -1,9 +1,16 @@
-FROM alpine:latest
+# 多阶段构建：干净克隆即可复现镜像，不再依赖手工 bin/cabinet-server-linux
+FROM golang:1.24-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/cabinet-server ./cmd/server
+
+FROM alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
-COPY bin/cabinet-server-linux /app/cabinet-server
+COPY --from=build /out/cabinet-server /app/cabinet-server
 COPY migrations /app/migrations
-RUN chmod +x /app/cabinet-server
 ENV MIGRATIONS_DIR=/app/migrations \
     HTTP_ADDR=:8080 \
     APP_ENV=production

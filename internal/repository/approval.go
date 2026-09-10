@@ -13,6 +13,8 @@ type ApprovalStore struct{ db *gorm.DB }
 
 func NewApprovalStore(db *gorm.DB) *ApprovalStore { return &ApprovalStore{db: db} }
 
+func (s *ApprovalStore) WithTx(tx *gorm.DB) *ApprovalStore { return &ApprovalStore{db: tx} }
+
 func (s *ApprovalStore) DB() *gorm.DB { return s.db }
 
 func (s *ApprovalStore) GetPolicy() (*model.OperationPolicy, error) {
@@ -86,17 +88,22 @@ func (s *ApprovalStore) CreateApproval(item *model.ApprovalRecord) error {
 	return s.db.Create(item).Error
 }
 
-func (s *ApprovalStore) Decide(id uuid.UUID, status string, actor uuid.UUID, comment string) error {
+// Decide 条件更新审批单：仅当仍为 PENDING 时生效；expectedVersion>0 时同时校验乐观锁版本。
+// RowsAffected==0 表示已被并发处理或版本过期，由调用方映射为业务冲突。
+func (s *ApprovalStore) Decide(id uuid.UUID, expectedVersion uint, status string, actor uuid.UUID, comment string) error {
 	now := time.Now()
-	res := s.db.Model(&model.ApprovalRecord{}).
-		Where("id = ? AND status = ?", id, model.ApprovalPending).
-		Updates(map[string]any{
-			"status":           status,
-			"decided_by":       actor,
-			"decided_at":       now,
-			"decision_comment": comment,
-			"version":          gorm.Expr("version + 1"),
-		})
+	q := s.db.Model(&model.ApprovalRecord{}).
+		Where("id = ? AND status = ?", id, model.ApprovalPending)
+	if expectedVersion > 0 {
+		q = q.Where("version = ?", expectedVersion)
+	}
+	res := q.Updates(map[string]any{
+		"status":           status,
+		"decided_by":       actor,
+		"decided_at":       now,
+		"decision_comment": comment,
+		"version":          gorm.Expr("version + 1"),
+	})
 	if res.Error != nil {
 		return res.Error
 	}

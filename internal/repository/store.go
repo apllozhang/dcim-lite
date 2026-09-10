@@ -1,14 +1,17 @@
 package repository
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 
 	"dcim-lite/internal/model"
@@ -24,11 +27,25 @@ type UserStore struct{ db *gorm.DB }
 
 func NewUserStore(db *gorm.DB) *UserStore { return &UserStore{db: db} }
 
+// WithTx 返回绑定外部事务的存储副本；事务内的嵌套 Transaction 会退化为 savepoint。
+func (s *UserStore) WithTx(tx *gorm.DB) *UserStore { return &UserStore{db: tx} }
+
 func (s *UserStore) DB() *gorm.DB { return s.db }
 
 func (s *UserStore) FindByID(id uuid.UUID) (*model.User, error) {
 	var u model.User
 	err := s.db.Preload("Roles").First(&u, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+// FindByIDLock 读取用户并加行锁，供“最后管理员”校验等事务内不变量使用。
+func (s *UserStore) FindByIDLock(tx *gorm.DB, id uuid.UUID) (*model.User, error) {
+	var u model.User
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Preload("Roles").First(&u, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +66,30 @@ func (s *UserStore) UpdateLastLogin(id uuid.UUID) error {
 	return s.db.Model(&model.User{}).Where("id = ?", id).Updates(map[string]any{
 		"last_login_at": now,
 		"failed_logins": 0,
+		"locked_until":  nil,
 	}).Error
+}
+
+// RecordLoginFailure 累计失败次数；达到 threshold 后写入锁定截止时间并返回 true。
+func (s *UserStore) RecordLoginFailure(id uuid.UUID, threshold int, lock time.Duration) (bool, error) {
+	res := s.db.Model(&model.User{}).Where("id = ?", id).Updates(map[string]any{
+		"failed_logins": gorm.Expr("failed_logins + 1"),
+	})
+	if res.Error != nil {
+		return false, res.Error
+	}
+	var u model.User
+	if err := s.db.Select("failed_logins").First(&u, "id = ?", id).Error; err != nil {
+		return false, err
+	}
+	if int(u.FailedLogins) >= threshold {
+		if err := s.db.Model(&model.User{}).Where("id = ?", id).
+			Update("locked_until", time.Now().Add(lock)).Error; err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 func (s *UserStore) EnsureRolesList() ([]model.Role, error) {
@@ -173,6 +213,7 @@ func (s *UserStore) EnsureRoles() (*model.Role, *model.Role, error) {
 	return &adminRole, &userRole, nil
 }
 
+// EnsureAdmin 仅在用户不存在时创建种子管理员；已存在但无管理员角色的用户不会被静默提权。
 func (s *UserStore) EnsureAdmin(username, password, displayName string) error {
 	if username == "" || password == "" {
 		return nil
@@ -182,9 +223,12 @@ func (s *UserStore) EnsureAdmin(username, password, displayName string) error {
 		return err
 	}
 	var u model.User
-	err = s.db.First(&u, "username = ?", username).Error
+	err = s.db.Preload("Roles").First(&u, "username = ?", username).Error
 	if err == nil {
-		return s.db.Model(&u).Association("Roles").Append(adminRole)
+		if !u.HasRole("system_admin") {
+			fmt.Printf("[WARN] bootstrap admin %q exists without system_admin role; skipping role grant (no silent privilege escalation)\n", username)
+		}
+		return nil
 	}
 	if err != gorm.ErrRecordNotFound {
 		return err
@@ -211,7 +255,25 @@ type ResourceStore struct{ db *gorm.DB }
 
 func NewResourceStore(db *gorm.DB) *ResourceStore { return &ResourceStore{db: db} }
 
+func (s *ResourceStore) WithTx(tx *gorm.DB) *ResourceStore { return &ResourceStore{db: tx} }
+
 func (s *ResourceStore) DB() *gorm.DB { return s.db }
+
+// CountActivePositions 统计机柜上的在位设备（未软删），删除保护用。
+func (s *ResourceStore) CountActivePositions(rackID uuid.UUID) (int64, error) {
+	var n int64
+	err := s.db.Table("rack_device_positions").
+		Where("rack_id = ? AND deleted_at IS NULL", rackID).Count(&n).Error
+	return n, err
+}
+
+// CountPDUsByRack 统计机柜下未软删的 PDU，删除保护用。
+func (s *ResourceStore) CountPDUsByRack(rackID uuid.UUID) (int64, error) {
+	var n int64
+	err := s.db.Table("pdus").
+		Where("rack_id = ? AND deleted_at IS NULL", rackID).Count(&n).Error
+	return n, err
+}
 
 func (s *ResourceStore) ListDataCenters() ([]model.DataCenter, error) {
 	var items []model.DataCenter
@@ -272,7 +334,8 @@ func (s *ResourceStore) ListRacks(q RackQuery) ([]model.Rack, int64, error) {
 		dir = "DESC"
 	}
 	var items []model.Rack
-	err := base.Order(col + " " + dir).
+	// id 作为稳定 tie-breaker：相同排序键时 offset 分页不重不漏
+	err := base.Order(col + " " + dir + ", id ASC").
 		Offset((q.Page - 1) * q.PageSize).
 		Limit(q.PageSize).
 		Find(&items).Error
@@ -434,40 +497,40 @@ func (s *ResourceStore) UpdateRack(item *model.Rack, expectedVersion uint) error
 	res := s.db.Model(&model.Rack{}).
 		Where("id = ? AND version = ?", item.ID, expectedVersion).
 		Updates(map[string]any{
-			"code":           item.Code,
-			"name":           item.Name,
-			"type":           item.Type,
-			"manufacturer":   item.Manufacturer,
-			"model_number":   item.ModelNumber,
-			"serial_number":  item.SerialNumber,
-			"asset_number":   item.AssetNumber,
-			"u_height":       item.UHeight,
-			"width_mm":       item.WidthMm,
-			"depth_mm":       item.DepthMm,
-			"height_mm":      item.HeightMm,
+			"code":             item.Code,
+			"name":             item.Name,
+			"type":             item.Type,
+			"manufacturer":     item.Manufacturer,
+			"model_number":     item.ModelNumber,
+			"serial_number":    item.SerialNumber,
+			"asset_number":     item.AssetNumber,
+			"u_height":         item.UHeight,
+			"width_mm":         item.WidthMm,
+			"depth_mm":         item.DepthMm,
+			"height_mm":        item.HeightMm,
 			"load_capacity_kg": item.LoadCapacityKg,
-			"zone":           item.Zone,
-			"rack_row":       item.RackRow,
-			"rack_column":    item.RackColumn,
-			"aisle":          item.Aisle,
-			"x_coordinate":   item.XCoordinate,
-			"y_coordinate":   item.YCoordinate,
-			"rotation":       item.Rotation,
-			"status":         item.Status,
-			"manager":        item.Manager,
-			"department":     item.Department,
-			"purpose":        item.Purpose,
-			"dual_power":     item.DualPower,
-			"input_circuits": item.InputCircuits,
-			"rated_voltage":  item.RatedVoltage,
-			"rated_current":  item.RatedCurrent,
-			"rated_power_kw": item.RatedPowerKw,
-			"peak_power_kw":  item.PeakPowerKw,
-			"pdu_count":      item.PDUCount,
-			"remarks":        item.Remarks,
-			"sort_order":     item.SortOrder,
-			"version":        gorm.Expr("version + 1"),
-			"updated_at":     time.Now(),
+			"zone":             item.Zone,
+			"rack_row":         item.RackRow,
+			"rack_column":      item.RackColumn,
+			"aisle":            item.Aisle,
+			"x_coordinate":     item.XCoordinate,
+			"y_coordinate":     item.YCoordinate,
+			"rotation":         item.Rotation,
+			"status":           item.Status,
+			"manager":          item.Manager,
+			"department":       item.Department,
+			"purpose":          item.Purpose,
+			"dual_power":       item.DualPower,
+			"input_circuits":   item.InputCircuits,
+			"rated_voltage":    item.RatedVoltage,
+			"rated_current":    item.RatedCurrent,
+			"rated_power_kw":   item.RatedPowerKw,
+			"peak_power_kw":    item.PeakPowerKw,
+			"pdu_count":        item.PDUCount,
+			"remarks":          item.Remarks,
+			"sort_order":       item.SortOrder,
+			"version":          gorm.Expr("version + 1"),
+			"updated_at":       time.Now(),
 		})
 	if res.Error != nil {
 		return res.Error
@@ -549,7 +612,23 @@ func IsUniqueViolation(err error) bool {
 	if err == nil {
 		return false
 	}
+	// 优先按 PostgreSQL SQLSTATE 判断；savepoint 回滚会把驱动错误包在文本里，保留字符串回退。
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return true
+	}
 	return contains(err.Error(), "duplicate key") || contains(err.Error(), "SQLSTATE 23505")
+}
+
+func IsExclusionViolationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23P01" {
+		return true
+	}
+	return contains(err.Error(), "SQLSTATE 23P01")
 }
 
 func contains(s, sub string) bool {
@@ -562,5 +641,3 @@ func contains(s, sub string) bool {
 		return false
 	})()
 }
-
-var _ = fmt.Sprintf

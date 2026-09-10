@@ -23,6 +23,11 @@ func NewDeviceService(devices *repository.DeviceStore, acks *repository.Resource
 	return &DeviceService{devices: devices, acks: acks}
 }
 
+// withTx 返回绑定同一事务的 service 副本，供跨聚合命令（审批、导入）复用。
+func (s *DeviceService) withTx(tx *gorm.DB) *DeviceService {
+	return &DeviceService{devices: s.devices.WithTx(tx), acks: s.acks.WithTx(tx)}
+}
+
 type DeviceTypeInput struct {
 	Code               string   `json:"code" binding:"required,max=50"`
 	Name               string   `json:"name" binding:"required,max=150"`
@@ -69,10 +74,23 @@ type DeviceInput struct {
 }
 
 type PositionChangeInput struct {
-	TargetRackID uuid.UUID `json:"targetRackId" binding:"required"`
-	StartU       int       `json:"startU" binding:"required"`
-	Orientation  string    `json:"orientation"`
-	Reason       string    `json:"reason"`
+	TargetRackID uuid.UUID `json:"targetRackId"`
+	// RackID 为厂商基线字段名（rackId），与 targetRackId 等价；ALE 前端使用此字段。
+	RackID      *uuid.UUID `json:"rackId"`
+	StartU      int        `json:"startU" binding:"required"`
+	Orientation string     `json:"orientation"`
+	Reason      string     `json:"reason"`
+}
+
+// desiredRackID 兼容厂商的 rackId 字段命名（差分回放实测：套件与 ALE 均用 rackId）。
+func (in PositionChangeInput) desiredRackID() (uuid.UUID, error) {
+	if in.TargetRackID != uuid.Nil {
+		return in.TargetRackID, nil
+	}
+	if in.RackID != nil && *in.RackID != uuid.Nil {
+		return *in.RackID, nil
+	}
+	return uuid.Nil, apperr.InvalidResource("缺少机柜 ID（rackId 或 targetRackId）")
 }
 
 type DecommissionInput struct {
@@ -110,6 +128,10 @@ func (s *DeviceService) CreateDeviceType(in DeviceTypeInput) (*model.DeviceType,
 	in.Name = strings.TrimSpace(in.Name)
 	if in.Category == "" {
 		return nil, apperr.InvalidResource("设备类型分类不能为空")
+	}
+	// 厂商基线对未知分类返回 400（S14-VAL-DTYPE-CAT 差分用例）
+	if !validDeviceCategory(in.Category) {
+		return nil, apperr.InvalidResource("设备分类无效")
 	}
 	if in.Status == "" {
 		in.Status = "ACTIVE"
@@ -200,7 +222,8 @@ func (s *DeviceService) ListDevices(q repository.DeviceQuery) ([]model.Device, i
 
 func (s *DeviceService) CreateDevice(in DeviceInput) (*model.Device, error) {
 	if in.TypeID == nil {
-		return nil, apperr.InvalidResource("缺少 typeId")
+		// 厂商基线对缺失设备类型返回 404（S14-VAL-DEV-NOTYPE 差分用例）
+		return nil, apperr.NotFound("设备类型")
 	}
 	dt, err := s.devices.GetDeviceType(*in.TypeID)
 	if err != nil {
@@ -248,7 +271,7 @@ func (s *DeviceService) CreateDevice(in DeviceInput) (*model.Device, error) {
 		LifecycleStatus: in.LifecycleStatus, HeightU: h,
 		WeightKg: weight, RatedPowerW: rated, PeakPowerW: peak,
 		DualPowerRequired: dual,
-		ManagementIP: in.ManagementIP, BusinessIP: in.BusinessIP, MACAddress: in.MACAddress,
+		ManagementIP:      in.ManagementIP, BusinessIP: in.BusinessIP, MACAddress: in.MACAddress,
 		ManagementProtocol: in.ManagementProtocol, MonitoringStatus: in.MonitoringStatus,
 		Tags: in.Tags, Remarks: in.Remarks,
 	}
@@ -348,6 +371,18 @@ func (s *DeviceService) DeleteDevice(id uuid.UUID, version uint) error {
 	return mapStoreErr(s.devices.SoftDeleteDevice(id, version))
 }
 
+// ActivePosition 返回设备当前在位记录（供响应组装，厂商 assign 返回 position 对象）。
+func (s *DeviceService) ActivePosition(id uuid.UUID) (*model.RackDevicePosition, error) {
+	pos, err := s.devices.GetActivePosition(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return pos, nil
+}
+
 func (s *DeviceService) GetDevice(id uuid.UUID) (*model.Device, error) {
 	dev, err := s.devices.GetDevice(id)
 	if err != nil {
@@ -367,7 +402,31 @@ func (s *DeviceService) Move(id uuid.UUID, in PositionChangeInput, actor *uuid.U
 	return s.place(id, in, actor, requestID, "MOVE", false)
 }
 
+// PlaceTx 在外部事务内执行上架/移位（位置+占用+生命周期+履历原子提交）。
+func (s *DeviceService) PlaceTx(tx *gorm.DB, id uuid.UUID, in PositionChangeInput, actor *uuid.UUID, requestID, op string, requireOff bool) (*model.Device, error) {
+	return s.withTx(tx).place(id, in, actor, requestID, op, requireOff)
+}
+
+// place 位置写入、生命周期更新与履历记录在同一事务中提交；
+// 任何一步失败整体回滚，不存在“位置已写入但生命周期/履历缺失”的中间态。
 func (s *DeviceService) place(id uuid.UUID, in PositionChangeInput, actor *uuid.UUID, requestID, op string, requireOff bool) (*model.Device, error) {
+	var result *model.Device
+	err := s.devices.DB().Transaction(func(tx *gorm.DB) error {
+		svc := s.withTx(tx)
+		dev, err := svc.placeInTx(id, in, actor, requestID, op, requireOff)
+		if err != nil {
+			return err
+		}
+		result = dev
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s *DeviceService) placeInTx(id uuid.UUID, in PositionChangeInput, actor *uuid.UUID, requestID, op string, requireOff bool) (*model.Device, error) {
 	dev, err := s.devices.GetDevice(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -384,7 +443,11 @@ func (s *DeviceService) place(id uuid.UUID, in PositionChangeInput, actor *uuid.
 			return nil, apperr.New(409, "INVALID_RESOURCE", "当前状态不可移位")
 		}
 	}
-	rack, err := s.acks.GetRack(in.TargetRackID)
+	rackID, err := in.desiredRackID()
+	if err != nil {
+		return nil, err
+	}
+	rack, err := s.acks.GetRack(rackID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("机柜")
@@ -422,7 +485,7 @@ func (s *DeviceService) place(id uuid.UUID, in PositionChangeInput, actor *uuid.
 			continue
 		}
 		if rangesOverlap(in.StartU, endU, o.StartU, o.EndU) {
-			return nil, apperr.New(409, "U_SLOT_CONFLICT", "U 位区间与在位设备重叠")
+			return nil, apperr.New(409, "RACK_U_CONFLICT", "U 位区间与在位设备重叠")
 		}
 	}
 
@@ -443,7 +506,7 @@ func (s *DeviceService) place(id uuid.UUID, in PositionChangeInput, actor *uuid.
 	}
 	if err := s.devices.PlaceInRack(pos, &model.RackUOccupancy{}); err != nil {
 		if repository.IsExclusionViolation(err) || repository.IsUniqueViolation(err) {
-			return nil, apperr.New(409, "U_SLOT_CONFLICT", "U 位区间与在位设备重叠")
+			return nil, apperr.New(409, "RACK_U_CONFLICT", "U 位区间与在位设备重叠")
 		}
 		return nil, err
 	}
@@ -454,11 +517,31 @@ func (s *DeviceService) place(id uuid.UUID, in PositionChangeInput, actor *uuid.
 		RackID: rack.ID, RoomID: rack.RoomID, DataCenterID: rack.DataCenterID,
 		StartU: in.StartU, HeightU: dev.HeightU, EndU: endU, Orientation: orient,
 	}
-	s.writeHistory(id, op, fromSnap, &toSnap, in.Reason, actor, requestID)
+	if err := s.writeHistory(id, op, fromSnap, &toSnap, in.Reason, actor, requestID); err != nil {
+		return nil, err
+	}
 	return s.devices.GetDevice(id)
 }
 
+// Decommission 下架位置移除、生命周期更新与履历记录在同一事务中提交。
 func (s *DeviceService) Decommission(id uuid.UUID, in DecommissionInput, actor *uuid.UUID, requestID string) (*model.Device, error) {
+	var result *model.Device
+	err := s.devices.DB().Transaction(func(tx *gorm.DB) error {
+		svc := s.withTx(tx)
+		dev, err := svc.decommissionInTx(id, in, actor, requestID)
+		if err != nil {
+			return err
+		}
+		result = dev
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s *DeviceService) decommissionInTx(id uuid.UUID, in DecommissionInput, actor *uuid.UUID, requestID string) (*model.Device, error) {
 	dev, err := s.devices.GetDevice(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -481,7 +564,9 @@ func (s *DeviceService) Decommission(id uuid.UUID, in DecommissionInput, actor *
 	if err := s.devices.UpdateDeviceLifecycle(id, model.DeviceOffRack); err != nil {
 		return nil, err
 	}
-	s.writeHistory(id, "DECOMMISSION", fromSnap, nil, in.Reason, actor, requestID)
+	if err := s.writeHistory(id, "DECOMMISSION", fromSnap, nil, in.Reason, actor, requestID); err != nil {
+		return nil, err
+	}
 	return s.devices.GetDevice(id)
 }
 
@@ -510,14 +595,31 @@ func (s *DeviceService) ULayout(rackID uuid.UUID) (*ULayout, error) {
 		Order("start_u asc").Find(&positions).Error; err != nil {
 		return nil, err
 	}
+	// 一次批量取回全部设备，避免逐个查询（N+1）
+	deviceIDs := make([]uuid.UUID, 0, len(positions))
+	for _, p := range positions {
+		deviceIDs = append(deviceIDs, p.DeviceID)
+	}
+	devicesByID := map[uuid.UUID]*model.Device{}
+	if len(deviceIDs) > 0 {
+		var devs []model.Device
+		if err := s.devices.DB().Preload("Type").
+			Where("id IN ? AND deleted_at IS NULL", deviceIDs).
+			Find(&devs).Error; err != nil {
+			return nil, err
+		}
+		for i := range devs {
+			devicesByID[devs[i].ID] = &devs[i]
+		}
+	}
 	out := &ULayout{
 		RackID: rack.ID, UHeight: rack.UHeight,
 		RackCode: rack.Code, RackName: rack.Name, Status: rack.Status,
 		Positions: make([]ULayoutPosition, 0, len(positions)),
 	}
 	for _, p := range positions {
-		dev, err := s.devices.GetDevice(p.DeviceID)
-		if err != nil {
+		dev, ok := devicesByID[p.DeviceID]
+		if !ok {
 			continue
 		}
 		out.Positions = append(out.Positions, ULayoutPosition{
@@ -530,18 +632,25 @@ func (s *DeviceService) ULayout(rackID uuid.UUID) (*ULayout, error) {
 	return out, nil
 }
 
-func (s *DeviceService) writeHistory(deviceID uuid.UUID, op string, from, to *model.PositionSnapshot, reason string, actor *uuid.UUID, requestID string) {
+// writeHistory 与业务写入同事务调用：履历是业务可信链的一部分，失败即回滚。
+func (s *DeviceService) writeHistory(deviceID uuid.UUID, op string, from, to *model.PositionSnapshot, reason string, actor *uuid.UUID, requestID string) error {
 	h := &model.DevicePositionHistory{
 		DeviceID: deviceID, Operation: op, Reason: reason,
 		ActorID: actor, RequestID: requestID,
 		FromPosition: from, ToPosition: to,
 	}
-	if err := s.devices.WriteHistory(h); err != nil {
-		// 履历失败不阻塞业务主路径，但需可观测
-		fmt.Printf("write history failed device=%s op=%s err=%v\n", deviceID, op, err)
-	}
+	return s.devices.WriteHistory(h)
 }
 
 func rangesOverlap(aStart, aEnd, bStart, bEnd int) bool {
 	return aStart <= bEnd && bStart <= aEnd
+}
+
+// validDeviceCategory 设备分类枚举（与种子数据一致；厂商基线拒绝未知分类）。
+func validDeviceCategory(c string) bool {
+	switch c {
+	case "SERVER", "NETWORK", "STORAGE", "SECURITY", "POWER_ENVIRONMENT", "ACCESSORY":
+		return true
+	}
+	return false
 }

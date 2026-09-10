@@ -1,0 +1,505 @@
+openapi: 3.0.3
+info:
+  title: dcim-lite API
+  version: 0.2.0
+  description: |
+    轻量 DCIM（数据中心台账）系统 API 契约。
+    统一响应信封：{"code","message","data","requestId"}；
+    乐观锁：PUT/DELETE 携带 ?version=，冲突返回 409 RESOURCE_VERSION；
+    软删除：deleted_at，唯一索引带 WHERE deleted_at IS NULL。
+    行为差异决策见 docs/COMPAT-DECISIONS.md。
+    注意：body schema 按模块逐步补全中，路径与权限矩阵以本文件为准
+    （与 internal/app/routes_test.go 联动，路由漂移会使测试失败）。
+servers:
+  - url: http://10.20.30.203:19173
+    description: 内网部署（nginx 代理）
+security:
+  - bearerAuth: []
+
+paths:
+  /health/live:
+    get:
+      summary: 存活探针
+      security: []
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /health/ready:
+    get:
+      summary: 就绪探针（检查数据库）
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "503": { $ref: "#/components/responses/Fail" }
+  /api/v1/auth/captcha:
+    get:
+      summary: 获取验证码（SVG，单实例内存，5 分钟有效，一次性）
+      security: []
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/auth/login:
+    post:
+      summary: 登录（需验证码；每 IP 每分钟 10 次；连续失败 5 次锁 15 分钟）
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, captchaId, captcha]
+              properties:
+                username: { type: string }
+                password: { type: string }
+                captchaId: { type: string }
+                captcha: { type: string, description: 4 位数字 }
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "400": { $ref: "#/components/responses/Fail" }
+        "401": { $ref: "#/components/responses/Fail" }
+        "429": { $ref: "#/components/responses/Fail" }
+  /api/v1/auth/me:
+    get:
+      summary: 当前用户信息
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "401": { $ref: "#/components/responses/Fail" }
+  /api/v1/auth/logout:
+    post:
+      summary: 登出（吊销当前 token，立即失效）
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+
+  # ── 只读查询（登录即可） ─────────────────────────────
+  /api/v1/resource-tree:
+    get:
+      summary: 数据中心-机房-机柜资源树
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/racks-page:
+    get:
+      summary: 机柜分页列表
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 20, maximum: 200 } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: roomId, in: query, schema: { type: string, format: uuid } }
+        - { name: dataCenterId, in: query, schema: { type: string, format: uuid } }
+        - { name: sortBy, in: query, schema: { type: string, enum: [code, name, status, uHeight, createdAt] } }
+        - { name: sortDir, in: query, schema: { type: string, enum: [asc, desc] } }
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/device-types:
+    get:
+      summary: 设备类型列表
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+    post:
+      summary: 创建设备类型
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/devices:
+    get:
+      summary: 设备分页列表
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: pageSize, in: query, schema: { type: integer } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: typeId, in: query, schema: { type: string, format: uuid } }
+        - { name: rackId, in: query, schema: { type: string, format: uuid } }
+        - { name: lifecycleStatus, in: query, schema: { type: string } }
+        - { name: sortBy, in: query, schema: { type: string } }
+        - { name: sortDir, in: query, schema: { type: string } }
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+    post:
+      summary: 创建设备（编码缺省自动生成）
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/devices/import-template:
+    get:
+      summary: 下载设备导入 Excel 模板
+      responses:
+        "200":
+          description: xlsx 文件流
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+  /api/v1/devices/{id}:
+    get:
+      summary: 设备详情
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "404": { $ref: "#/components/responses/Fail" }
+    put:
+      summary: 更新设备（在位禁改高度；生命周期不可直改）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+    delete:
+      summary: 删除设备（在位时 409，先下架）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/devices/{id}/history:
+    get:
+      summary: 设备位置履历
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/racks/{id}/u-layout:
+    get:
+      summary: 机柜 U 位布局（含设备摘要）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/rack-templates:
+    get:
+      summary: 机柜模板列表（含版本）
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+    post:
+      summary: 创建机柜模板（含首版本）
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/racks/{id}/pdus:
+    get:
+      summary: 机柜下 PDU 列表
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+    post:
+      summary: 创建 PDU
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/pdus/{id}/sockets:
+    get:
+      summary: PDU 插座列表
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+    post:
+      summary: 创建插座（编号唯一）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/racks/{id}/pdu-connections:
+    get:
+      summary: 机柜 PDU 连接列表
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+
+  # ── 资源写（system_admin） ───────────────────────────
+  /api/v1/data-centers:
+    post:
+      summary: 创建数据中心
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/data-centers/{id}:
+    put:
+      summary: 更新数据中心
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+    delete:
+      summary: 删除数据中心（有机房时 409）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/data-centers/{id}/rooms:
+    post:
+      summary: 创建机房（父级停用 409）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/data-centers/{id}/copy:
+    post:
+      summary: 深拷贝数据中心
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/rooms/{id}:
+    put:
+      summary: 更新机房
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+    delete:
+      summary: 删除机房（有机柜时 409）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/rooms/{id}/racks:
+    post:
+      summary: 创建机柜（可带模板快照）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/rooms/{id}/copy:
+    post:
+      summary: 深拷贝机房
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/rooms/{id}/move:
+    post:
+      summary: 跨数据中心迁移机房
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/rooms/{id}/rack-diagram-import/validate:
+    post:
+      summary: 机柜图导入校验（两阶段第一步，返回 token 与逐行分类）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/rooms/{id}/rack-diagram-import/commit:
+    post:
+      summary: 机柜图导入提交（单事务；失败零残留可重试；token 一次性）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "400": { $ref: "#/components/responses/Fail" }
+  /api/v1/racks/{id}:
+    put:
+      summary: 更新机柜
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+    delete:
+      summary: 删除机柜（在位设备或 PDU 存在时 409）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/racks/{id}/copy:
+    post:
+      summary: 深拷贝机柜
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/racks/{id}/move:
+    post:
+      summary: 跨机房迁移机柜
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+
+  # ── 设备类型与设备写（system_admin） ──────────────────
+  /api/v1/device-types/{id}:
+    put:
+      summary: 更新设备类型
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+    delete:
+      summary: 删除设备类型（被引用时 409）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/devices/{id}/assign:
+    post:
+      summary: 上架（策略开启时生成 PENDING 审批单）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/devices/{id}/move:
+    post:
+      summary: 移位（策略开启时生成 PENDING 审批单）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/devices/{id}/decommission:
+    post:
+      summary: 下架退役（位置+生命周期+履历单事务）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+
+  # ── 模板与 PDU 写（system_admin） ─────────────────────
+  /api/v1/rack-templates/{id}:
+    put:
+      summary: 更新模板元信息（系统内置禁改/禁删 409）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+    delete:
+      summary: 删除模板
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/rack-templates/{id}/versions:
+    post:
+      summary: 追加模板版本（revision 递增）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/pdus/{id}:
+    put:
+      summary: 更新 PDU
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+    delete:
+      summary: 删除 PDU（有插座时 409）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/pdu-sockets/{id}:
+    put:
+      summary: 更新插座
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+    delete:
+      summary: 删除插座（已连接时 409）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/pdu-sockets/{id}/connection:
+    post:
+      summary: 接电（插座占用/同角色已连/跨机柜均 409；连接与插座状态同事务）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/pdu-connections/{id}:
+    delete:
+      summary: 断开连接（连接删除与插座释放同事务）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+
+  # ── 后台管理（system_admin） ──────────────────────────
+  /api/v1/admin/roles:
+    get:
+      summary: 角色列表
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/admin/users:
+    get:
+      summary: 用户列表
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: authSource, in: query, schema: { type: string } }
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+    post:
+      summary: 创建用户
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/admin/users/{id}:
+    put:
+      summary: 更新用户（最后管理员保护 409 LAST_ADMIN）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+    delete:
+      summary: 删除用户（最后管理员保护）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/admin/users/{id}/reset-password:
+    post:
+      summary: 重置密码
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/admin/approval-policy:
+    get:
+      summary: 审批策略
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+    put:
+      summary: 更新审批策略
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/admin/approvals:
+    get:
+      summary: 审批单列表
+      parameters: [{ name: status, in: query, schema: { type: string } }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/admin/approvals/{id}/approve:
+    post:
+      summary: 批准（条件占单+设备变更单事务；并发恰一次生效）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/admin/approvals/{id}/reject:
+    post:
+      summary: 拒绝
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/admin/ldap:
+    get:
+      summary: LDAP 配置
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+    put:
+      summary: 更新 LDAP 配置
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/admin/ldap/test:
+    post:
+      summary: LDAP 连通性探测（仅 TCP，非认证验证）
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'HS256，默认 2 小时；携带 jti，登出即吊销'
+  parameters:
+    PathID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Version:
+      name: version
+      in: query
+      required: true
+      description: 乐观锁版本（当前资源的 version 字段值）
+      schema: { type: integer, minimum: 1 }
+  responses:
+    OK:
+      description: 统一成功信封
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { description: 业务数据（按接口而定） }
+    Fail:
+      description: 统一失败信封（业务错误码见 schemas/Envelope.code）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+  schemas:
+    Envelope:
+      type: object
+      properties:
+        code:
+          type: string
+          description: |
+            SUCCESS 或业务错误码：UNAUTHORIZED / FORBIDDEN / NOT_FOUND /
+            INVALID_RESOURCE / INVALID_CREDENTIALS / USER_LOCKED / RATE_LIMITED /
+            CAPTCHA_REQUIRED / CAPTCHA_INVALID / DUPLICATE_CODE / HAS_CHILDREN /
+            PARENT_DISABLED / RESOURCE_VERSION / U_SLOT_CONFLICT / DEVICE_POSITIONED /
+            DEVICE_TYPE_IN_USE / RACK_UNAVAILABLE / SOCKET_CONNECTED / LAST_ADMIN /
+            USER_CONFLICT / APPROVAL_STATE / RACK_DIAGRAM_IMPORT_DRAFT_EXPIRED / INTERNAL_ERROR
+        message: { type: string }
+        data: { nullable: true }
+        requestId: { type: string }

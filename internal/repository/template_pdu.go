@@ -117,6 +117,8 @@ type PDUStore struct{ db *gorm.DB }
 
 func NewPDUStore(db *gorm.DB) *PDUStore { return &PDUStore{db: db} }
 
+func (s *PDUStore) WithTx(tx *gorm.DB) *PDUStore { return &PDUStore{db: tx} }
+
 func (s *PDUStore) DB() *gorm.DB { return s.db }
 
 func (s *PDUStore) ListByRack(rackID uuid.UUID) ([]model.PDU, error) {
@@ -290,8 +292,8 @@ func (s *PDUStore) DeviceHasRoleConnection(deviceID uuid.UUID, role string) (boo
 }
 
 var (
-	errHasChildren     = &bizErr{"HAS_CHILDREN"}
-	errSocketConnected = &bizErr{"SOCKET_CONNECTED"}
+	errHasChildren     = &bizErr{"RESOURCE_HAS_CHILDREN"}
+	errSocketConnected = &bizErr{"PDU_SOCKET_CONNECTED"}
 	errPDURackMismatch = &bizErr{"PDU_DEVICE_RACK_MISMATCH"}
 	errSocketBusy      = &bizErr{"SOCKET_UNAVAILABLE"}
 )

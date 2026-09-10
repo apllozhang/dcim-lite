@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	"dcim-lite/internal/apperr"
 	"dcim-lite/internal/model"
@@ -16,13 +17,13 @@ import (
 
 // Rack diagram import kinds (frontend labels).
 const (
-	KindUnchanged       = "UNCHANGED"
-	KindCreateNew       = "CREATE_NEW"
-	KindUpdateExisting  = "UPDATE_EXISTING"
-	KindMoveExisting    = "MOVE_EXISTING"
-	KindRemoveMissing   = "REMOVE_MISSING"
-	KindNeedsDecision   = "NEEDS_DECISION"
-	KindError           = "ERROR"
+	KindUnchanged      = "UNCHANGED"
+	KindCreateNew      = "CREATE_NEW"
+	KindUpdateExisting = "UPDATE_EXISTING"
+	KindMoveExisting   = "MOVE_EXISTING"
+	KindRemoveMissing  = "REMOVE_MISSING"
+	KindNeedsDecision  = "NEEDS_DECISION"
+	KindError          = "ERROR"
 )
 
 // Commit actions for decision items.
@@ -53,13 +54,13 @@ type ImportDeviceRow struct {
 }
 
 type ImportValidateInput struct {
-	FormatVersion   string             `json:"formatVersion"`
-	DataCenterID    string             `json:"dataCenterId"`
-	RoomID          string             `json:"roomId"`
-	ExportedAt      string             `json:"exportedAt,omitempty"`
-	CoveredRackIDs  []string           `json:"coveredRackIds"`
-	Devices         []ImportDeviceRow  `json:"devices"`
-	DefaultTypeID   string             `json:"defaultTypeId"`
+	FormatVersion  string            `json:"formatVersion"`
+	DataCenterID   string            `json:"dataCenterId"`
+	RoomID         string            `json:"roomId"`
+	ExportedAt     string            `json:"exportedAt,omitempty"`
+	CoveredRackIDs []string          `json:"coveredRackIds"`
+	Devices        []ImportDeviceRow `json:"devices"`
+	DefaultTypeID  string            `json:"defaultTypeId"`
 }
 
 type ImportItem struct {
@@ -79,13 +80,13 @@ type ImportItem struct {
 }
 
 type ImportSummary struct {
-	Errors     int `json:"errors"`
-	Create     int `json:"create"`
-	Update     int `json:"update"`
-	Move       int `json:"move"`
-	Removals   int `json:"removals"`
-	Decisions  int `json:"decisions"`
-	Unchanged  int `json:"unchanged"`
+	Errors    int `json:"errors"`
+	Create    int `json:"create"`
+	Update    int `json:"update"`
+	Move      int `json:"move"`
+	Removals  int `json:"removals"`
+	Decisions int `json:"decisions"`
+	Unchanged int `json:"unchanged"`
 }
 
 type ImportValidateResult struct {
@@ -105,26 +106,26 @@ type ImportCommitInput struct {
 }
 
 type ImportCommitResult struct {
-	Created       int `json:"created"`
-	Updated       int `json:"updated"`
-	Moved         int `json:"moved"`
+	Created        int `json:"created"`
+	Updated        int `json:"updated"`
+	Moved          int `json:"moved"`
 	Decommissioned int `json:"decommissioned"`
-	Ignored       int `json:"ignored"`
+	Ignored        int `json:"ignored"`
 }
 
 type importDraft struct {
-	Token     string
-	RoomID    uuid.UUID
-	CreatedAt time.Time
-	Items     []ImportItem
-	Rows      map[string]ImportDeviceRow // itemID -> row
+	Token       string
+	RoomID      uuid.UUID
+	CreatedAt   time.Time
+	Items       []ImportItem
+	Rows        map[string]ImportDeviceRow // itemID -> row
 	DefaultType uuid.UUID
 }
 
 type ImportDraftStore struct {
-	mu    sync.Mutex
+	mu     sync.Mutex
 	drafts map[string]*importDraft
-	ttl   time.Duration
+	ttl    time.Duration
 }
 
 func NewImportDraftStore() *ImportDraftStore {
@@ -328,7 +329,7 @@ func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*Imp
 				ID: itemID, Kind: KindRemoveMissing, RequiresDecision: true,
 				RackID: rid.String(), StartU: p.StartU, EndU: p.EndU,
 				Name: d.Name, SourceDeviceID: d.ID.String(), SourceDeviceCode: d.Code,
-				Message: "Excel 中缺失，需确认是否下架",
+				Message:        "Excel 中缺失，需确认是否下架",
 				AllowedActions: []string{ActionDecommission, ActionIgnore},
 			})
 			summary.Removals++
@@ -348,12 +349,15 @@ func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*Imp
 	return &ImportValidateResult{Token: draft.Token, Items: items, Summary: summary}, nil
 }
 
+// Commit 两阶段导入的提交阶段：全部行操作在单个数据库事务中执行，
+// 任意一行失败整体回滚（零残留）；失败时草稿回填，修复决策后可重试。
 func (s *ImportService) Commit(roomID uuid.UUID, in ImportCommitInput) (*ImportCommitResult, error) {
 	draft, ok := s.drafts.Take(in.Token)
 	if !ok {
 		return nil, apperr.New(400, "RACK_DIAGRAM_IMPORT_DRAFT_EXPIRED", "导入草稿不存在或已过期，请重新校验")
 	}
 	if draft.RoomID != roomID {
+		s.drafts.Put(draft)
 		return nil, apperr.InvalidResource("草稿与机房不匹配")
 	}
 	actionByItem := map[string]string{}
@@ -363,74 +367,81 @@ func (s *ImportService) Commit(roomID uuid.UUID, in ImportCommitInput) (*ImportC
 
 	res := &ImportCommitResult{}
 	now := time.Now()
-	for _, item := range draft.Items {
-		row := draft.Rows[item.ID]
-		switch item.Kind {
-		case KindError:
-			return nil, apperr.InvalidResource("存在阻断错误，不能导入: %s", item.Message)
-		case KindUnchanged:
-			continue
-		case KindCreateNew:
-			if item.RequiresDecision {
-				if actionByItem[item.ID] == ActionIgnore {
+	err := s.devices.devices.DB().Transaction(func(tx *gorm.DB) error {
+		svc := &DeviceService{devices: s.devices.devices.WithTx(tx), acks: s.devices.acks.WithTx(tx)}
+		for _, item := range draft.Items {
+			row := draft.Rows[item.ID]
+			switch item.Kind {
+			case KindError:
+				return apperr.InvalidResource("存在阻断错误，不能导入: %s", item.Message)
+			case KindUnchanged:
+				continue
+			case KindCreateNew:
+				if item.RequiresDecision && actionByItem[item.ID] == ActionIgnore {
 					res.Ignored++
 					continue
 				}
-			}
-			if err := s.commitCreate(draft, row, now); err != nil {
-				return nil, err
-			}
-			res.Created++
-		case KindUpdateExisting:
-			if err := s.commitUpdate(draft, item, row); err != nil {
-				return nil, err
-			}
-			res.Updated++
-		case KindMoveExisting:
-			if err := s.commitMove(draft, item, row, now); err != nil {
-				return nil, err
-			}
-			res.Moved++
-		case KindRemoveMissing:
-			action := actionByItem[item.ID]
-			if action == ActionIgnore || action == "" {
-				res.Ignored++
-				continue
-			}
-			if action != ActionDecommission {
-				return nil, apperr.InvalidResource("删除项动作非法")
-			}
-			if err := s.commitDecommission(item); err != nil {
-				return nil, err
-			}
-			res.Decommissioned++
-		case KindNeedsDecision:
-			action := actionByItem[item.ID]
-			switch action {
-			case ActionIgnore:
-				res.Ignored++
-			case ActionUpdateExisting:
-				if err := s.commitUpdate(draft, item, row); err != nil {
-					return nil, err
-				}
-				res.Updated++
-			case ActionCreateNew, "":
-				if action == "" {
-					return nil, apperr.InvalidResource("请完成全部人工确认")
-				}
-				if err := s.commitCreate(draft, row, now); err != nil {
-					return nil, err
+				if err := s.commitCreate(svc, draft, row, now); err != nil {
+					return err
 				}
 				res.Created++
-			default:
-				return nil, apperr.InvalidResource("未知决策动作")
+			case KindUpdateExisting:
+				if err := s.commitUpdate(svc, item, row); err != nil {
+					return err
+				}
+				res.Updated++
+			case KindMoveExisting:
+				if err := s.commitMove(svc, item, row, now); err != nil {
+					return err
+				}
+				res.Moved++
+			case KindRemoveMissing:
+				action := actionByItem[item.ID]
+				if action == ActionIgnore || action == "" {
+					res.Ignored++
+					continue
+				}
+				if action != ActionDecommission {
+					return apperr.InvalidResource("删除项动作非法")
+				}
+				if err := s.commitDecommission(svc, item); err != nil {
+					return err
+				}
+				res.Decommissioned++
+			case KindNeedsDecision:
+				action := actionByItem[item.ID]
+				switch action {
+				case ActionIgnore:
+					res.Ignored++
+				case ActionUpdateExisting:
+					if err := s.commitUpdate(svc, item, row); err != nil {
+						return err
+					}
+					res.Updated++
+				case ActionCreateNew, "":
+					if action == "" {
+						return apperr.InvalidResource("请完成全部人工确认")
+					}
+					if err := s.commitCreate(svc, draft, row, now); err != nil {
+						return err
+					}
+					res.Created++
+				default:
+					return apperr.InvalidResource("未知决策动作")
+				}
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		// 事务回滚：把草稿放回（保留原 CreatedAt，TTL 语义不变），客户端修复后可重试
+		s.drafts.Put(draft)
+		return nil, err
 	}
 	return res, nil
 }
 
-func (s *ImportService) commitCreate(draft *importDraft, row ImportDeviceRow, now time.Time) error {
+func (s *ImportService) commitCreate(svc *DeviceService, draft *importDraft, row ImportDeviceRow, now time.Time) error {
 	typeID := draft.DefaultType
 	if row.TypeID != "" {
 		if id, err := uuid.Parse(row.TypeID); err == nil {
@@ -454,18 +465,18 @@ func (s *ImportService) commitCreate(draft *importDraft, row ImportDeviceRow, no
 		SerialNumber: row.SerialNumber, LifecycleStatus: model.DeviceWaitingRack,
 		HeightU: height, RatedPowerW: row.RatedPowerW,
 	}
-	if err := s.devices.devices.CreateDevice(dev); err != nil {
+	if err := svc.devices.CreateDevice(dev); err != nil {
 		return err
 	}
-	return s.placeDevice(dev.ID, rackID, row.StartU, height, now, "导入上架")
+	return s.placeDevice(svc, dev.ID, rackID, row.StartU, height, now, "导入上架")
 }
 
-func (s *ImportService) commitUpdate(draft *importDraft, item ImportItem, row ImportDeviceRow) error {
+func (s *ImportService) commitUpdate(svc *DeviceService, item ImportItem, row ImportDeviceRow) error {
 	sid, err := uuid.Parse(item.SourceDeviceID)
 	if err != nil {
 		return err
 	}
-	dev, err := s.devices.GetDevice(sid)
+	dev, err := svc.devices.GetDevice(sid)
 	if err != nil {
 		return err
 	}
@@ -479,10 +490,10 @@ func (s *ImportService) commitUpdate(draft *importDraft, item ImportItem, row Im
 	if row.RatedPowerW != nil {
 		next.RatedPowerW = row.RatedPowerW
 	}
-	return s.devices.devices.UpdateDevice(&next, dev.Version)
+	return svc.devices.UpdateDevice(&next, dev.Version)
 }
 
-func (s *ImportService) commitMove(draft *importDraft, item ImportItem, row ImportDeviceRow, now time.Time) error {
+func (s *ImportService) commitMove(svc *DeviceService, item ImportItem, row ImportDeviceRow, now time.Time) error {
 	sid, err := uuid.Parse(item.SourceDeviceID)
 	if err != nil {
 		return err
@@ -492,23 +503,22 @@ func (s *ImportService) commitMove(draft *importDraft, item ImportItem, row Impo
 		return err
 	}
 	height := row.EndU - row.StartU + 1
-	return s.placeDevice(sid, rackID, row.StartU, height, now, "导入迁移")
+	return s.placeDevice(svc, sid, rackID, row.StartU, height, now, "导入迁移")
 }
 
-func (s *ImportService) commitDecommission(item ImportItem) error {
+func (s *ImportService) commitDecommission(svc *DeviceService, item ImportItem) error {
 	sid, err := uuid.Parse(item.SourceDeviceID)
 	if err != nil {
 		return err
 	}
-	_, err = s.devices.devices.RemoveFromRack(sid)
-	if err != nil {
+	if _, err := svc.devices.RemoveFromRack(sid); err != nil {
 		return err
 	}
-	return s.devices.devices.UpdateDeviceLifecycle(sid, model.DeviceOffRack)
+	return svc.devices.UpdateDeviceLifecycle(sid, model.DeviceOffRack)
 }
 
-func (s *ImportService) placeDevice(deviceID, rackID uuid.UUID, startU, height int, now time.Time, reason string) error {
-	rack, err := s.devices.acks.GetRack(rackID)
+func (s *ImportService) placeDevice(svc *DeviceService, deviceID, rackID uuid.UUID, startU, height int, now time.Time, reason string) error {
+	rack, err := svc.acks.GetRack(rackID)
 	if err != nil {
 		return apperr.NotFound("机柜")
 	}
@@ -521,8 +531,8 @@ func (s *ImportService) placeDevice(deviceID, rackID uuid.UUID, startU, height i
 		StartU: startU, HeightU: height, EndU: endU, Orientation: model.OrientNormal,
 		InstalledAt: now, Reason: reason,
 	}
-	if err := s.devices.devices.PlaceInRack(pos, &model.RackUOccupancy{}); err != nil {
+	if err := svc.devices.PlaceInRack(pos, &model.RackUOccupancy{}); err != nil {
 		return err
 	}
-	return s.devices.devices.UpdateDeviceLifecycle(deviceID, model.DeviceRunning)
+	return svc.devices.UpdateDeviceLifecycle(deviceID, model.DeviceRunning)
 }

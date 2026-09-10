@@ -92,12 +92,18 @@ func (s *ApprovalService) CreatePending(op string, device *model.Device, in Posi
 			StartU: pos.StartU, HeightU: pos.HeightU, EndU: pos.EndU, Orientation: pos.Orientation,
 		}
 	}
+	// 兼容厂商的 rackId 字段：直接用 in.TargetRackID 时，传 rackId 会写入零 UUID，
+	// 触发 approval_records_target_rack_id_fkey 外键违约（500）。
+	targetRackID, err := in.desiredRackID()
+	if err != nil {
+		return nil, err
+	}
 	rec := &model.ApprovalRecord{
 		DeviceID: device.ID, Operation: op, Status: model.ApprovalPending,
 		RequestedBy: actor, RequestedAt: time.Now(),
 		RequestedDeviceVersion: device.Version,
 		SourcePosition:         src,
-		TargetRackID:           in.TargetRackID,
+		TargetRackID:           targetRackID,
 		TargetStartU:           in.StartU,
 		TargetHeightU:          device.HeightU,
 		TargetOrientation:      orient,
@@ -110,7 +116,7 @@ func (s *ApprovalService) CreatePending(op string, device *model.Device, in Posi
 	return rec, nil
 }
 
-func (s *ApprovalService) Reject(id uuid.UUID, comment string, actor *uuid.UUID) (*model.ApprovalRecord, error) {
+func (s *ApprovalService) Reject(id uuid.UUID, version uint, comment string, actor *uuid.UUID) (*model.ApprovalRecord, error) {
 	rec, err := s.store.GetApproval(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -119,18 +125,24 @@ func (s *ApprovalService) Reject(id uuid.UUID, comment string, actor *uuid.UUID)
 		return nil, err
 	}
 	if rec.Status != model.ApprovalPending {
-		return nil, apperr.New(409, "APPROVAL_STATE", "审批单已处理")
+		return nil, apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已处理")
 	}
 	if actor == nil {
 		return nil, apperr.Forbidden()
 	}
-	if err := s.store.Decide(id, model.ApprovalRejected, *actor, comment); err != nil {
+	if err := s.store.Decide(id, version, model.ApprovalRejected, *actor, comment); err != nil {
+		// 条件更新失败：并发已处理或 version 过期，统一按状态冲突拒绝
+		if repository.IsVersionConflict(err) {
+			return nil, apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已被并发处理或版本过期，请刷新")
+		}
 		return nil, mapStoreErr(err)
 	}
 	return s.store.GetApproval(id)
 }
 
-func (s *ApprovalService) Approve(id uuid.UUID, comment string, actor *uuid.UUID, requestID string) (*model.Device, error) {
+// Approve 在单个数据库事务内完成：条件更新审批单（乐观锁占单）→ 设备上架/移位 → 履历。
+// 占单失败或执行失败均整体回滚，保证审批决定与副作用严格一次。
+func (s *ApprovalService) Approve(id uuid.UUID, version uint, comment string, actor *uuid.UUID, requestID string) (*model.Device, error) {
 	rec, err := s.store.GetApproval(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -139,33 +151,46 @@ func (s *ApprovalService) Approve(id uuid.UUID, comment string, actor *uuid.UUID
 		return nil, err
 	}
 	if rec.Status != model.ApprovalPending {
-		return nil, apperr.New(409, "APPROVAL_STATE", "审批单已处理")
+		return nil, apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已处理")
 	}
 	if actor == nil {
 		return nil, apperr.Forbidden()
 	}
-	dev, err := s.devSvc.GetDevice(rec.DeviceID)
+	var placed *model.Device
+	err = s.store.DB().Transaction(func(tx *gorm.DB) error {
+		// 1. 条件更新审批单：仍为 PENDING（且 version 匹配时校验乐观锁），并发批准只有一个成功
+		if err := s.store.WithTx(tx).Decide(id, version, model.ApprovalApproved, *actor, comment); err != nil {
+			if repository.IsVersionConflict(err) {
+				return apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已被并发处理或版本过期，请刷新")
+			}
+			return err
+		}
+		// 2. 校验设备自申请以来未被修改
+		dev, err := s.devices.WithTx(tx).GetDevice(rec.DeviceID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("设备")
+			}
+			return err
+		}
+		if rec.RequestedDeviceVersion != 0 && dev.Version != rec.RequestedDeviceVersion {
+			return apperr.New(409, "APPROVAL_STATE_CONFLICT", "设备已被修改，请重新申请")
+		}
+		// 3. 执行设备位置变更（与审批决定同事务，含履历）
+		op, requireOff := model.OpAssign, true
+		if rec.Operation == model.OpMove {
+			op, requireOff = model.OpMove, false
+		}
+		placed, err = s.devSvc.PlaceTx(tx, rec.DeviceID, PositionChangeInput{
+			TargetRackID: rec.TargetRackID,
+			StartU:       rec.TargetStartU,
+			Orientation:  rec.TargetOrientation,
+			Reason:       rec.Reason,
+		}, actor, requestID, op, requireOff)
+		return err
+	})
 	if err != nil {
 		return nil, err
-	}
-	if rec.RequestedDeviceVersion != 0 && dev.Version != rec.RequestedDeviceVersion {
-		return nil, apperr.New(409, "APPROVAL_STATE", "设备已被修改，请重新申请")
-	}
-	op, requireOff := model.OpAssign, true
-	if rec.Operation == model.OpMove {
-		op, requireOff = model.OpMove, false
-	}
-	placed, err := s.devSvc.place(rec.DeviceID, PositionChangeInput{
-		TargetRackID: rec.TargetRackID,
-		StartU:       rec.TargetStartU,
-		Orientation:  rec.TargetOrientation,
-		Reason:       rec.Reason,
-	}, actor, requestID, op, requireOff)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.store.Decide(id, model.ApprovalApproved, *actor, comment); err != nil {
-		return nil, mapStoreErr(err)
 	}
 	return placed, nil
 }

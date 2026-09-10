@@ -90,9 +90,12 @@ func (s *TemplateService) Update(id uuid.UUID, in TemplateUpdateInput) (*model.R
 		}
 		return nil, err
 	}
-	if in.Name != "" {
-		t.Name = in.Name
+	// 厂商基线要求模板名称非空且 <=150（S16-TPL-UPD-EMPTY-NAME 差分用例）
+	name := strings.TrimSpace(in.Name)
+	if name == "" || len([]rune(name)) > 150 {
+		return nil, apperr.InvalidResource("模板名称不能为空且不能超过 150 个字符")
 	}
+	t.Name = name
 	t.Description = in.Description
 	t.Remarks = in.Remarks
 	if in.Status != "" {
@@ -114,7 +117,7 @@ func (s *TemplateService) Delete(id uuid.UUID, version uint) error {
 		return err
 	}
 	if t.IsSystem {
-		return apperr.New(409, "SYSTEM_TEMPLATE", "系统内置模板不可删除")
+		return apperr.New(409, "SYSTEM_TEMPLATE_PROTECTED", "系统内置模板不可删除")
 	}
 	return mapStoreErr(s.store.SoftDelete(id, version))
 }
@@ -211,10 +214,10 @@ func ApplyTemplateToRack(t *model.RackTemplate, ver *model.RackTemplateVersion, 
 }
 
 type PDUService struct {
-	store  *repository.PDUStore
-	acks   *repository.ResourceStore
-	devs   *repository.DeviceStore
-	tmpl   *repository.TemplateStore
+	store *repository.PDUStore
+	acks  *repository.ResourceStore
+	devs  *repository.DeviceStore
+	tmpl  *repository.TemplateStore
 }
 
 func NewPDUService(store *repository.PDUStore, acks *repository.ResourceStore, devs *repository.DeviceStore) *PDUService {
@@ -322,8 +325,8 @@ func (s *PDUService) Delete(id uuid.UUID, version uint) error {
 		return err
 	}
 	if err := s.store.SoftDeletePDU(id, version); err != nil {
-		if repository.IsBizCode(err, "HAS_CHILDREN") {
-			return apperr.New(409, "HAS_CHILDREN", "PDU 下存在插座，无法删除")
+		if repository.IsBizCode(err, "RESOURCE_HAS_CHILDREN") {
+			return apperr.New(409, "RESOURCE_HAS_CHILDREN", "PDU 下存在插座，无法删除")
 		}
 		return mapStoreErr(err)
 	}
@@ -357,7 +360,7 @@ func (s *PDUService) CreateSocket(pduID uuid.UUID, in SocketInput) (*model.PDUSo
 	if err := s.store.CreateSocket(item); err != nil {
 		if repository.IsUniqueViolation(err) {
 			// D2: 旧 500 → 409
-			return nil, apperr.New(409, "DUPLICATE_CODE", "插座编号已存在")
+			return nil, apperr.New(409, "RESOURCE_CODE_DUPLICATE", "插座编号已存在")
 		}
 		return nil, err
 	}
@@ -380,7 +383,7 @@ func (s *PDUService) UpdateSocket(id uuid.UUID, in SocketInput) (*model.PDUSocke
 	next.Label, next.Status = in.Label, in.Status
 	if err := s.store.UpdateSocket(&next, existing.Version); err != nil {
 		if repository.IsUniqueViolation(err) {
-			return nil, apperr.New(409, "DUPLICATE_CODE", "插座编号已存在")
+			return nil, apperr.New(409, "RESOURCE_CODE_DUPLICATE", "插座编号已存在")
 		}
 		return nil, mapStoreErr(err)
 	}
@@ -395,9 +398,9 @@ func (s *PDUService) DeleteSocket(id uuid.UUID, version uint) error {
 		return err
 	}
 	if err := s.store.SoftDeleteSocket(id, version); err != nil {
-		if repository.IsBizCode(err, "SOCKET_CONNECTED") {
+		if repository.IsBizCode(err, "PDU_SOCKET_CONNECTED") {
 			// 契约：已连接阻止删除
-			return apperr.New(409, "SOCKET_CONNECTED", "插座已连接设备，无法删除")
+			return apperr.New(409, "PDU_SOCKET_CONNECTED", "插座已连接设备，无法删除")
 		}
 		return mapStoreErr(err)
 	}
@@ -415,66 +418,78 @@ func (s *PDUService) ListConnections(rackID uuid.UUID) ([]model.PDUConnection, e
 }
 
 func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid.UUID) (*model.PDUConnection, error) {
-	sock, err := s.store.GetSocket(socketID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperr.NotFound("插座")
+	var result *model.PDUConnection
+	err := s.store.DB().Transaction(func(tx *gorm.DB) error {
+		store := s.store.WithTx(tx)
+		sock, err := store.GetSocket(socketID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("插座")
+			}
+			return err
 		}
-		return nil, err
-	}
-	if sock.Status == model.SocketConnected {
-		return nil, apperr.New(409, "SOCKET_CONNECTED", "插座已被占用")
-	}
-	pdu, err := s.store.GetPDU(sock.PDUID)
+		if sock.Status == model.SocketConnected {
+			return apperr.New(409, "PDU_SOCKET_CONNECTED", "插座已被占用")
+		}
+		pdu, err := store.GetPDU(sock.PDUID)
+		if err != nil {
+			return err
+		}
+		dev, err := s.devs.GetDevice(in.DeviceID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("设备")
+			}
+			return err
+		}
+		pos, err := s.devs.GetActivePosition(dev.ID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.New(409, "DEVICE_NOT_POSITIONED", "设备未上架，无法接电")
+			}
+			return err
+		}
+		if pos.RackID != pdu.RackID {
+			// D3 相关：PDU 与设备必须同机柜
+			return apperr.New(409, "PDU_DEVICE_RACK_MISMATCH", "PDU 与设备不在同一机柜")
+		}
+		role := model.RolePrimary
+		if in.RedundancyRole != "" {
+			if in.RedundancyRole != model.RolePrimary && in.RedundancyRole != model.RoleStandby {
+				return apperr.InvalidResource("redundancyRole 仅支持 PRIMARY/STAND_BY")
+			}
+			role = in.RedundancyRole
+		}
+		has, err := store.DeviceHasRoleConnection(dev.ID, role)
+		if err != nil {
+			return err
+		}
+		if has {
+			// D3: 旧 500 → 409
+			return apperr.New(409, "PDU_SOCKET_CONNECTED", "该设备此供电角色已连接")
+		}
+		conn := &model.PDUConnection{
+			SocketID: sock.ID, DeviceID: dev.ID, PowerW: in.PowerW,
+			Circuit: in.Circuit, RedundancyRole: role,
+			ConnectedAt: time.Now(), ConnectedBy: actor,
+		}
+		if err := store.CreateConnection(conn); err != nil {
+			if repository.IsUniqueViolation(err) {
+				return apperr.New(409, "PDU_SOCKET_CONNECTED", "插座或供电角色已占用")
+			}
+			return err
+		}
+		// 连接与插座状态同事务：状态更新失败整体回滚，杜绝漂移
+		if err := store.UpdateSocketStatus(sock.ID, model.SocketConnected); err != nil {
+			return err
+		}
+		result = conn
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	dev, err := s.devs.GetDevice(in.DeviceID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperr.NotFound("设备")
-		}
-		return nil, err
-	}
-	pos, err := s.devs.GetActivePosition(dev.ID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperr.New(409, "DEVICE_NOT_POSITIONED", "设备未上架，无法接电")
-		}
-		return nil, err
-	}
-	if pos.RackID != pdu.RackID {
-		// D3 相关：PDU 与设备必须同机柜
-		return nil, apperr.New(409, "PDU_DEVICE_RACK_MISMATCH", "PDU 与设备不在同一机柜")
-	}
-	role := model.RolePrimary
-	if in.RedundancyRole != "" {
-		if in.RedundancyRole != model.RolePrimary && in.RedundancyRole != model.RoleStandby {
-			return nil, apperr.InvalidResource("redundancyRole 仅支持 PRIMARY/STANDBY")
-		}
-		role = in.RedundancyRole
-	}
-	has, err := s.store.DeviceHasRoleConnection(dev.ID, role)
-	if err != nil {
-		return nil, err
-	}
-	if has {
-		// D3: 旧 500 → 409
-		return nil, apperr.New(409, "SOCKET_CONNECTED", "该设备此供电角色已连接")
-	}
-	conn := &model.PDUConnection{
-		SocketID: sock.ID, DeviceID: dev.ID, PowerW: in.PowerW,
-		Circuit: in.Circuit, RedundancyRole: role,
-		ConnectedAt: time.Now(), ConnectedBy: actor,
-	}
-	if err := s.store.CreateConnection(conn); err != nil {
-		if repository.IsUniqueViolation(err) {
-			return nil, apperr.New(409, "SOCKET_CONNECTED", "插座或供电角色已占用")
-		}
-		return nil, err
-	}
-	_ = s.store.UpdateSocketStatus(sock.ID, model.SocketConnected)
-	return conn, nil
+	return result, nil
 }
 
 func (s *PDUService) Disconnect(id uuid.UUID, version uint) error {
@@ -485,9 +500,12 @@ func (s *PDUService) Disconnect(id uuid.UUID, version uint) error {
 		}
 		return err
 	}
-	if err := s.store.SoftDeleteConnection(id, version); err != nil {
-		return mapStoreErr(err)
-	}
-	_ = s.store.UpdateSocketStatus(conn.SocketID, model.SocketAvailable)
-	return nil
+	return s.store.DB().Transaction(func(tx *gorm.DB) error {
+		store := s.store.WithTx(tx)
+		if err := store.SoftDeleteConnection(id, version); err != nil {
+			return mapStoreErr(err)
+		}
+		// 连接删除与插座释放同事务
+		return store.UpdateSocketStatus(conn.SocketID, model.SocketAvailable)
+	})
 }

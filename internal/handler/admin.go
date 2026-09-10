@@ -47,7 +47,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *AdminHandler) UpdateUser(c *gin.Context) {

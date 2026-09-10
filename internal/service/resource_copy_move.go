@@ -14,10 +14,12 @@ import (
 )
 
 type CopyMoveInput struct {
-	Code              string     `json:"code" binding:"required,max=50"`
-	Name              string     `json:"name" binding:"required,max=150"`
+	Code               string     `json:"code" binding:"required,max=50"`
+	Name               string     `json:"name" binding:"required,max=150"`
 	TargetDataCenterID *uuid.UUID `json:"targetDataCenterId"`
-	TargetRoomID      *uuid.UUID `json:"targetRoomId"`
+	TargetRoomID       *uuid.UUID `json:"targetRoomId"`
+	// Version 为厂商基线风格：move 类接口的乐观锁版本可以放在请求体（套件与前端用 body，重建原先只认 query）。
+	Version uint `json:"version"`
 }
 
 func (s *ResourceService) CopyDataCenter(id uuid.UUID, in CopyMoveInput) (*model.DataCenter, error) {
@@ -311,11 +313,11 @@ func (s *ResourceService) MoveRack(id uuid.UUID, version uint, in CopyMoveInput)
 	res := s.store.DB().Model(&model.Rack{}).
 		Where("id = ? AND version = ? AND deleted_at IS NULL", id, version).
 		Updates(map[string]any{
-			"room_id":       targetRoom.ID,
+			"room_id":        targetRoom.ID,
 			"data_center_id": targetRoom.DataCenterID,
-			"code":          in.Code,
-			"name":          in.Name,
-			"version":       gorm.Expr("version + 1"),
+			"code":           in.Code,
+			"name":           in.Name,
+			"version":        gorm.Expr("version + 1"),
 		})
 	if res.Error != nil {
 		return nil, mapStoreErr(res.Error)

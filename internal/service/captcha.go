@@ -23,8 +23,20 @@ type CaptchaService struct {
 	ttl   time.Duration
 }
 
+// NewCaptchaService 内存验证码存储（单实例边界，见 docs/CODE-REVIEW-GUIDE.md）；
+// 后台 goroutine 定期清理过期条目，不再依赖请求触发 gc。
 func NewCaptchaService() *CaptchaService {
-	return &CaptchaService{items: map[string]captchaEntry{}, ttl: 5 * time.Minute}
+	s := &CaptchaService{items: map[string]captchaEntry{}, ttl: 5 * time.Minute}
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			s.mu.Lock()
+			s.gc()
+			s.mu.Unlock()
+		}
+	}()
+	return s
 }
 
 type CaptchaChallenge struct {

@@ -9,6 +9,7 @@ import (
 
 	"dcim-lite/internal/apperr"
 	"dcim-lite/internal/middleware"
+	"dcim-lite/internal/model"
 	"dcim-lite/internal/repository"
 	"dcim-lite/internal/response"
 	"dcim-lite/internal/service"
@@ -43,7 +44,7 @@ func (h *DeviceHandler) CreateDeviceType(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *DeviceHandler) UpdateDeviceType(c *gin.Context) {
@@ -141,7 +142,7 @@ func (h *DeviceHandler) CreateDevice(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *DeviceHandler) UpdateDevice(c *gin.Context) {
@@ -224,11 +225,12 @@ func (h *DeviceHandler) positionChange(c *gin.Context, assign bool) {
 				writeAppError(c, err)
 				return
 			}
-			response.OK(c, rec)
+			// 厂商基线形状：{executed:false, approval:{...}}
+			response.OK(c, gin.H{"executed": false, "approval": rec})
 			return
 		}
 	}
-	var dev interface{}
+	var dev *model.Device
 	var err error
 	if assign {
 		dev, err = h.service.Assign(id, in, &actor, requestID)
@@ -239,7 +241,13 @@ func (h *DeviceHandler) positionChange(c *gin.Context, assign bool) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, dev)
+	// 厂商基线形状：{executed:true, device:{...}, position:{...}}
+	pos, err := h.service.ActivePosition(id)
+	if err != nil {
+		writeAppError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"executed": true, "device": dev, "position": pos})
 }
 
 func (h *DeviceHandler) Decommission(c *gin.Context) {
@@ -248,7 +256,9 @@ func (h *DeviceHandler) Decommission(c *gin.Context) {
 		return
 	}
 	var in service.DecommissionInput
-	_ = c.ShouldBindJSON(&in)
+	if !bindOptionalJSON(c, &in) {
+		return
+	}
 	actor := middleware.UserID(c)
 	rid, _ := c.Get(response.RequestIDKey)
 	requestID, _ := rid.(string)

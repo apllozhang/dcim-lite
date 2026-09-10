@@ -36,33 +36,33 @@ type DataCenter struct {
 
 type Room struct {
 	BaseModel
-	DataCenterID       uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:idx_rooms_data_center_code,where:deleted_at IS NULL" json:"dataCenterId"`
-	Code               string    `gorm:"size:50;not null;uniqueIndex:idx_rooms_data_center_code,where:deleted_at IS NULL" json:"code"`
-	Name               string    `gorm:"size:150;not null;index" json:"name"`
-	Building           string    `gorm:"size:100" json:"building,omitempty"`
-	Floor              string    `gorm:"size:50" json:"floor,omitempty"`
-	RoomNumber         string    `gorm:"size:50" json:"roomNumber,omitempty"`
-	AreaSquareMeters   *float64  `json:"areaSquareMeters,omitempty"`
-	ClearHeightMeters  *float64  `json:"clearHeightMeters,omitempty"`
-	Purpose            string    `gorm:"size:200" json:"purpose,omitempty"`
-	Status             string    `gorm:"size:30;not null;default:OPERATING;index" json:"status"`
-	EnvironmentLevel   string    `gorm:"size:50" json:"environmentLevel,omitempty"`
-	MaxLoadKg          *float64  `json:"maxLoadKg,omitempty"`
-	CoolingCapacityKw  *float64  `json:"coolingCapacityKw,omitempty"`
-	DesignPowerKw      *float64  `json:"designPowerKw,omitempty"`
-	AvailablePowerKw   *float64  `json:"availablePowerKw,omitempty"`
-	UsedPowerKw        *float64  `json:"usedPowerKw,omitempty"`
-	RedundancyPolicy   string    `gorm:"size:100" json:"redundancyPolicy,omitempty"`
-	Manager            string    `gorm:"size:100" json:"manager,omitempty"`
-	Contact            string    `gorm:"size:100" json:"contact,omitempty"`
-	OpenHours          string    `gorm:"size:100" json:"openHours,omitempty"`
-	AccessNotes        string    `gorm:"type:text" json:"accessNotes,omitempty"`
-	FloorPlanEnabled   bool      `gorm:"not null;default:false" json:"floorPlanEnabled"`
-	FloorPlanFormat    string    `gorm:"size:20;not null;default:SVG" json:"floorPlanFormat"`
-	RacksPerRow        int       `gorm:"not null;default:8" json:"racksPerRow"`
-	Remarks            string    `gorm:"type:text" json:"remarks,omitempty"`
-	SortOrder          int       `gorm:"not null;default:0;index" json:"sortOrder"`
-	Racks              []Rack    `gorm:"foreignKey:RoomID" json:"racks,omitempty"`
+	DataCenterID      uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:idx_rooms_data_center_code,where:deleted_at IS NULL" json:"dataCenterId"`
+	Code              string    `gorm:"size:50;not null;uniqueIndex:idx_rooms_data_center_code,where:deleted_at IS NULL" json:"code"`
+	Name              string    `gorm:"size:150;not null;index" json:"name"`
+	Building          string    `gorm:"size:100" json:"building,omitempty"`
+	Floor             string    `gorm:"size:50" json:"floor,omitempty"`
+	RoomNumber        string    `gorm:"size:50" json:"roomNumber,omitempty"`
+	AreaSquareMeters  *float64  `json:"areaSquareMeters,omitempty"`
+	ClearHeightMeters *float64  `json:"clearHeightMeters,omitempty"`
+	Purpose           string    `gorm:"size:200" json:"purpose,omitempty"`
+	Status            string    `gorm:"size:30;not null;default:OPERATING;index" json:"status"`
+	EnvironmentLevel  string    `gorm:"size:50" json:"environmentLevel,omitempty"`
+	MaxLoadKg         *float64  `json:"maxLoadKg,omitempty"`
+	CoolingCapacityKw *float64  `json:"coolingCapacityKw,omitempty"`
+	DesignPowerKw     *float64  `json:"designPowerKw,omitempty"`
+	AvailablePowerKw  *float64  `json:"availablePowerKw,omitempty"`
+	UsedPowerKw       *float64  `json:"usedPowerKw,omitempty"`
+	RedundancyPolicy  string    `gorm:"size:100" json:"redundancyPolicy,omitempty"`
+	Manager           string    `gorm:"size:100" json:"manager,omitempty"`
+	Contact           string    `gorm:"size:100" json:"contact,omitempty"`
+	OpenHours         string    `gorm:"size:100" json:"openHours,omitempty"`
+	AccessNotes       string    `gorm:"type:text" json:"accessNotes,omitempty"`
+	FloorPlanEnabled  bool      `gorm:"not null;default:false" json:"floorPlanEnabled"`
+	FloorPlanFormat   string    `gorm:"size:20;not null;default:SVG" json:"floorPlanFormat"`
+	RacksPerRow       int       `gorm:"not null;default:8" json:"racksPerRow"`
+	Remarks           string    `gorm:"type:text" json:"remarks,omitempty"`
+	SortOrder         int       `gorm:"not null;default:0;index" json:"sortOrder"`
+	Racks             []Rack    `gorm:"foreignKey:RoomID" json:"racks,omitempty"`
 }
 
 type RackTemplateSnapshot struct {

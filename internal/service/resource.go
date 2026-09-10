@@ -64,39 +64,39 @@ type RoomInput struct {
 }
 
 type RackInput struct {
-	Code           string   `json:"code" binding:"required,max=50"`
-	Name           string   `json:"name" binding:"required,max=150"`
+	Code           string     `json:"code" binding:"required,max=50"`
+	Name           string     `json:"name" binding:"required,max=150"`
 	TemplateID     *uuid.UUID `json:"templateId"`
-	Type           string   `json:"type"`
-	Manufacturer   string   `json:"manufacturer"`
-	ModelNumber    string   `json:"modelNumber"`
-	SerialNumber   string   `json:"serialNumber"`
-	AssetNumber    string   `json:"assetNumber"`
-	UHeight        *int     `json:"uHeight"`
-	WidthMm        *int     `json:"widthMm"`
-	DepthMm        *int     `json:"depthMm"`
-	HeightMm       *int     `json:"heightMm"`
-	LoadCapacityKg *float64 `json:"loadCapacityKg"`
-	Zone           string   `json:"zone"`
-	RackRow        string   `json:"rackRow"`
-	RackColumn     string   `json:"rackColumn"`
-	Aisle          string   `json:"aisle"`
-	XCoordinate    *float64 `json:"xCoordinate"`
-	YCoordinate    *float64 `json:"yCoordinate"`
-	Rotation       *int     `json:"rotation"`
-	Status         string   `json:"status"`
-	Manager        string   `json:"manager"`
-	Department     string   `json:"department"`
-	Purpose        string   `json:"purpose"`
-	DualPower      *bool    `json:"dualPower"`
-	InputCircuits  *int     `json:"inputCircuits"`
-	RatedVoltage   *float64 `json:"ratedVoltage"`
-	RatedCurrent   *float64 `json:"ratedCurrent"`
-	RatedPowerKw   *float64 `json:"ratedPowerKw"`
-	PeakPowerKw    *float64 `json:"peakPowerKw"`
-	PDUCount       *int     `json:"pduCount"`
-	Remarks        string   `json:"remarks"`
-	SortOrder      int      `json:"sortOrder"`
+	Type           string     `json:"type"`
+	Manufacturer   string     `json:"manufacturer"`
+	ModelNumber    string     `json:"modelNumber"`
+	SerialNumber   string     `json:"serialNumber"`
+	AssetNumber    string     `json:"assetNumber"`
+	UHeight        *int       `json:"uHeight"`
+	WidthMm        *int       `json:"widthMm"`
+	DepthMm        *int       `json:"depthMm"`
+	HeightMm       *int       `json:"heightMm"`
+	LoadCapacityKg *float64   `json:"loadCapacityKg"`
+	Zone           string     `json:"zone"`
+	RackRow        string     `json:"rackRow"`
+	RackColumn     string     `json:"rackColumn"`
+	Aisle          string     `json:"aisle"`
+	XCoordinate    *float64   `json:"xCoordinate"`
+	YCoordinate    *float64   `json:"yCoordinate"`
+	Rotation       *int       `json:"rotation"`
+	Status         string     `json:"status"`
+	Manager        string     `json:"manager"`
+	Department     string     `json:"department"`
+	Purpose        string     `json:"purpose"`
+	DualPower      *bool      `json:"dualPower"`
+	InputCircuits  *int       `json:"inputCircuits"`
+	RatedVoltage   *float64   `json:"ratedVoltage"`
+	RatedCurrent   *float64   `json:"ratedCurrent"`
+	RatedPowerKw   *float64   `json:"ratedPowerKw"`
+	PeakPowerKw    *float64   `json:"peakPowerKw"`
+	PDUCount       *int       `json:"pduCount"`
+	Remarks        string     `json:"remarks"`
+	SortOrder      int        `json:"sortOrder"`
 }
 
 type TreeRoom struct {
@@ -545,7 +545,17 @@ func (s *ResourceService) DeleteRack(id uuid.UUID, version uint) error {
 		}
 		return err
 	}
-	// R3 起校验在位设备；当前切片无设备表引用时允许删除
+	// R3：机柜下存在在位设备或 PDU 时禁止删除，避免软删后留下不可见的在位数据
+	if n, err := s.store.CountActivePositions(id); err != nil {
+		return err
+	} else if n > 0 {
+		return apperr.New(409, "RESOURCE_HAS_CHILDREN", "机柜内存在在位设备，无法删除")
+	}
+	if n, err := s.store.CountPDUsByRack(id); err != nil {
+		return err
+	} else if n > 0 {
+		return apperr.New(409, "RESOURCE_HAS_CHILDREN", "机柜下存在 PDU，无法删除")
+	}
 	return mapStoreErr(s.store.SoftDeleteRack(id, version))
 }
 
@@ -563,13 +573,4 @@ func mapStoreErr(err error) error {
 		return apperr.NotFound("资源")
 	}
 	return err
-}
-
-func (s *ResourceService) Audit(actor *uuid.UUID, requestID, action, resourceType string, resourceID *uuid.UUID, result, errCode string) {
-	log := &model.AuditLog{
-		UserID: actor, Action: action, ResourceType: resourceType,
-		ResourceID: resourceID, RequestID: requestID, Result: result, ErrorCode: errCode,
-		Source: "api",
-	}
-	_ = s.store.WriteAudit(log)
 }

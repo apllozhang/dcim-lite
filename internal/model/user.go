@@ -21,6 +21,7 @@ type User struct {
 	AuthSource   string     `gorm:"size:20;not null;default:local" json:"authSource"`
 	Enabled      bool       `gorm:"not null;default:true" json:"enabled"`
 	FailedLogins int        `gorm:"not null;default:0" json:"-"`
+	LockedUntil  *time.Time `json:"-"`
 	LastLoginAt  *time.Time `json:"lastLoginAt"`
 	Roles        []Role     `gorm:"many2many:user_roles" json:"roles,omitempty"`
 }
@@ -57,8 +58,8 @@ type AuditLog struct {
 	ResourceType string     `gorm:"size:100;not null;index" json:"resourceType"`
 	ResourceID   *uuid.UUID `gorm:"type:uuid;index" json:"resourceId,omitempty"`
 	RequestID    string     `gorm:"size:100;index" json:"requestId"`
-	BeforeJSON   string     `gorm:"type:jsonb" json:"before,omitempty"`
-	AfterJSON    string     `gorm:"type:jsonb" json:"after,omitempty"`
+	BeforeJSON   *string    `gorm:"type:jsonb" json:"before,omitempty"`
+	AfterJSON    *string    `gorm:"type:jsonb" json:"after,omitempty"`
 	Result       string     `gorm:"size:20;not null" json:"result"`
 	ErrorCode    string     `gorm:"size:100" json:"errorCode,omitempty"`
 	Source       string     `gorm:"size:50" json:"source"`

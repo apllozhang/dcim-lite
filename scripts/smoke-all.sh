@@ -87,19 +87,19 @@ check("unauthorized-401", st == 401)
 
 # --- resource hierarchy ---
 st, dc = call("POST", "/api/v1/data-centers", {"code": f"SM{ sfx }", "name": "冒烟中心"})
-check("create-dc", st == 200 and dc.get("code") == "SUCCESS", dc.get("data", {}).get("id", "")[:8])
+check("create-dc", st in (200, 201) and dc.get("code") == "SUCCESS", dc.get("data", {}).get("id", "")[:8])
 dc_id = dc["data"]["id"]
 st, room = call("POST", f"/api/v1/data-centers/{dc_id}/rooms", {"code": "R1", "name": "冒烟房"})
-check("create-room", st == 200)
+check("create-room", st in (200, 201))
 room_id = room["data"]["id"]
 st, rack = call("POST", f"/api/v1/rooms/{room_id}/racks", {"code": "K1", "name": "冒烟柜", "uHeight": 20})
-check("create-rack", st == 200 and rack["data"]["uHeight"] == 20)
+check("create-rack", st in (200, 201) and rack["data"]["uHeight"] == 20)
 rack_id = rack["data"]["id"]
 
 st, dup = call("POST", "/api/v1/data-centers", {"code": f"SM{sfx}", "name": "重复"})
-check("dup-code-409", st == 409 and dup.get("code") == "DUPLICATE_CODE")
+check("dup-code-409", st == 409 and dup.get("code") == "RESOURCE_CODE_DUPLICATE")
 st, child = call("DELETE", f"/api/v1/rooms/{room_id}?version={room['data']['version']}")
-check("has-children-409", st == 409 and child.get("code") == "HAS_CHILDREN")
+check("has-children-409", st == 409 and child.get("code") == "RESOURCE_HAS_CHILDREN")
 
 # --- templates ---
 st, tpls = call("GET", "/api/v1/rack-templates")
@@ -112,7 +112,7 @@ if sys_t:
         "code": "K2", "name": "模板柜", "templateId": sys_t["id"]
     })
     snap = (rack2.get("data") or {}).get("templateSnapshot") or {}
-    check("rack-template-snapshot", st == 200 and snap.get("code") == sys_t["code"])
+    check("rack-template-snapshot", st in (200, 201) and snap.get("code") == sys_t["code"])
 
 # --- devices + U slot ---
 st, types = call("GET", "/api/v1/device-types")
@@ -120,13 +120,13 @@ tid = next(t["id"] for t in types["data"]["items"] if t["code"] == "SERVER")
 check("seed-device-types", len(types["data"]["items"]) >= 6)
 st, d1 = call("POST", "/api/v1/devices", {"typeId": tid, "code": f"S1{sfx}", "name": "机1", "heightU": 2})
 st, d2 = call("POST", "/api/v1/devices", {"typeId": tid, "code": f"S2{sfx}", "name": "机2", "heightU": 2})
-check("create-devices", st == 200)
+check("create-devices", st in (200, 201))
 st, a1 = call("POST", f"/api/v1/devices/{d1['data']['id']}/assign",
               {"targetRackId": rack_id, "startU": 1})
-check("assign", st == 200 and a1["data"]["lifecycleStatus"] == "RUNNING")
+check("assign", st == 200 and a1["data"]["device"]["lifecycleStatus"] == "RUNNING")
 st, a2 = call("POST", f"/api/v1/devices/{d2['data']['id']}/assign",
               {"targetRackId": rack_id, "startU": 2})
-check("u-conflict-409", st == 409 and a2.get("code") == "U_SLOT_CONFLICT")
+check("u-conflict-409", st == 409 and a2.get("code") == "RACK_U_CONFLICT")
 st, a3 = call("POST", f"/api/v1/devices/{d2['data']['id']}/assign",
               {"targetRackId": rack_id, "startU": 3})
 check("assign-adjacent", st == 200)
@@ -143,7 +143,7 @@ st, u = call("POST", "/api/v1/admin/users", {
     "username": f"smoke{ sfx }", "displayName": "冒烟用户",
     "password": "Smoke#2026!", "roleCodes": ["user"], "enabled": True
 })
-check("create-user", st == 200)
+check("create-user", st in (200, 201))
 uid = u["data"]["id"]
 st, ul = call("GET", "/api/v1/admin/users")
 admin = next(x for x in ul["data"]["items"] if x["username"] == "admin")
@@ -151,7 +151,7 @@ st, last = call("PUT", f"/api/v1/admin/users/{admin['id']}?version={admin['versi
     "username": admin["username"], "displayName": admin["displayName"],
     "authSource": "local", "enabled": False, "roleCodes": ["user"]
 })
-check("last-admin-409", st == 409 and last.get("code") == "LAST_ADMIN")
+check("last-admin-409", st == 409 and last.get("code") == "LAST_ADMIN_PROTECTED")
 
 # --- approval ---
 st, pol = call("PUT", "/api/v1/admin/approval-policy", {"assignApprovalEnabled": True})
@@ -159,22 +159,22 @@ check("policy-on", st == 200 and pol["data"]["assignApprovalEnabled"] is True)
 st, d3 = call("POST", "/api/v1/devices", {"typeId": tid, "code": f"S3{sfx}", "name": "待批", "heightU": 1})
 st, pend = call("POST", f"/api/v1/devices/{d3['data']['id']}/assign",
                 {"targetRackId": rack_id, "startU": 10, "reason": "审批"})
-check("assign-pending", st == 200 and pend["data"].get("status") == "PENDING")
-st, ap_ok = call("POST", f"/api/v1/admin/approvals/{pend['data']['id']}/approve", {"comment": "ok"})
+check("assign-pending", st == 200 and pend["data"].get("approval", {}).get("status") == "PENDING")
+st, ap_ok = call("POST", f"/api/v1/admin/approvals/{pend['data']['approval']['id']}/approve", {"comment": "ok"})
 check("approve", st == 200 and ap_ok["data"]["lifecycleStatus"] == "RUNNING")
 call("PUT", "/api/v1/admin/approval-policy", {"assignApprovalEnabled": False})
 
 # --- PDU ---
 st, p1 = call("POST", f"/api/v1/racks/{rack_id}/pdus", {"code": f"P{sfx}", "name": "PDU"})
-check("create-pdu", st == 200)
+check("create-pdu", st in (200, 201))
 st, p2 = call("POST", f"/api/v1/racks/{rack_id}/pdus", {"code": f"P{sfx}", "name": "重复"})
 check("pdu-dup-409", st == 409)
 st, s1 = call("POST", f"/api/v1/pdus/{p1['data']['id']}/sockets",
               {"socketNo": 1, "standard": "GB", "amperageA": 16})
-check("create-socket", st == 200)
+check("create-socket", st in (200, 201))
 st, c1 = call("POST", f"/api/v1/pdu-sockets/{s1['data']['id']}/connection",
               {"deviceId": d1["data"]["id"], "redundancyRole": "PRIMARY"})
-check("connect", st == 200)
+check("connect", st in (200, 201))
 st, c2 = call("POST", f"/api/v1/pdu-sockets/{s1['data']['id']}/connection",
               {"deviceId": d1["data"]["id"], "redundancyRole": "PRIMARY"})
 check("connect-dup-409", st == 409)

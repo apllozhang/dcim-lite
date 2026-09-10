@@ -1,0 +1,11 @@
+# 构建上下文裁剪：Go 镜像不需要前端产物与本地配置
+# 注意：不排除 bin/（Dockerfile.deploy.bin 预构建二进制部署路径需要它）
+.git
+.env
+frontend
+frontend-dist
+_remote.py
+_upload.py
+_deploy_bin.py
+_deploy_bin2.py
+docs

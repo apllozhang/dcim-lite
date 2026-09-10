@@ -39,6 +39,8 @@
   }
 
   function sortTable(table, colIdx, dir) {
+    // 有 fixed 列时 EP 渲染多份 tbody 同步，DOM 排序会打破同步导致渲染异常，跳过
+    if (qs(".el-table__fixed, .el-table__fixed-right", table)) return;
     var bodies = qsa(".el-table__body tbody, tbody", table);
     var tbody = null;
     for (var i = 0; i < bodies.length; i++) {
@@ -107,15 +109,8 @@
       if (/操作/.test(cellText(ths[i]))) { opsIdx = i; break; }
     }
     if (opsIdx < 0) return;
-    // 表头收窄
+    // 表头只加 class（收窄交给 ale-theme.css），绝不向 Vue/EP 管理的表头插入节点
     ths[opsIdx].classList.add("cmt-ops-th");
-    var headCell = ths[opsIdx].querySelector(".cell") || ths[opsIdx];
-    if (!qs(".cmt-ops-head-label", ths[opsIdx])) {
-      var span = document.createElement("span");
-      span.className = "cmt-ops-head-label";
-      span.textContent = "操作";
-      if (headCell.firstChild) headCell.insertBefore(span, headCell.firstChild);
-    }
 
     bodyRows(table).forEach(function (tr) {
       var cell = tr.cells[opsIdx] || tr.children[opsIdx];
@@ -136,7 +131,8 @@
         ev.stopPropagation();
         openOpsMenu(more, cell);
       });
-      cell.insertBefore(more, cell.firstChild);
+      // 末尾追加：不打乱 Vue/EP 记录的子节点顺序，避免 patch 时锚点错位
+      cell.appendChild(more);
     });
   }
 
@@ -187,27 +183,25 @@
     });
   }
 
-  function ensureTrack(wrap, table, pos) {
-    var attr = "data-cmt-hs-" + pos;
-    var id = table.getAttribute(attr) || "";
+  function ensureTrack(wrap, table) {
+    // 只保留底部一条同步滚动轨道，末尾追加（不插到 Vue/EP 管理的子列表中间）
+    var id = table.getAttribute("data-cmt-hs-bottom") || "";
     var track = id ? document.getElementById(id) : null;
     if (track) return track;
-    id = "cmt-hs-" + pos + "-" + Math.random().toString(36).slice(2, 7);
-    table.setAttribute(attr, id);
+    id = "cmt-hs-bottom-" + Math.random().toString(36).slice(2, 7);
+    table.setAttribute("data-cmt-hs-bottom", id);
     track = document.createElement("div");
     track.id = id;
-    track.className = "cmt-hscroll cmt-hscroll--" + pos;
+    track.className = "cmt-hscroll cmt-hscroll--bottom";
     track.innerHTML = '<div class="cmt-hscroll-inner"></div>';
-    if (pos === "top") wrap.insertBefore(track, table);
-    else wrap.appendChild(track);
+    wrap.appendChild(track);
     return track;
   }
 
   function addHScroll(table) {
     var wrap = table.closest(".el-card") || table.parentElement;
     if (!wrap) return;
-    var top = ensureTrack(wrap, table, "top");
-    var bot = ensureTrack(wrap, table, "bottom");
+    var bot = ensureTrack(wrap, table);
     var body = qs(".el-table__body-wrapper", table);
     if (!body) return;
 
@@ -220,12 +214,10 @@
           syncing = true;
           var L = el.scrollLeft;
           body.scrollLeft = L;
-          top.scrollLeft = L;
           bot.scrollLeft = L;
           syncing = false;
         };
       }
-      top.addEventListener("scroll", syncFrom(top));
       bot.addEventListener("scroll", syncFrom(bot));
       body.addEventListener("scroll", syncFrom(body));
     }
@@ -235,12 +227,10 @@
       table.scrollWidth,
       (qs(".el-table__header-wrapper", table) || {}).scrollWidth || 0
     );
-    [top, bot].forEach(function (track) {
-      var inner = qs(".cmt-hscroll-inner", track);
-      if (inner) inner.style.width = w + "px";
-      var overflow = w > (wrap.clientWidth || 0) + 2;
-      track.style.display = overflow ? "block" : "none";
-    });
+    var inner = qs(".cmt-hscroll-inner", bot);
+    if (inner) inner.style.width = w + "px";
+    var overflow = w > (wrap.clientWidth || 0) + 2;
+    bot.style.display = overflow ? "block" : "none";
   }
 
   function scan() {
