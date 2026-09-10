@@ -24,6 +24,7 @@
 | S8 | 登出即时生效 | JWT 增加 jti，登出后旧 token 进入黑名单立即失效（单实例内存） | INTENTIONAL_FIX |
 | S9 | JWT 密钥强度 | production 环境强制 JWT_SECRET ≥ 32 字节，否则拒绝启动 | INTENTIONAL_FIX |
 | S10 | 种子管理员 | 已存在的同名非管理员用户不再被静默提权，仅打告警日志 | INTENTIONAL_FIX |
+| D5 | PDU 删除语义 | **有意偏离厂商**：厂商允许删除仍有插座的 PDU（200）；重建版把删除边界画在「连接」上——有活动连接则 409 `PDU_IN_USE`（提示先断开），无连接则允许删除并**级联软删插座** | INTENTIONAL_FIX |
 | S11 | 请求体解析 | 空 body 合法（EOF），格式错误统一 400；不再把坏 JSON 当空对象执行 | INTENTIONAL_FIX |
 
 ### 已知边界（保持现状，多实例部署前必须替换）
