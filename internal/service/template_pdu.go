@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -342,6 +343,117 @@ func (s *PDUService) Delete(id uuid.UUID, version uint) error {
 			fmt.Sprintf("该 PDU 正在为设备供电（%d 条连接），请先断开连接后再删除", conns))
 	}
 	return mapStoreErr(s.store.SoftDeletePDUWithSockets(id, version))
+}
+
+// PDUImpactDevice 影响清单里的设备条目。
+type PDUImpactDevice struct {
+	DeviceID       uuid.UUID `json:"deviceId"`
+	DeviceCode     string    `json:"deviceCode"`
+	DeviceName     string    `json:"deviceName"`
+	SocketNo       int       `json:"socketNo"`
+	RedundancyRole string    `json:"redundancyRole"`
+}
+
+// PDUImpactResult 强制归档的影响清单（先展示、后确认）。
+type PDUImpactResult struct {
+	PDUID       uuid.UUID         `json:"pduId"`
+	PDUCode     string            `json:"pduCode"`
+	PDUName     string            `json:"pduName"`
+	Sockets     int64             `json:"sockets"`
+	Connections int64             `json:"connections"`
+	Devices     []PDUImpactDevice `json:"devices"`
+	Warning     string            `json:"warning,omitempty"`
+}
+
+// Impact 返回强制归档的影响清单（不含写操作）。
+func (s *PDUService) Impact(id uuid.UUID) (*PDUImpactResult, error) {
+	pdu, err := s.store.GetPDU(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperr.NotFound("PDU")
+		}
+		return nil, err
+	}
+	return s.impactOf(pdu)
+}
+
+func (s *PDUService) impactOf(pdu *model.PDU) (*PDUImpactResult, error) {
+	sockets, rows, err := s.store.PDUImpact(pdu.ID)
+	if err != nil {
+		return nil, err
+	}
+	res := &PDUImpactResult{
+		PDUID: pdu.ID, PDUCode: pdu.Code, PDUName: pdu.Name,
+		Sockets: sockets, Connections: int64(len(rows)),
+		Devices: make([]PDUImpactDevice, 0, len(rows)),
+	}
+	for _, row := range rows {
+		res.Devices = append(res.Devices, PDUImpactDevice{
+			DeviceID: row.DeviceID, DeviceCode: row.DeviceCode, DeviceName: row.DeviceName,
+			SocketNo: row.SocketNo, RedundancyRole: row.RedundancyRole,
+		})
+	}
+	if res.Connections > 0 {
+		res.Warning = "该 PDU 正在为设备供电，强制归档会断开这些连接并可能造成配电记录失真，请确认已完成现场处置"
+	}
+	return res, nil
+}
+
+// ForceArchiveInput 强制归档入参：必须回报影响清单中的连接数并填写原因。
+type ForceArchiveInput struct {
+	Version            uint   `json:"version"`
+	Reason             string `json:"reason"`
+	ConfirmConnections int    `json:"confirmConnections"`
+}
+
+// ForceArchive 管理员强制归档 PDU：二次确认（须回报连接数）+ 必填原因 + 审计留痕。
+// 用于「PDU 报废但设备仍在用」的现场处置场景（见 docs/COMPAT-DECISIONS.md D5）。
+func (s *PDUService) ForceArchive(id uuid.UUID, in ForceArchiveInput, actor *uuid.UUID, requestID string) (*PDUImpactResult, error) {
+	pdu, err := s.store.GetPDU(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperr.NotFound("PDU")
+		}
+		return nil, err
+	}
+	impact, err := s.impactOf(pdu)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(in.Reason) == "" {
+		return nil, apperr.InvalidResource("强制归档必须填写原因")
+	}
+	// 二次确认：客户端必须先取得影响清单，并把连接数回报回来
+	if in.ConfirmConnections != int(impact.Connections) {
+		return nil, apperr.New(409, "IMPACT_CONFIRMATION_REQUIRED",
+			fmt.Sprintf("请先确认影响清单：该 PDU 下有 %d 条活动连接，需以 confirmConnections=%d 重新提交",
+				impact.Connections, impact.Connections))
+	}
+	if err := s.store.ForceArchivePDU(id, in.Version); err != nil {
+		return nil, mapStoreErr(err)
+	}
+	s.writeArchiveAudit(pdu, impact, in, actor, requestID)
+	return impact, nil
+}
+
+// writeArchiveAudit 强制归档留痕：影响清单 + 原因写入 audit_logs（失败不影响归档结果，但记录告警）。
+func (s *PDUService) writeArchiveAudit(pdu *model.PDU, impact *PDUImpactResult,
+	in ForceArchiveInput, actor *uuid.UUID, requestID string) {
+	payload, _ := json.Marshal(map[string]any{
+		"pduCode":     pdu.Code,
+		"reason":      in.Reason,
+		"sockets":     impact.Sockets,
+		"connections": impact.Connections,
+		"devices":     impact.Devices,
+	})
+	after := string(payload)
+	pid := pdu.ID
+	if err := s.acks.WriteAudit(&model.AuditLog{
+		UserID: actor, Action: "FORCE_ARCHIVE", ResourceType: "pdu", ResourceID: &pid,
+		RequestID: requestID, AfterJSON: &after, Result: "SUCCESS", Source: "api",
+	}); err != nil {
+		fmt.Printf("[AUDIT] force-archive audit write failed pdu=%s err=%v\n", pdu.ID, err)
+	}
 }
 
 func (s *PDUService) ListSockets(pduID uuid.UUID) ([]model.PDUSocket, error) {

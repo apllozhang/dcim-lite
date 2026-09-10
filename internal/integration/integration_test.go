@@ -557,3 +557,76 @@ func TestRackDeleteProtection(t *testing.T) {
 		t.Fatalf("delete occupied rack must 409 HAS_CHILDREN, got %d %v", st, body)
 	}
 }
+
+// D5 验收：PDU 强制归档需二次确认（回报影响清单连接数）+ 必填原因 + 级联下线插座。
+func TestPDUForceArchive(t *testing.T) {
+	fx := newFixture(t, "FA")
+
+	st, pdu := call("POST", "/api/v1/racks/"+fx.rackID+"/pdus",
+		map[string]any{"code": "FA-PDU" + short(), "name": "强制归档柜"}, adminTok)
+	if st != 200 && st != 201 {
+		t.Fatalf("create pdu: %d %v", st, pdu)
+	}
+	pduID := data(pdu)["id"].(string)
+	pduVer := uint(data(pdu)["version"].(float64))
+
+	st, sock := call("POST", "/api/v1/pdus/"+pduID+"/sockets",
+		map[string]any{"socketNo": 1, "standard": "CN", "amperageA": 16}, adminTok)
+	if st != 200 && st != 201 {
+		t.Fatalf("create socket: %d %v", st, sock)
+	}
+	sockID := data(sock)["id"].(string)
+
+	dev := createDevice(t, fx, "FA-D"+short(), 1)
+	if st, _ := call("POST", "/api/v1/devices/"+dev+"/assign",
+		map[string]any{"rackId": fx.rackID, "startU": 1}, adminTok); st != 200 {
+		t.Fatalf("assign device failed")
+	}
+	if st, _ := call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
+		map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok); st != 200 && st != 201 {
+		t.Fatalf("connect socket failed")
+	}
+
+	// 影响清单：1 插座 / 1 连接
+	st, imp := call("GET", "/api/v1/pdus/"+pduID+"/archive-impact", nil, adminTok)
+	if st != 200 {
+		t.Fatalf("impact: %d %v", st, imp)
+	}
+	in := data(imp)
+	if in["sockets"].(float64) != 1 || in["connections"].(float64) != 1 {
+		t.Fatalf("unexpected impact: %v", in)
+	}
+	if len(in["devices"].([]any)) != 1 {
+		t.Fatalf("impact must list the affected device")
+	}
+
+	// 普通删除：有连接 -> 409 PDU_IN_USE
+	st, body := call("DELETE", "/api/v1/pdus/"+pduID+"?version="+fmt.Sprintf("%d", pduVer), nil, adminTok)
+	if st != 409 || code(body) != "PDU_IN_USE" {
+		t.Fatalf("plain delete with connections must 409 PDU_IN_USE, got %d %v", st, body)
+	}
+
+	// 强制归档：缺原因 -> 400
+	st, _ = call("POST", "/api/v1/pdus/"+pduID+"/force-archive",
+		map[string]any{"version": pduVer, "reason": "", "confirmConnections": 1}, adminTok)
+	if st != 400 {
+		t.Fatalf("force-archive without reason must 400, got %d", st)
+	}
+	// 强制归档：未正确回报连接数 -> 409 IMPACT_CONFIRMATION_REQUIRED
+	st, body = call("POST", "/api/v1/pdus/"+pduID+"/force-archive",
+		map[string]any{"version": pduVer, "reason": "现场搬迁", "confirmConnections": 0}, adminTok)
+	if st != 409 || code(body) != "IMPACT_CONFIRMATION_REQUIRED" {
+		t.Fatalf("force-archive without impact confirmation must 409, got %d %v", st, body)
+	}
+	// 正确确认 -> 200
+	st, done := call("POST", "/api/v1/pdus/"+pduID+"/force-archive",
+		map[string]any{"version": pduVer, "reason": "现场搬迁", "confirmConnections": 1}, adminTok)
+	if st != 200 {
+		t.Fatalf("force-archive with confirmation must succeed, got %d %v", st, done)
+	}
+	// 归档后 PDU 不可见；插座一并下线
+	st, _ = call("GET", "/api/v1/pdus/"+pduID+"/sockets", nil, adminTok)
+	if st != 404 {
+		t.Fatalf("sockets of archived pdu must be gone (404), got %d", st)
+	}
+}

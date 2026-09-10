@@ -369,6 +369,18 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/OK" }
         "409": { $ref: "#/components/responses/Fail" }
+  /api/v1/pdus/{id}/archive-impact:
+    get:
+      summary: 强制归档影响清单（管理员；先展示后确认）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+  /api/v1/pdus/{id}/force-archive:
+    post:
+      summary: 管理员强制归档 PDU（须回报影响清单连接数 + 填写原因，断开连接并级联下线插座）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      responses:
+        "200": { $ref: "#/components/responses/OK" }
+        "409": { $ref: "#/components/responses/Fail" }
   /api/v1/pdu-connections/{id}:
     delete:
       summary: 断开连接（连接删除与插座释放同事务）
@@ -499,7 +511,9 @@ components:
             CAPTCHA_REQUIRED / CAPTCHA_INVALID / DUPLICATE_CODE / HAS_CHILDREN /
             PARENT_DISABLED / RESOURCE_VERSION / U_SLOT_CONFLICT / DEVICE_POSITIONED /
             DEVICE_TYPE_IN_USE / RACK_UNAVAILABLE / SOCKET_CONNECTED / LAST_ADMIN /
-            USER_CONFLICT / APPROVAL_STATE / RACK_DIAGRAM_IMPORT_DRAFT_EXPIRED / INTERNAL_ERROR
+            USER_CONFLICT / APPROVAL_STATE_CONFLICT / RACK_DIAGRAM_IMPORT_DRAFT_EXPIRED /
+            RACK_DIAGRAM_IMPORT_STALE / LDAP_UNAVAILABLE / PDU_IN_USE /
+            IMPACT_CONFIRMATION_REQUIRED / INTERNAL_ERROR
         message: { type: string }
         data: { nullable: true }
         requestId: { type: string }

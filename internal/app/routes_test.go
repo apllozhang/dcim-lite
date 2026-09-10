@@ -50,6 +50,7 @@ func TestRouteInventory(t *testing.T) {
 		"POST /api/v1/racks/:id/pdus", "PUT /api/v1/pdus/:id", "DELETE /api/v1/pdus/:id",
 		"POST /api/v1/pdus/:id/sockets", "PUT /api/v1/pdu-sockets/:id", "DELETE /api/v1/pdu-sockets/:id",
 		"POST /api/v1/pdu-sockets/:id/connection", "DELETE /api/v1/pdu-connections/:id",
+		"GET /api/v1/pdus/:id/archive-impact", "POST /api/v1/pdus/:id/force-archive",
 		// system_admin：后台
 		"GET /api/v1/admin/roles", "GET /api/v1/admin/users", "POST /api/v1/admin/users",
 		"PUT /api/v1/admin/users/:id", "DELETE /api/v1/admin/users/:id", "POST /api/v1/admin/users/:id/reset-password",
