@@ -1,0 +1,9 @@
+# 构建上下文裁剪：Go 镜像不需要前端产物与本地配置
+.git
+.env
+frontend
+frontend-dist
+bin
+scripts
+_remote.py
+docs
