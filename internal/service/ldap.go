@@ -188,7 +188,8 @@ func (s *LDAPService) Test(in LDAPInput) (*LDAPTestResult, error) {
 		}
 	}
 	if url == "" {
-		return &LDAPTestResult{OK: false, Message: "LDAP 地址为空"}, nil
+		// 厂商对空地址同样返回 400 LDAP_UNAVAILABLE（S11-LDAP-TEST 契约）
+		return nil, apperr.New(400, "LDAP_UNAVAILABLE", "ldap unavailable: LDAP 地址为空")
 	}
 	addr := strings.TrimPrefix(strings.TrimPrefix(url, "ldap://"), "ldaps://")
 	if i := strings.Index(addr, "/"); i >= 0 {
@@ -203,11 +204,10 @@ func (s *LDAPService) Test(in LDAPInput) (*LDAPTestResult, error) {
 	}
 	conn, err := net.DialTimeout("tcp", addr, 3*time.Second)
 	if err != nil {
-		return &LDAPTestResult{
-			OK:      false,
-			Message: "无法连接 LDAP 服务",
-			Details: []string{err.Error(), "完整 bind/证书验证需真实目录，当前为连通性探测"},
-		}, nil
+		// 厂商行为：连通失败 → 400 LDAP_UNAVAILABLE（此前返回 200 造成「假成功」，
+		// 差分用例 S11-LDAP-TEST 实测：厂商 400，重建 200）
+		return nil, apperr.New(400, "LDAP_UNAVAILABLE",
+			"ldap unavailable: 无法连接 LDAP 服务器")
 	}
 	_ = conn.Close()
 	return &LDAPTestResult{
