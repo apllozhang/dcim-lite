@@ -18,8 +18,8 @@ jobs:
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
       - name: go vet
         run: go vet ./... && go vet -tags integration ./internal/integration/
-      - name: unit tests
-        run: go test ./... -count=1
+      - name: unit tests (race detector)
+        run: go test -race ./... -count=1
       - name: route inventory contract
         run: go test ./internal/app/ -run TestRouteInventory -v -count=1
       - name: build
@@ -48,5 +48,5 @@ jobs:
         with:
           go-version: "1.24"
           cache: true
-      - name: integration tests (concurrency & transactions)
-        run: go test -tags integration ./internal/integration/ -v -count=1
+      - name: integration tests (race detector, concurrency & transactions)
+        run: go test -race -tags integration ./internal/integration/ -v -count=1

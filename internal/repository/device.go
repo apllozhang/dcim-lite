@@ -351,6 +351,10 @@ func (s *DeviceStore) SeedDeviceTypesIfEmpty() error {
 	for i := range seed {
 		seed[i].Status = "ACTIVE"
 		if err := s.db.Create(&seed[i]).Error; err != nil {
+			// 多副本同时冷启动：对方已写入同编码类型则唯一索引冲突，跳过
+			if IsUniqueViolation(err) {
+				continue
+			}
 			return err
 		}
 	}

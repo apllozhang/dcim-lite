@@ -212,6 +212,14 @@ func (s *UserStore) EnsureRoles() (*model.Role, *model.Role, error) {
 		err := s.db.First(&existing, "code = ?", r.Code).Error
 		if err == gorm.ErrRecordNotFound {
 			if err := s.db.Create(r).Error; err != nil {
+				// 多副本同时冷启动的竞态：对方先创建则唯一索引冲突，回读既有行
+				if IsUniqueViolation(err) {
+					if err2 := s.db.First(&existing, "code = ?", r.Code).Error; err2 != nil {
+						return nil, nil, err2
+					}
+					*r = existing
+					continue
+				}
 				return nil, nil, err
 			}
 			continue
@@ -259,7 +267,14 @@ func (s *UserStore) EnsureAdmin(username, password, displayName string) error {
 		Enabled:      true,
 		Roles:        []model.Role{*adminRole},
 	}
-	return s.db.Create(&u).Error
+	if err := s.db.Create(&u).Error; err != nil {
+		// 多副本同时冷启动的竞态：对方先创建成功则唯一索引冲突，视为已存在
+		if IsUniqueViolation(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 type ResourceStore struct{ db *gorm.DB }
