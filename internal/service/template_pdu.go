@@ -95,6 +95,11 @@ func (s *TemplateService) Update(id uuid.UUID, in TemplateUpdateInput) (*model.R
 	if name == "" || len([]rune(name)) > 150 {
 		return nil, apperr.InvalidResource("模板名称不能为空且不能超过 150 个字符")
 	}
+	// 系统内置模板不可停用（厂商返回 409 SYSTEM_TEMPLATE_PROTECTED；名称校验先于本检查）
+	if t.IsSystem && in.Status == model.TemplateDisabled {
+		return nil, apperr.New(409, "SYSTEM_TEMPLATE_PROTECTED",
+			"system template cannot be deleted or disabled: 系统内置模板不能停用")
+	}
 	t.Name = name
 	t.Description = in.Description
 	t.Remarks = in.Remarks
@@ -343,12 +348,21 @@ func (s *PDUService) ListSockets(pduID uuid.UUID) ([]model.PDUSocket, error) {
 	return s.store.ListSockets(pduID)
 }
 
+// validSocketStandard 插座制式：厂商仅接受 CN/EU（差分用例 S10-SOCKET-BAD-STD、S15-SOCKET-PUT-EMPTY-STD）。
+func validSocketStandard(v string) bool {
+	v = strings.TrimSpace(v)
+	return v == "CN" || v == "EU"
+}
+
 func (s *PDUService) CreateSocket(pduID uuid.UUID, in SocketInput) (*model.PDUSocket, error) {
 	if _, err := s.store.GetPDU(pduID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("PDU")
 		}
 		return nil, err
+	}
+	if !validSocketStandard(in.Standard) {
+		return nil, apperr.InvalidResource("插座制式必须为 CN 或 EU")
 	}
 	if in.Status == "" {
 		in.Status = model.SocketAvailable
@@ -377,6 +391,9 @@ func (s *PDUService) UpdateSocket(id uuid.UUID, in SocketInput) (*model.PDUSocke
 	}
 	if in.Status == "" {
 		in.Status = existing.Status
+	}
+	if !validSocketStandard(in.Standard) {
+		return nil, apperr.InvalidResource("插座制式必须为 CN 或 EU")
 	}
 	next := *existing
 	next.SocketNo, next.Standard, next.AmperageA = in.SocketNo, in.Standard, in.AmperageA

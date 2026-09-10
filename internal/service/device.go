@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -234,6 +235,9 @@ func (s *DeviceService) CreateDevice(in DeviceInput) (*model.Device, error) {
 	}
 	in.Name = strings.TrimSpace(in.Name)
 	in.Code = strings.TrimSpace(in.Code)
+	if err := validateDeviceIPs(in.ManagementIP, in.BusinessIP); err != nil {
+		return nil, err
+	}
 	if in.Code == "" {
 		in.Code = fmt.Sprintf("DEV-%s", uuid.NewString()[:8])
 	}
@@ -338,6 +342,9 @@ func (s *DeviceService) UpdateDevice(id uuid.UUID, version uint, in DeviceInput)
 	}
 	if in.DualPowerRequired != nil {
 		next.DualPowerRequired = *in.DualPowerRequired
+	}
+	if err := validateDeviceIPs(in.ManagementIP, in.BusinessIP); err != nil {
+		return nil, err
 	}
 	next.ManagementIP = in.ManagementIP
 	next.BusinessIP = in.BusinessIP
@@ -644,6 +651,23 @@ func (s *DeviceService) writeHistory(deviceID uuid.UUID, op string, from, to *mo
 
 func rangesOverlap(aStart, aEnd, bStart, bEnd int) bool {
 	return aStart <= bEnd && bStart <= aEnd
+}
+
+// validIP 校验 IP 地址格式（空值放行；厂商对非法值返回 400 INVALID_RESOURCE）。
+func validIP(v string) bool {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return true
+	}
+	return net.ParseIP(v) != nil
+}
+
+// validateDeviceIPs 校验设备的管理/业务 IP（差分用例 S15-DEV-PUT-BAD-IP）。
+func validateDeviceIPs(managementIP, businessIP string) error {
+	if !validIP(managementIP) || !validIP(businessIP) {
+		return apperr.InvalidResource("IP 地址格式无效")
+	}
+	return nil
 }
 
 // validDeviceCategory 设备分类枚举（与种子数据一致；厂商基线拒绝未知分类）。

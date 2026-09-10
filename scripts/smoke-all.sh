@@ -170,7 +170,7 @@ check("create-pdu", st in (200, 201))
 st, p2 = call("POST", f"/api/v1/racks/{rack_id}/pdus", {"code": f"P{sfx}", "name": "重复"})
 check("pdu-dup-409", st == 409)
 st, s1 = call("POST", f"/api/v1/pdus/{p1['data']['id']}/sockets",
-              {"socketNo": 1, "standard": "GB", "amperageA": 16})
+              {"socketNo": 1, "standard": "CN", "amperageA": 16})
 check("create-socket", st in (200, 201))
 st, c1 = call("POST", f"/api/v1/pdu-sockets/{s1['data']['id']}/connection",
               {"deviceId": d1["data"]["id"], "redundancyRole": "PRIMARY"})

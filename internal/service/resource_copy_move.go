@@ -22,12 +22,24 @@ type CopyMoveInput struct {
 	Version uint `json:"version"`
 }
 
+// checkCopyVersion 厂商对 copy 类接口校验请求体 version（差分用例 S07-DC-COPY-STALE-VERSION 等）。
+// 未提供 version（0）时按旧行为放行，提供则必须与当前版本一致。
+func checkCopyVersion(current, bodyVersion uint) error {
+	if bodyVersion > 0 && bodyVersion != current {
+		return apperr.New(409, "RESOURCE_VERSION_CONFLICT", "数据已被其他用户修改，请刷新后重试")
+	}
+	return nil
+}
+
 func (s *ResourceService) CopyDataCenter(id uuid.UUID, in CopyMoveInput) (*model.DataCenter, error) {
 	src, err := s.store.GetDataCenter(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("数据中心")
 		}
+		return nil, err
+	}
+	if err := checkCopyVersion(src.Version, in.Version); err != nil {
 		return nil, err
 	}
 	in.Code = strings.TrimSpace(in.Code)
@@ -100,6 +112,9 @@ func (s *ResourceService) CopyRoom(id uuid.UUID, in CopyMoveInput) (*model.Room,
 		}
 		return nil, err
 	}
+	if err := checkCopyVersion(src.Version, in.Version); err != nil {
+		return nil, err
+	}
 	targetDC := src.DataCenterID
 	if in.TargetDataCenterID != nil {
 		targetDC = *in.TargetDataCenterID
@@ -166,6 +181,9 @@ func (s *ResourceService) CopyRack(id uuid.UUID, in CopyMoveInput) (*model.Rack,
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("机柜")
 		}
+		return nil, err
+	}
+	if err := checkCopyVersion(src.Version, in.Version); err != nil {
 		return nil, err
 	}
 	targetRoomID := src.RoomID

@@ -74,3 +74,30 @@ GT_CAPTCHA=auto python3 gt_final_v3.py \
 # 比对
 python3 diff_compare.py <baseline>/results.jsonl <candidate>/results.jsonl report.md
 ```
+
+---
+
+# 第二批：校验缺失补齐（2026-09-10）
+
+第一批差分回放发现「重建版比厂商更宽松」的校验缺失，本批全部补齐，并用同一套差分复验。
+
+| 用例 | 厂商规则 | 修复 |
+|---|---|---|
+| `S15-DEV-PUT-BAD-IP` | 设备管理/业务 IP 非法 → 400 `INVALID_RESOURCE`「IP 地址格式无效」 | `net.ParseIP` 校验（空值放行） |
+| `S14-VAL-USER-SHORTPW` / `S15-USER-NO-PASSWORD` | 本地用户密码 < 8 位或缺省 → 400 `INVALID_USER` | 密码必填且 ≥ 8 位；错误码改为 `INVALID_USER` |
+| `S14-VAL-USER-EMPTYNAME` | 用户名/显示名为空 → 400 `INVALID_USER` | 同上（原先返回 `INVALID_RESOURCE`） |
+| `S10-SOCKET-BAD-STD` / `S15-SOCKET-PUT-EMPTY-STD` | 插座制式非 `CN`/`EU`（含空）→ 400 `INVALID_RESOURCE`「插座制式必须为 CN 或 EU」 | 创建与更新均校验枚举 |
+| `S07-DC-COPY-STALE-VERSION` / `S15-ROOM-COPY-STALE` / `S15-RACK-COPY-STALE` | copy 类接口请求体 `version` 过期 → 409 `RESOURCE_VERSION_CONFLICT` | 三种 copy 均校验（未传 version 时按旧行为放行） |
+| `S09-SYS-TPL-DISABLE-PROTECTED` / `S15-SYS-TPL-UPDATE-CONFLICT` | 系统内置模板停用 → 409 `SYSTEM_TEMPLATE_PROTECTED` | 名称校验（400）先于保护检查（409），与厂商顺序一致 |
+
+## 复验结果
+
+- 目标用例 **9/9 与厂商完全一致**（含 4 个同规则相邻用例）
+- 候选回放：292 PASS / 19 FAIL（上轮 285 / 26）
+- **可比用例兼容率 83.6% → 87.1%**
+- 线上栈冒烟 `SMOALL_PASS`（36/36）；因插座制式收紧，smoke 夹具由 `GB` 改为 `CN`
+
+## 附带影响
+
+- `scripts/smoke-all.sh` 插座制式 `GB` → `CN`
+- 重置密码最低长度 6 → 8 位，错误码改 `INVALID_USER`
