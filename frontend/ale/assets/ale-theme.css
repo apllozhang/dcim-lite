@@ -309,6 +309,16 @@ body {
   z-index: 2;
 }
 /* 操作列折叠 */
+/* 操作列表头：纯 CSS 收窄（不向表头插入节点） */
+.el-table .cmt-ops-th {
+  width: 72px !important;
+  min-width: 72px !important;
+  white-space: nowrap;
+}
+.el-table .cmt-ops-th .cell {
+  text-overflow: clip;
+}
+
 .el-table .cmt-ops-cell {
   text-align: center !important;
 }
