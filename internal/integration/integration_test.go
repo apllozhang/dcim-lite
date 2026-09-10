@@ -746,7 +746,7 @@ func TestRackDeleteVsPlaceRace(t *testing.T) {
 	fx := newFixture(t, "DR")
 	for round := 0; round < 15; round++ {
 		st, rk := call("POST", "/api/v1/rooms/"+fx.roomID+"/racks",
-			map[string]any{"code": "K"+short(), "name": "it", "uHeight": 10}, adminTok)
+			map[string]any{"code": "K" + short(), "name": "it", "uHeight": 10}, adminTok)
 		if st != 200 && st != 201 {
 			t.Fatalf("create rack: %d %v", st, rk)
 		}
@@ -757,9 +757,15 @@ func TestRackDeleteVsPlaceRace(t *testing.T) {
 		var stDel, stAsg int
 		var wg sync.WaitGroup
 		wg.Add(2)
-		go func() { defer wg.Done(); stDel, _ = call("DELETE", "/api/v1/racks/"+rackID+"?version="+rackVer, nil, adminTok) }()
-		go func() { defer wg.Done(); stAsg, _ = call("POST", "/api/v1/devices/"+dev+"/assign",
-			map[string]any{"targetRackId": rackID, "startU": 1}, adminTok) }()
+		go func() {
+			defer wg.Done()
+			stDel, _ = call("DELETE", "/api/v1/racks/"+rackID+"?version="+rackVer, nil, adminTok)
+		}()
+		go func() {
+			defer wg.Done()
+			stAsg, _ = call("POST", "/api/v1/devices/"+dev+"/assign",
+				map[string]any{"targetRackId": rackID, "startU": 1}, adminTok)
+		}()
 		wg.Wait()
 		if (stDel == 200) == (stAsg == 200) {
 			t.Fatalf("round %d: delete=%d assign=%d must be mutually exclusive", round, stDel, stAsg)
@@ -775,7 +781,7 @@ func TestRackDeleteVsPDURace(t *testing.T) {
 	fx := newFixture(t, "DP2")
 	for round := 0; round < 15; round++ {
 		st, rk := call("POST", "/api/v1/rooms/"+fx.roomID+"/racks",
-			map[string]any{"code": "K"+short(), "name": "it", "uHeight": 10}, adminTok)
+			map[string]any{"code": "K" + short(), "name": "it", "uHeight": 10}, adminTok)
 		if st != 200 && st != 201 {
 			t.Fatalf("create rack: %d %v", st, rk)
 		}
@@ -785,9 +791,15 @@ func TestRackDeleteVsPDURace(t *testing.T) {
 		var stDel, stPDU int
 		var wg sync.WaitGroup
 		wg.Add(2)
-		go func() { defer wg.Done(); stDel, _ = call("DELETE", "/api/v1/racks/"+rackID+"?version="+rackVer, nil, adminTok) }()
-		go func() { defer wg.Done(); stPDU, _ = call("POST", "/api/v1/racks/"+rackID+"/pdus",
-			map[string]any{"code": "DP2-P" + short(), "name": "it"}, adminTok) }()
+		go func() {
+			defer wg.Done()
+			stDel, _ = call("DELETE", "/api/v1/racks/"+rackID+"?version="+rackVer, nil, adminTok)
+		}()
+		go func() {
+			defer wg.Done()
+			stPDU, _ = call("POST", "/api/v1/racks/"+rackID+"/pdus",
+				map[string]any{"code": "DP2-P" + short(), "name": "it"}, adminTok)
+		}()
 		wg.Wait()
 		pduOK := stPDU == 200 || stPDU == 201
 		if (stDel == 200) == pduOK {
@@ -871,7 +883,7 @@ func TestPDUArchiveStaleConfirmationRejected(t *testing.T) {
 }
 
 // P0-04 复评验收：PDU 普通删除 vs 接入连接并发。互斥——删除成功则接入必须失败
-//（PDU/插座已删），接入成功则删除必须 409 PDU_IN_USE。
+// （PDU/插座已删），接入成功则删除必须 409 PDU_IN_USE。
 func TestPDUDeleteVsConnectRace(t *testing.T) {
 	fx := newFixture(t, "DC")
 	for round := 0; round < 10; round++ {
@@ -898,9 +910,15 @@ func TestPDUDeleteVsConnectRace(t *testing.T) {
 		var stDel, stCon int
 		var wg sync.WaitGroup
 		wg.Add(2)
-		go func() { defer wg.Done(); stDel, _ = call("DELETE", "/api/v1/pdus/"+pduID+"?version="+pduVer, nil, adminTok) }()
-		go func() { defer wg.Done(); stCon, _ = call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
-			map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok) }()
+		go func() {
+			defer wg.Done()
+			stDel, _ = call("DELETE", "/api/v1/pdus/"+pduID+"?version="+pduVer, nil, adminTok)
+		}()
+		go func() {
+			defer wg.Done()
+			stCon, _ = call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
+				map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok)
+		}()
 		wg.Wait()
 		if (stDel == 200) == (stCon == 200 || stCon == 201) {
 			t.Fatalf("round %d: pdu-delete=%d connect=%d must be mutually exclusive", round, stDel, stCon)
@@ -934,10 +952,16 @@ func TestApproveVsDeviceEditMatrix(t *testing.T) {
 		var stApp, stEdit int
 		var wg sync.WaitGroup
 		wg.Add(2)
-		go func() { defer wg.Done(); stApp, _ = call("POST", "/api/v1/admin/approvals/"+approvalID+"/approve",
-			map[string]any{"comment": "go"}, adminTok) }()
-		go func() { defer wg.Done(); stEdit, _ = call("PUT", "/api/v1/devices/"+dev+"?version="+devVer,
-			map[string]any{"name": "renamed-" + short()}, adminTok) }()
+		go func() {
+			defer wg.Done()
+			stApp, _ = call("POST", "/api/v1/admin/approvals/"+approvalID+"/approve",
+				map[string]any{"comment": "go"}, adminTok)
+		}()
+		go func() {
+			defer wg.Done()
+			stEdit, _ = call("PUT", "/api/v1/devices/"+dev+"?version="+devVer,
+				map[string]any{"name": "renamed-" + short()}, adminTok)
+		}()
 		wg.Wait()
 		if (stApp == 200) == (stEdit == 200) {
 			t.Fatalf("round %d: approve=%d edit=%d must be mutually exclusive", round, stApp, stEdit)
