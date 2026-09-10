@@ -4,9 +4,9 @@ import "testing"
 
 func TestRangesOverlap(t *testing.T) {
 	cases := []struct {
-		name                 string
+		name                       string
 		aStart, aEnd, bStart, bEnd int
-		want                 bool
+		want                       bool
 	}{
 		{"完全相同", 1, 2, 1, 2, true},
 		{"部分重叠", 1, 3, 2, 4, true},

@@ -253,7 +253,7 @@ func (s *DeviceService) CreateDevice(in DeviceInput) (*model.Device, error) {
 		LifecycleStatus: in.LifecycleStatus, HeightU: h,
 		WeightKg: weight, RatedPowerW: rated, PeakPowerW: peak,
 		DualPowerRequired: dual,
-		ManagementIP: in.ManagementIP, BusinessIP: in.BusinessIP, MACAddress: in.MACAddress,
+		ManagementIP:      in.ManagementIP, BusinessIP: in.BusinessIP, MACAddress: in.MACAddress,
 		ManagementProtocol: in.ManagementProtocol, MonitoringStatus: in.MonitoringStatus,
 		Tags: in.Tags, Remarks: in.Remarks,
 	}

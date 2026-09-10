@@ -64,39 +64,39 @@ type RoomInput struct {
 }
 
 type RackInput struct {
-	Code           string   `json:"code" binding:"required,max=50"`
-	Name           string   `json:"name" binding:"required,max=150"`
+	Code           string     `json:"code" binding:"required,max=50"`
+	Name           string     `json:"name" binding:"required,max=150"`
 	TemplateID     *uuid.UUID `json:"templateId"`
-	Type           string   `json:"type"`
-	Manufacturer   string   `json:"manufacturer"`
-	ModelNumber    string   `json:"modelNumber"`
-	SerialNumber   string   `json:"serialNumber"`
-	AssetNumber    string   `json:"assetNumber"`
-	UHeight        *int     `json:"uHeight"`
-	WidthMm        *int     `json:"widthMm"`
-	DepthMm        *int     `json:"depthMm"`
-	HeightMm       *int     `json:"heightMm"`
-	LoadCapacityKg *float64 `json:"loadCapacityKg"`
-	Zone           string   `json:"zone"`
-	RackRow        string   `json:"rackRow"`
-	RackColumn     string   `json:"rackColumn"`
-	Aisle          string   `json:"aisle"`
-	XCoordinate    *float64 `json:"xCoordinate"`
-	YCoordinate    *float64 `json:"yCoordinate"`
-	Rotation       *int     `json:"rotation"`
-	Status         string   `json:"status"`
-	Manager        string   `json:"manager"`
-	Department     string   `json:"department"`
-	Purpose        string   `json:"purpose"`
-	DualPower      *bool    `json:"dualPower"`
-	InputCircuits  *int     `json:"inputCircuits"`
-	RatedVoltage   *float64 `json:"ratedVoltage"`
-	RatedCurrent   *float64 `json:"ratedCurrent"`
-	RatedPowerKw   *float64 `json:"ratedPowerKw"`
-	PeakPowerKw    *float64 `json:"peakPowerKw"`
-	PDUCount       *int     `json:"pduCount"`
-	Remarks        string   `json:"remarks"`
-	SortOrder      int      `json:"sortOrder"`
+	Type           string     `json:"type"`
+	Manufacturer   string     `json:"manufacturer"`
+	ModelNumber    string     `json:"modelNumber"`
+	SerialNumber   string     `json:"serialNumber"`
+	AssetNumber    string     `json:"assetNumber"`
+	UHeight        *int       `json:"uHeight"`
+	WidthMm        *int       `json:"widthMm"`
+	DepthMm        *int       `json:"depthMm"`
+	HeightMm       *int       `json:"heightMm"`
+	LoadCapacityKg *float64   `json:"loadCapacityKg"`
+	Zone           string     `json:"zone"`
+	RackRow        string     `json:"rackRow"`
+	RackColumn     string     `json:"rackColumn"`
+	Aisle          string     `json:"aisle"`
+	XCoordinate    *float64   `json:"xCoordinate"`
+	YCoordinate    *float64   `json:"yCoordinate"`
+	Rotation       *int       `json:"rotation"`
+	Status         string     `json:"status"`
+	Manager        string     `json:"manager"`
+	Department     string     `json:"department"`
+	Purpose        string     `json:"purpose"`
+	DualPower      *bool      `json:"dualPower"`
+	InputCircuits  *int       `json:"inputCircuits"`
+	RatedVoltage   *float64   `json:"ratedVoltage"`
+	RatedCurrent   *float64   `json:"ratedCurrent"`
+	RatedPowerKw   *float64   `json:"ratedPowerKw"`
+	PeakPowerKw    *float64   `json:"peakPowerKw"`
+	PDUCount       *int       `json:"pduCount"`
+	Remarks        string     `json:"remarks"`
+	SortOrder      int        `json:"sortOrder"`
 }
 
 type TreeRoom struct {
@@ -573,13 +573,4 @@ func mapStoreErr(err error) error {
 		return apperr.NotFound("资源")
 	}
 	return err
-}
-
-func (s *ResourceService) Audit(actor *uuid.UUID, requestID, action, resourceType string, resourceID *uuid.UUID, result, errCode string) {
-	log := &model.AuditLog{
-		UserID: actor, Action: action, ResourceType: resourceType,
-		ResourceID: resourceID, RequestID: requestID, Result: result, ErrorCode: errCode,
-		Source: "api",
-	}
-	_ = s.store.WriteAudit(log)
 }

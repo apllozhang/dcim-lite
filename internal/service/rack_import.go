@@ -17,13 +17,13 @@ import (
 
 // Rack diagram import kinds (frontend labels).
 const (
-	KindUnchanged       = "UNCHANGED"
-	KindCreateNew       = "CREATE_NEW"
-	KindUpdateExisting  = "UPDATE_EXISTING"
-	KindMoveExisting    = "MOVE_EXISTING"
-	KindRemoveMissing   = "REMOVE_MISSING"
-	KindNeedsDecision   = "NEEDS_DECISION"
-	KindError           = "ERROR"
+	KindUnchanged      = "UNCHANGED"
+	KindCreateNew      = "CREATE_NEW"
+	KindUpdateExisting = "UPDATE_EXISTING"
+	KindMoveExisting   = "MOVE_EXISTING"
+	KindRemoveMissing  = "REMOVE_MISSING"
+	KindNeedsDecision  = "NEEDS_DECISION"
+	KindError          = "ERROR"
 )
 
 // Commit actions for decision items.
@@ -54,13 +54,13 @@ type ImportDeviceRow struct {
 }
 
 type ImportValidateInput struct {
-	FormatVersion   string             `json:"formatVersion"`
-	DataCenterID    string             `json:"dataCenterId"`
-	RoomID          string             `json:"roomId"`
-	ExportedAt      string             `json:"exportedAt,omitempty"`
-	CoveredRackIDs  []string           `json:"coveredRackIds"`
-	Devices         []ImportDeviceRow  `json:"devices"`
-	DefaultTypeID   string             `json:"defaultTypeId"`
+	FormatVersion  string            `json:"formatVersion"`
+	DataCenterID   string            `json:"dataCenterId"`
+	RoomID         string            `json:"roomId"`
+	ExportedAt     string            `json:"exportedAt,omitempty"`
+	CoveredRackIDs []string          `json:"coveredRackIds"`
+	Devices        []ImportDeviceRow `json:"devices"`
+	DefaultTypeID  string            `json:"defaultTypeId"`
 }
 
 type ImportItem struct {
@@ -80,13 +80,13 @@ type ImportItem struct {
 }
 
 type ImportSummary struct {
-	Errors     int `json:"errors"`
-	Create     int `json:"create"`
-	Update     int `json:"update"`
-	Move       int `json:"move"`
-	Removals   int `json:"removals"`
-	Decisions  int `json:"decisions"`
-	Unchanged  int `json:"unchanged"`
+	Errors    int `json:"errors"`
+	Create    int `json:"create"`
+	Update    int `json:"update"`
+	Move      int `json:"move"`
+	Removals  int `json:"removals"`
+	Decisions int `json:"decisions"`
+	Unchanged int `json:"unchanged"`
 }
 
 type ImportValidateResult struct {
@@ -106,26 +106,26 @@ type ImportCommitInput struct {
 }
 
 type ImportCommitResult struct {
-	Created       int `json:"created"`
-	Updated       int `json:"updated"`
-	Moved         int `json:"moved"`
+	Created        int `json:"created"`
+	Updated        int `json:"updated"`
+	Moved          int `json:"moved"`
 	Decommissioned int `json:"decommissioned"`
-	Ignored       int `json:"ignored"`
+	Ignored        int `json:"ignored"`
 }
 
 type importDraft struct {
-	Token     string
-	RoomID    uuid.UUID
-	CreatedAt time.Time
-	Items     []ImportItem
-	Rows      map[string]ImportDeviceRow // itemID -> row
+	Token       string
+	RoomID      uuid.UUID
+	CreatedAt   time.Time
+	Items       []ImportItem
+	Rows        map[string]ImportDeviceRow // itemID -> row
 	DefaultType uuid.UUID
 }
 
 type ImportDraftStore struct {
-	mu    sync.Mutex
+	mu     sync.Mutex
 	drafts map[string]*importDraft
-	ttl   time.Duration
+	ttl    time.Duration
 }
 
 func NewImportDraftStore() *ImportDraftStore {
@@ -329,7 +329,7 @@ func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*Imp
 				ID: itemID, Kind: KindRemoveMissing, RequiresDecision: true,
 				RackID: rid.String(), StartU: p.StartU, EndU: p.EndU,
 				Name: d.Name, SourceDeviceID: d.ID.String(), SourceDeviceCode: d.Code,
-				Message: "Excel 中缺失，需确认是否下架",
+				Message:        "Excel 中缺失，需确认是否下架",
 				AllowedActions: []string{ActionDecommission, ActionIgnore},
 			})
 			summary.Removals++

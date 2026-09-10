@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+      - name: gofmt check
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - name: go vet
+        run: go vet ./... && go vet -tags integration ./internal/integration/
+      - name: unit tests
+        run: go test ./... -count=1
+      - name: route inventory contract
+        run: go test ./internal/app/ -run TestRouteInventory -v -count=1
+      - name: build
+        run: go build ./cmd/server
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: it
+          POSTGRES_PASSWORD: it
+          POSTGRES_DB: it
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U it"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://it:it@localhost:5432/it?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+      - name: integration tests (concurrency & transactions)
+        run: go test -tags integration ./internal/integration/ -v -count=1

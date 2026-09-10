@@ -49,10 +49,10 @@ func NewAuthHandler(s *service.AuthService, cap *service.CaptchaService) *AuthHa
 }
 
 type loginInput struct {
-	Username   string `json:"username" binding:"required"`
-	Password   string `json:"password" binding:"required"`
-	CaptchaID  string `json:"captchaId"`
-	Captcha    string `json:"captcha"`
+	Username  string `json:"username" binding:"required"`
+	Password  string `json:"password" binding:"required"`
+	CaptchaID string `json:"captchaId"`
+	Captcha   string `json:"captcha"`
 }
 
 func (h *AuthHandler) Captcha(c *gin.Context) {
@@ -158,12 +158,9 @@ func (h *ResourceHandler) CreateDataCenter(c *gin.Context) {
 	}
 	item, err := h.service.CreateDataCenter(in)
 	if err != nil {
-		h.audit(c, "CREATE", "data_center", nil, err)
 		writeAppError(c, err)
 		return
 	}
-	id := item.ID
-	h.audit(c, "CREATE", "data_center", &id, nil)
 	response.OK(c, item)
 }
 
@@ -183,11 +180,9 @@ func (h *ResourceHandler) UpdateDataCenter(c *gin.Context) {
 	}
 	item, err := h.service.UpdateDataCenter(id, version, in)
 	if err != nil {
-		h.audit(c, "UPDATE", "data_center", &id, err)
 		writeAppError(c, err)
 		return
 	}
-	h.audit(c, "UPDATE", "data_center", &id, nil)
 	response.OK(c, item)
 }
 
@@ -202,11 +197,9 @@ func (h *ResourceHandler) DeleteDataCenter(c *gin.Context) {
 	}
 	err := h.service.DeleteDataCenter(id, version)
 	if err != nil {
-		h.audit(c, "DELETE", "data_center", &id, err)
 		writeAppError(c, err)
 		return
 	}
-	h.audit(c, "DELETE", "data_center", &id, nil)
 	response.OK(c, gin.H{"deleted": true})
 }
 
@@ -222,12 +215,9 @@ func (h *ResourceHandler) CreateRoom(c *gin.Context) {
 	}
 	item, err := h.service.CreateRoom(dcID, in)
 	if err != nil {
-		h.audit(c, "CREATE", "room", nil, err)
 		writeAppError(c, err)
 		return
 	}
-	id := item.ID
-	h.audit(c, "CREATE", "room", &id, nil)
 	response.OK(c, item)
 }
 
@@ -247,11 +237,9 @@ func (h *ResourceHandler) UpdateRoom(c *gin.Context) {
 	}
 	item, err := h.service.UpdateRoom(id, version, in)
 	if err != nil {
-		h.audit(c, "UPDATE", "room", &id, err)
 		writeAppError(c, err)
 		return
 	}
-	h.audit(c, "UPDATE", "room", &id, nil)
 	response.OK(c, item)
 }
 
@@ -266,11 +254,9 @@ func (h *ResourceHandler) DeleteRoom(c *gin.Context) {
 	}
 	err := h.service.DeleteRoom(id, version)
 	if err != nil {
-		h.audit(c, "DELETE", "room", &id, err)
 		writeAppError(c, err)
 		return
 	}
-	h.audit(c, "DELETE", "room", &id, nil)
 	response.OK(c, gin.H{"deleted": true})
 }
 
@@ -286,12 +272,9 @@ func (h *ResourceHandler) CreateRack(c *gin.Context) {
 	}
 	item, err := h.service.CreateRack(roomID, in)
 	if err != nil {
-		h.audit(c, "CREATE", "rack", nil, err)
 		writeAppError(c, err)
 		return
 	}
-	id := item.ID
-	h.audit(c, "CREATE", "rack", &id, nil)
 	response.OK(c, item)
 }
 
@@ -311,11 +294,9 @@ func (h *ResourceHandler) UpdateRack(c *gin.Context) {
 	}
 	item, err := h.service.UpdateRack(id, version, in)
 	if err != nil {
-		h.audit(c, "UPDATE", "rack", &id, err)
 		writeAppError(c, err)
 		return
 	}
-	h.audit(c, "UPDATE", "rack", &id, nil)
 	response.OK(c, item)
 }
 
@@ -330,11 +311,9 @@ func (h *ResourceHandler) DeleteRack(c *gin.Context) {
 	}
 	err := h.service.DeleteRack(id, version)
 	if err != nil {
-		h.audit(c, "DELETE", "rack", &id, err)
 		writeAppError(c, err)
 		return
 	}
-	h.audit(c, "DELETE", "rack", &id, nil)
 	response.OK(c, gin.H{"deleted": true})
 }
 
@@ -350,12 +329,9 @@ func (h *ResourceHandler) CopyDataCenter(c *gin.Context) {
 	}
 	item, err := h.service.CopyDataCenter(id, in)
 	if err != nil {
-		h.audit(c, "COPY", "data_center", &id, err)
 		writeAppError(c, err)
 		return
 	}
-	newID := item.ID
-	h.audit(c, "COPY", "data_center", &newID, nil)
 	response.OK(c, item)
 }
 
@@ -371,12 +347,9 @@ func (h *ResourceHandler) CopyRoom(c *gin.Context) {
 	}
 	item, err := h.service.CopyRoom(id, in)
 	if err != nil {
-		h.audit(c, "COPY", "room", &id, err)
 		writeAppError(c, err)
 		return
 	}
-	newID := item.ID
-	h.audit(c, "COPY", "room", &newID, nil)
 	response.OK(c, item)
 }
 
@@ -396,11 +369,9 @@ func (h *ResourceHandler) MoveRoom(c *gin.Context) {
 	}
 	item, err := h.service.MoveRoom(id, version, in)
 	if err != nil {
-		h.audit(c, "MOVE", "room", &id, err)
 		writeAppError(c, err)
 		return
 	}
-	h.audit(c, "MOVE", "room", &id, nil)
 	response.OK(c, item)
 }
 
@@ -416,12 +387,9 @@ func (h *ResourceHandler) CopyRack(c *gin.Context) {
 	}
 	item, err := h.service.CopyRack(id, in)
 	if err != nil {
-		h.audit(c, "COPY", "rack", &id, err)
 		writeAppError(c, err)
 		return
 	}
-	newID := item.ID
-	h.audit(c, "COPY", "rack", &newID, nil)
 	response.OK(c, item)
 }
 
@@ -441,31 +409,10 @@ func (h *ResourceHandler) MoveRack(c *gin.Context) {
 	}
 	item, err := h.service.MoveRack(id, version, in)
 	if err != nil {
-		h.audit(c, "MOVE", "rack", &id, err)
 		writeAppError(c, err)
 		return
 	}
-	h.audit(c, "MOVE", "rack", &id, nil)
 	response.OK(c, item)
-}
-
-func (h *ResourceHandler) audit(c *gin.Context, action, resourceType string, resourceID *uuid.UUID, err error) {
-	actor := middleware.UserID(c)
-	if actor == uuid.Nil {
-		return
-	}
-	rid, _ := c.Get(response.RequestIDKey)
-	requestID, _ := rid.(string)
-	result, errCode := "SUCCESS", ""
-	if err != nil {
-		result = "FAILURE"
-		if e, ok := apperr.As(err); ok {
-			errCode = e.Code
-		} else {
-			errCode = "INTERNAL_ERROR"
-		}
-	}
-	h.service.Audit(&actor, requestID, action, resourceType, resourceID, result, errCode)
 }
 
 func writeAppError(c *gin.Context, err error) {

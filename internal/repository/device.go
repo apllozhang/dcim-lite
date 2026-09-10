@@ -45,11 +45,11 @@ func (s *DeviceStore) UpdateDeviceType(item *model.DeviceType, expected uint) er
 		Updates(map[string]any{
 			"code": item.Code, "name": item.Name, "category": item.Category,
 			"status": item.Status, "default_height_u": item.DefaultHeightU,
-			"default_weight_kg": item.DefaultWeightKg,
+			"default_weight_kg":     item.DefaultWeightKg,
 			"default_rated_power_w": item.DefaultRatedPowerW,
-			"default_peak_power_w": item.DefaultPeakPowerW,
-			"default_dual_power": item.DefaultDualPower,
-			"description": item.Description, "sort_order": item.SortOrder,
+			"default_peak_power_w":  item.DefaultPeakPowerW,
+			"default_dual_power":    item.DefaultDualPower,
+			"description":           item.Description, "sort_order": item.SortOrder,
 			"version": gorm.Expr("version + 1"),
 		})
 	if res.Error != nil {
@@ -201,7 +201,7 @@ func (s *DeviceStore) UpdateDevice(item *model.Device, expected uint) error {
 			"management_ip": item.ManagementIP, "business_ip": item.BusinessIP,
 			"mac_address": item.MACAddress, "management_protocol": item.ManagementProtocol,
 			"monitoring_status": item.MonitoringStatus,
-			"external_qr_code": item.ExternalQRCode, "external_qr_code_url": item.ExternalQRCodeURL,
+			"external_qr_code":  item.ExternalQRCode, "external_qr_code_url": item.ExternalQRCodeURL,
 			"tags": item.Tags, "remarks": item.Remarks,
 			"version": gorm.Expr("version + 1"),
 		})

@@ -185,10 +185,10 @@ func RequireAdmin() gin.HandlerFunc {
 
 // RateLimit 单实例内存滑动窗口限流（按客户端 IP），用于登录等敏感端点。
 type rateWindow struct {
-	mu      sync.Mutex
-	hits    map[string][]time.Time
-	limit   int
-	window  time.Duration
+	mu     sync.Mutex
+	hits   map[string][]time.Time
+	limit  int
+	window time.Duration
 }
 
 // NewRateLimit 每个窗口期内每 IP 最多 limit 次请求，超出返回 429。

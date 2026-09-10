@@ -211,10 +211,10 @@ func ApplyTemplateToRack(t *model.RackTemplate, ver *model.RackTemplateVersion, 
 }
 
 type PDUService struct {
-	store  *repository.PDUStore
-	acks   *repository.ResourceStore
-	devs   *repository.DeviceStore
-	tmpl   *repository.TemplateStore
+	store *repository.PDUStore
+	acks  *repository.ResourceStore
+	devs  *repository.DeviceStore
+	tmpl  *repository.TemplateStore
 }
 
 func NewPDUService(store *repository.PDUStore, acks *repository.ResourceStore, devs *repository.DeviceStore) *PDUService {

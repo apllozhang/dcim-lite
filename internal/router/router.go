@@ -14,6 +14,7 @@ type Deps struct {
 	Secret    string
 	Users     middleware.UserFinder
 	Revoker   middleware.TokenRevoker
+	Audit     middleware.AuditWriter
 	Health    *handler.HealthHandler
 	Auth      *handler.AuthHandler
 	Res       *handler.ResourceHandler
@@ -43,6 +44,8 @@ func New(d Deps) *gin.Engine {
 	r.GET("/health/ready", d.Health.Ready)
 
 	v1 := r.Group("/api/v1")
+	// 全部非 GET 请求统一审计（含登录成败），落 audit_logs
+	v1.Use(middleware.Audit(d.Audit))
 	{
 		// 登录端点：每 IP 每分钟最多 10 次（含验证码），防定向爆破
 		login := v1.Group("", middleware.NewRateLimit(10, time.Minute))

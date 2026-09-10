@@ -33,25 +33,25 @@ type RackTemplate struct {
 
 type RackTemplateVersion struct {
 	BaseModel
-	TemplateID      uuid.UUID  `gorm:"type:uuid;not null;index;uniqueIndex:idx_rack_template_revision_active,where:deleted_at IS NULL" json:"templateId"`
-	Revision        int        `gorm:"not null;uniqueIndex:idx_rack_template_revision_active,where:deleted_at IS NULL" json:"revision"`
-	Type            string     `gorm:"size:50;not null;default:STANDARD" json:"type"`
-	Manufacturer    string     `gorm:"size:100" json:"manufacturer,omitempty"`
-	ModelNumber     string     `gorm:"size:100" json:"modelNumber,omitempty"`
-	UHeight         int        `gorm:"not null;default:42" json:"uHeight"`
-	WidthMm         int        `gorm:"not null;default:600" json:"widthMm"`
-	DepthMm         int        `gorm:"not null;default:1200" json:"depthMm"`
-	HeightMm        int        `gorm:"not null;default:2000" json:"heightMm"`
-	LoadCapacityKg  *float64   `json:"loadCapacityKg,omitempty"`
-	DualPower       bool       `gorm:"not null;default:false" json:"dualPower"`
-	InputCircuits   int        `gorm:"not null;default:0" json:"inputCircuits"`
-	RatedVoltage    *float64   `json:"ratedVoltage,omitempty"`
-	RatedCurrent    *float64   `json:"ratedCurrent,omitempty"`
-	RatedPowerKw    *float64   `json:"ratedPowerKw,omitempty"`
-	PeakPowerKw     *float64   `json:"peakPowerKw,omitempty"`
-	PDUCount        int        `gorm:"not null;default:0" json:"pduCount"`
-	ChangeNote      string     `gorm:"size:500" json:"changeNote,omitempty"`
-	CreatedBy       *uuid.UUID `gorm:"type:uuid" json:"createdBy,omitempty"`
+	TemplateID     uuid.UUID  `gorm:"type:uuid;not null;index;uniqueIndex:idx_rack_template_revision_active,where:deleted_at IS NULL" json:"templateId"`
+	Revision       int        `gorm:"not null;uniqueIndex:idx_rack_template_revision_active,where:deleted_at IS NULL" json:"revision"`
+	Type           string     `gorm:"size:50;not null;default:STANDARD" json:"type"`
+	Manufacturer   string     `gorm:"size:100" json:"manufacturer,omitempty"`
+	ModelNumber    string     `gorm:"size:100" json:"modelNumber,omitempty"`
+	UHeight        int        `gorm:"not null;default:42" json:"uHeight"`
+	WidthMm        int        `gorm:"not null;default:600" json:"widthMm"`
+	DepthMm        int        `gorm:"not null;default:1200" json:"depthMm"`
+	HeightMm       int        `gorm:"not null;default:2000" json:"heightMm"`
+	LoadCapacityKg *float64   `json:"loadCapacityKg,omitempty"`
+	DualPower      bool       `gorm:"not null;default:false" json:"dualPower"`
+	InputCircuits  int        `gorm:"not null;default:0" json:"inputCircuits"`
+	RatedVoltage   *float64   `json:"ratedVoltage,omitempty"`
+	RatedCurrent   *float64   `json:"ratedCurrent,omitempty"`
+	RatedPowerKw   *float64   `json:"ratedPowerKw,omitempty"`
+	PeakPowerKw    *float64   `json:"peakPowerKw,omitempty"`
+	PDUCount       int        `gorm:"not null;default:0" json:"pduCount"`
+	ChangeNote     string     `gorm:"size:500" json:"changeNote,omitempty"`
+	CreatedBy      *uuid.UUID `gorm:"type:uuid" json:"createdBy,omitempty"`
 }
 
 type PDU struct {
