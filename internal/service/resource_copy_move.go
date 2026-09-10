@@ -18,6 +18,8 @@ type CopyMoveInput struct {
 	Name               string     `json:"name" binding:"required,max=150"`
 	TargetDataCenterID *uuid.UUID `json:"targetDataCenterId"`
 	TargetRoomID       *uuid.UUID `json:"targetRoomId"`
+	// Version 为厂商基线风格：move 类接口的乐观锁版本可以放在请求体（套件与前端用 body，重建原先只认 query）。
+	Version uint `json:"version"`
 }
 
 func (s *ResourceService) CopyDataCenter(id uuid.UUID, in CopyMoveInput) (*model.DataCenter, error) {

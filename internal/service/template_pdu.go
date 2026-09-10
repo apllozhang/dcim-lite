@@ -90,9 +90,12 @@ func (s *TemplateService) Update(id uuid.UUID, in TemplateUpdateInput) (*model.R
 		}
 		return nil, err
 	}
-	if in.Name != "" {
-		t.Name = in.Name
+	// 厂商基线要求模板名称非空且 <=150（S16-TPL-UPD-EMPTY-NAME 差分用例）
+	name := strings.TrimSpace(in.Name)
+	if name == "" || len([]rune(name)) > 150 {
+		return nil, apperr.InvalidResource("模板名称不能为空且不能超过 150 个字符")
 	}
+	t.Name = name
 	t.Description = in.Description
 	t.Remarks = in.Remarks
 	if in.Status != "" {
@@ -114,7 +117,7 @@ func (s *TemplateService) Delete(id uuid.UUID, version uint) error {
 		return err
 	}
 	if t.IsSystem {
-		return apperr.New(409, "SYSTEM_TEMPLATE", "系统内置模板不可删除")
+		return apperr.New(409, "SYSTEM_TEMPLATE_PROTECTED", "系统内置模板不可删除")
 	}
 	return mapStoreErr(s.store.SoftDelete(id, version))
 }
@@ -322,8 +325,8 @@ func (s *PDUService) Delete(id uuid.UUID, version uint) error {
 		return err
 	}
 	if err := s.store.SoftDeletePDU(id, version); err != nil {
-		if repository.IsBizCode(err, "HAS_CHILDREN") {
-			return apperr.New(409, "HAS_CHILDREN", "PDU 下存在插座，无法删除")
+		if repository.IsBizCode(err, "RESOURCE_HAS_CHILDREN") {
+			return apperr.New(409, "RESOURCE_HAS_CHILDREN", "PDU 下存在插座，无法删除")
 		}
 		return mapStoreErr(err)
 	}
@@ -357,7 +360,7 @@ func (s *PDUService) CreateSocket(pduID uuid.UUID, in SocketInput) (*model.PDUSo
 	if err := s.store.CreateSocket(item); err != nil {
 		if repository.IsUniqueViolation(err) {
 			// D2: 旧 500 → 409
-			return nil, apperr.New(409, "DUPLICATE_CODE", "插座编号已存在")
+			return nil, apperr.New(409, "RESOURCE_CODE_DUPLICATE", "插座编号已存在")
 		}
 		return nil, err
 	}
@@ -380,7 +383,7 @@ func (s *PDUService) UpdateSocket(id uuid.UUID, in SocketInput) (*model.PDUSocke
 	next.Label, next.Status = in.Label, in.Status
 	if err := s.store.UpdateSocket(&next, existing.Version); err != nil {
 		if repository.IsUniqueViolation(err) {
-			return nil, apperr.New(409, "DUPLICATE_CODE", "插座编号已存在")
+			return nil, apperr.New(409, "RESOURCE_CODE_DUPLICATE", "插座编号已存在")
 		}
 		return nil, mapStoreErr(err)
 	}
@@ -395,9 +398,9 @@ func (s *PDUService) DeleteSocket(id uuid.UUID, version uint) error {
 		return err
 	}
 	if err := s.store.SoftDeleteSocket(id, version); err != nil {
-		if repository.IsBizCode(err, "SOCKET_CONNECTED") {
+		if repository.IsBizCode(err, "PDU_SOCKET_CONNECTED") {
 			// 契约：已连接阻止删除
-			return apperr.New(409, "SOCKET_CONNECTED", "插座已连接设备，无法删除")
+			return apperr.New(409, "PDU_SOCKET_CONNECTED", "插座已连接设备，无法删除")
 		}
 		return mapStoreErr(err)
 	}
@@ -426,7 +429,7 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 			return err
 		}
 		if sock.Status == model.SocketConnected {
-			return apperr.New(409, "SOCKET_CONNECTED", "插座已被占用")
+			return apperr.New(409, "PDU_SOCKET_CONNECTED", "插座已被占用")
 		}
 		pdu, err := store.GetPDU(sock.PDUID)
 		if err != nil {
@@ -463,7 +466,7 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 		}
 		if has {
 			// D3: 旧 500 → 409
-			return apperr.New(409, "SOCKET_CONNECTED", "该设备此供电角色已连接")
+			return apperr.New(409, "PDU_SOCKET_CONNECTED", "该设备此供电角色已连接")
 		}
 		conn := &model.PDUConnection{
 			SocketID: sock.ID, DeviceID: dev.ID, PowerW: in.PowerW,
@@ -472,7 +475,7 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 		}
 		if err := store.CreateConnection(conn); err != nil {
 			if repository.IsUniqueViolation(err) {
-				return apperr.New(409, "SOCKET_CONNECTED", "插座或供电角色已占用")
+				return apperr.New(409, "PDU_SOCKET_CONNECTED", "插座或供电角色已占用")
 			}
 			return err
 		}

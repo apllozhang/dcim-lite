@@ -185,17 +185,17 @@ type fixture struct {
 func newFixture(t *testing.T, prefix string) fixture {
 	t.Helper()
 	st, dc := call("POST", "/api/v1/data-centers", map[string]any{"code": prefix + "-DC" + short(), "name": "it"}, adminTok)
-	if st != 200 {
+	if st != 200 && st != 201 {
 		t.Fatalf("create dc: %d %v", st, dc)
 	}
 	dcID := data(dc)["id"].(string)
 	st, room := call("POST", "/api/v1/data-centers/"+dcID+"/rooms", map[string]any{"code": "R", "name": "it"}, adminTok)
-	if st != 200 {
+	if st != 200 && st != 201 {
 		t.Fatalf("create room: %d %v", st, room)
 	}
 	roomID := data(room)["id"].(string)
 	st, rack := call("POST", "/api/v1/rooms/"+roomID+"/racks", map[string]any{"code": "K", "name": "it", "uHeight": 20}, adminTok)
-	if st != 200 {
+	if st != 200 && st != 201 {
 		t.Fatalf("create rack: %d %v", st, rack)
 	}
 	rackID := data(rack)["id"].(string)
@@ -218,7 +218,7 @@ func createDevice(t *testing.T, fx fixture, code string, heightU int) string {
 	st, dev := call("POST", "/api/v1/devices", map[string]any{
 		"typeId": fx.typeID, "code": code, "name": "it", "heightU": heightU,
 	}, adminTok)
-	if st != 200 {
+	if st != 200 && st != 201 {
 		t.Fatalf("create device %s: %d %v", code, st, dev)
 	}
 	return data(dev)["id"].(string)
@@ -342,7 +342,7 @@ func TestApproveRollbackKeepsPending(t *testing.T) {
 	approvalID := data(pend)["id"].(string)
 
 	st, body := call("POST", "/api/v1/admin/approvals/"+approvalID+"/approve", map[string]any{}, adminTok)
-	if st != 409 || code(body) != "U_SLOT_CONFLICT" {
+	if st != 409 || code(body) != "RACK_U_CONFLICT" {
 		t.Fatalf("approve should hit U_SLOT_CONFLICT, got %d %v", st, body)
 	}
 
@@ -434,7 +434,7 @@ func TestImportCommitRollbackZeroResidue(t *testing.T) {
 // V1 验收：乐观锁 version 不匹配 → 409 RESOURCE_VERSION。
 func TestOptimisticLockConflict(t *testing.T) {
 	st, dc := call("POST", "/api/v1/data-centers", map[string]any{"code": "OL-DC" + short(), "name": "it"}, adminTok)
-	if st != 200 {
+	if st != 200 && st != 201 {
 		t.Fatalf("create dc: %d", st)
 	}
 	id := data(dc)["id"].(string)
@@ -446,7 +446,7 @@ func TestOptimisticLockConflict(t *testing.T) {
 	}
 	st, body := call("PUT", "/api/v1/data-centers/"+id+"?version="+version,
 		map[string]any{"code": "OL-DC3" + short(), "name": "v3"}, adminTok)
-	if st != 409 || code(body) != "RESOURCE_VERSION" {
+	if st != 409 || code(body) != "RESOURCE_VERSION_CONFLICT" {
 		t.Fatalf("stale update must 409 RESOURCE_VERSION, got %d %v", st, body)
 	}
 }
@@ -477,7 +477,7 @@ func TestLastAdminConcurrentDemote(t *testing.T) {
 		"username": "itadmin2-" + suffix, "displayName": "二号管理员",
 		"password": "ItAdmin2#2026!", "roleCodes": []string{"system_admin", "user"}, "enabled": true,
 	}, adminTok)
-	if st != 200 {
+	if st != 200 && st != 201 {
 		t.Fatalf("create second admin: %d %v", st, created)
 	}
 	adminID := data(created)["id"].(string)
@@ -545,7 +545,7 @@ func TestRackDeleteProtection(t *testing.T) {
 		t.Fatal("rack not found in list")
 	}
 	st, body := call("DELETE", "/api/v1/racks/"+fx.rackID+"?version="+version, nil, adminTok)
-	if st != 409 || code(body) != "HAS_CHILDREN" {
+	if st != 409 || code(body) != "RESOURCE_HAS_CHILDREN" {
 		t.Fatalf("delete occupied rack must 409 HAS_CHILDREN, got %d %v", st, body)
 	}
 }

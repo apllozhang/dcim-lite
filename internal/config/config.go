@@ -13,6 +13,7 @@ type Config struct {
 	DatabaseURL      string
 	JWTSecret        string
 	JWTExpiresIn     time.Duration
+	LoginRatePerMin  int
 	AdminUser        string
 	AdminPass        string
 	AdminDisplayName string
@@ -38,6 +39,17 @@ func Load() (*Config, error) {
 		ttl = n
 	}
 	cfg.JWTExpiresIn = time.Duration(ttl) * time.Second
+
+	// 登录端点限流（每 IP 每分钟），默认 10；自动化测试与压测场景可调高
+	rate := 10
+	if v := os.Getenv("LOGIN_RATE_LIMIT_PER_MIN"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n <= 0 {
+			return nil, fmt.Errorf("invalid LOGIN_RATE_LIMIT_PER_MIN: %q", v)
+		}
+		rate = n
+	}
+	cfg.LoginRatePerMin = rate
 
 	if cfg.DatabaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL is required")

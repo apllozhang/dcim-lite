@@ -119,7 +119,7 @@ func (s *ApprovalService) Reject(id uuid.UUID, version uint, comment string, act
 		return nil, err
 	}
 	if rec.Status != model.ApprovalPending {
-		return nil, apperr.New(409, "APPROVAL_STATE", "审批单已处理")
+		return nil, apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已处理")
 	}
 	if actor == nil {
 		return nil, apperr.Forbidden()
@@ -127,7 +127,7 @@ func (s *ApprovalService) Reject(id uuid.UUID, version uint, comment string, act
 	if err := s.store.Decide(id, version, model.ApprovalRejected, *actor, comment); err != nil {
 		// 条件更新失败：并发已处理或 version 过期，统一按状态冲突拒绝
 		if repository.IsVersionConflict(err) {
-			return nil, apperr.New(409, "APPROVAL_STATE", "审批单已被并发处理或版本过期，请刷新")
+			return nil, apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已被并发处理或版本过期，请刷新")
 		}
 		return nil, mapStoreErr(err)
 	}
@@ -145,7 +145,7 @@ func (s *ApprovalService) Approve(id uuid.UUID, version uint, comment string, ac
 		return nil, err
 	}
 	if rec.Status != model.ApprovalPending {
-		return nil, apperr.New(409, "APPROVAL_STATE", "审批单已处理")
+		return nil, apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已处理")
 	}
 	if actor == nil {
 		return nil, apperr.Forbidden()
@@ -155,7 +155,7 @@ func (s *ApprovalService) Approve(id uuid.UUID, version uint, comment string, ac
 		// 1. 条件更新审批单：仍为 PENDING（且 version 匹配时校验乐观锁），并发批准只有一个成功
 		if err := s.store.WithTx(tx).Decide(id, version, model.ApprovalApproved, *actor, comment); err != nil {
 			if repository.IsVersionConflict(err) {
-				return apperr.New(409, "APPROVAL_STATE", "审批单已被并发处理或版本过期，请刷新")
+				return apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已被并发处理或版本过期，请刷新")
 			}
 			return err
 		}
@@ -168,7 +168,7 @@ func (s *ApprovalService) Approve(id uuid.UUID, version uint, comment string, ac
 			return err
 		}
 		if rec.RequestedDeviceVersion != 0 && dev.Version != rec.RequestedDeviceVersion {
-			return apperr.New(409, "APPROVAL_STATE", "设备已被修改，请重新申请")
+			return apperr.New(409, "APPROVAL_STATE_CONFLICT", "设备已被修改，请重新申请")
 		}
 		// 3. 执行设备位置变更（与审批决定同事务，含履历）
 		op, requireOff := model.OpAssign, true

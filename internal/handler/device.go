@@ -43,7 +43,7 @@ func (h *DeviceHandler) CreateDeviceType(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *DeviceHandler) UpdateDeviceType(c *gin.Context) {
@@ -141,7 +141,7 @@ func (h *DeviceHandler) CreateDevice(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *DeviceHandler) UpdateDevice(c *gin.Context) {

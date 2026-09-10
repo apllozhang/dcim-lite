@@ -161,7 +161,7 @@ func (h *ResourceHandler) CreateDataCenter(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *ResourceHandler) UpdateDataCenter(c *gin.Context) {
@@ -218,7 +218,7 @@ func (h *ResourceHandler) CreateRoom(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *ResourceHandler) UpdateRoom(c *gin.Context) {
@@ -275,7 +275,7 @@ func (h *ResourceHandler) CreateRack(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *ResourceHandler) UpdateRack(c *gin.Context) {
@@ -332,7 +332,7 @@ func (h *ResourceHandler) CopyDataCenter(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *ResourceHandler) CopyRoom(c *gin.Context) {
@@ -350,7 +350,7 @@ func (h *ResourceHandler) CopyRoom(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *ResourceHandler) MoveRoom(c *gin.Context) {
@@ -358,13 +358,13 @@ func (h *ResourceHandler) MoveRoom(c *gin.Context) {
 	if !ok {
 		return
 	}
-	version, ok := queryVersion(c)
-	if !ok {
-		return
-	}
 	var in service.CopyMoveInput
 	if err := c.ShouldBindJSON(&in); err != nil {
 		writeAppError(c, apperr.InvalidResource("%s", bindMessage(err)))
+		return
+	}
+	version, ok := versionParam(c, in.Version)
+	if !ok {
 		return
 	}
 	item, err := h.service.MoveRoom(id, version, in)
@@ -390,7 +390,7 @@ func (h *ResourceHandler) CopyRack(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *ResourceHandler) MoveRack(c *gin.Context) {
@@ -398,13 +398,13 @@ func (h *ResourceHandler) MoveRack(c *gin.Context) {
 	if !ok {
 		return
 	}
-	version, ok := queryVersion(c)
-	if !ok {
-		return
-	}
 	var in service.CopyMoveInput
 	if err := c.ShouldBindJSON(&in); err != nil {
 		writeAppError(c, apperr.InvalidResource("%s", bindMessage(err)))
+		return
+	}
+	version, ok := versionParam(c, in.Version)
+	if !ok {
 		return
 	}
 	item, err := h.service.MoveRack(id, version, in)
@@ -444,6 +444,24 @@ func queryVersion(c *gin.Context) (uint, bool) {
 		return 0, false
 	}
 	return uint(n), true
+}
+
+// versionParam 取乐观锁版本：优先 query（PUT/DELETE 约定），其次请求体
+// （厂商基线的 move 类接口把 version 放在 body，套件与 ALE 前端均如此）。
+func versionParam(c *gin.Context, bodyVersion uint) (uint, bool) {
+	if raw := c.Query("version"); raw != "" {
+		n, err := strconv.ParseUint(raw, 10, 32)
+		if err != nil || n == 0 {
+			response.Fail(c, http.StatusBadRequest, "INVALID_RESOURCE", "invalid resource: version 必须为正整数")
+			return 0, false
+		}
+		return uint(n), true
+	}
+	if bodyVersion > 0 {
+		return bodyVersion, true
+	}
+	response.Fail(c, http.StatusBadRequest, "INVALID_RESOURCE", "invalid resource: 缺少 version 参数")
+	return 0, false
 }
 
 func bindMessage(err error) string {

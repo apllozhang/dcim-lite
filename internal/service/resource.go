@@ -549,12 +549,12 @@ func (s *ResourceService) DeleteRack(id uuid.UUID, version uint) error {
 	if n, err := s.store.CountActivePositions(id); err != nil {
 		return err
 	} else if n > 0 {
-		return apperr.New(409, "HAS_CHILDREN", "机柜内存在在位设备，无法删除")
+		return apperr.New(409, "RESOURCE_HAS_CHILDREN", "机柜内存在在位设备，无法删除")
 	}
 	if n, err := s.store.CountPDUsByRack(id); err != nil {
 		return err
 	} else if n > 0 {
-		return apperr.New(409, "HAS_CHILDREN", "机柜下存在 PDU，无法删除")
+		return apperr.New(409, "RESOURCE_HAS_CHILDREN", "机柜下存在 PDU，无法删除")
 	}
 	return mapStoreErr(s.store.SoftDeleteRack(id, version))
 }

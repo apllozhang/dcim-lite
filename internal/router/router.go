@@ -11,22 +11,23 @@ import (
 )
 
 type Deps struct {
-	Secret    string
-	Users     middleware.UserFinder
-	Revoker   middleware.TokenRevoker
-	Audit     middleware.AuditWriter
-	Health    *handler.HealthHandler
-	Auth      *handler.AuthHandler
-	Res       *handler.ResourceHandler
-	Device    *handler.DeviceHandler
-	Admin     *handler.AdminHandler
-	Template  *handler.TemplateHandler
-	PDU       *handler.PDUHandler
-	Approval  *handler.ApprovalHandler
-	LDAP      *handler.LDAPHandler
-	Import    *handler.ImportHandler
-	ImportTpl *handler.ImportTemplateHandler
-	GinMode   string
+	Secret          string
+	LoginRatePerMin int
+	Users           middleware.UserFinder
+	Revoker         middleware.TokenRevoker
+	Audit           middleware.AuditWriter
+	Health          *handler.HealthHandler
+	Auth            *handler.AuthHandler
+	Res             *handler.ResourceHandler
+	Device          *handler.DeviceHandler
+	Admin           *handler.AdminHandler
+	Template        *handler.TemplateHandler
+	PDU             *handler.PDUHandler
+	Approval        *handler.ApprovalHandler
+	LDAP            *handler.LDAPHandler
+	Import          *handler.ImportHandler
+	ImportTpl       *handler.ImportTemplateHandler
+	GinMode         string
 }
 
 func New(d Deps) *gin.Engine {
@@ -37,7 +38,7 @@ func New(d Deps) *gin.Engine {
 	r.Use(middleware.RequestID(), middleware.Recovery(), gin.Logger())
 
 	r.NoRoute(func(c *gin.Context) {
-		response.Fail(c, 404, "NOT_FOUND", "接口不存在")
+		response.Fail(c, 404, "RESOURCE_NOT_FOUND", "接口不存在")
 	})
 
 	r.GET("/health/live", d.Health.Live)
@@ -47,8 +48,12 @@ func New(d Deps) *gin.Engine {
 	// 全部非 GET 请求统一审计（含登录成败），落 audit_logs
 	v1.Use(middleware.Audit(d.Audit))
 	{
-		// 登录端点：每 IP 每分钟最多 10 次（含验证码），防定向爆破
-		login := v1.Group("", middleware.NewRateLimit(10, time.Minute))
+		// 登录端点：每 IP 限流（默认 10/分钟，LOGIN_RATE_LIMIT_PER_MIN 可调），防定向爆破
+		limit := d.LoginRatePerMin
+		if limit <= 0 {
+			limit = 10
+		}
+		login := v1.Group("", middleware.NewRateLimit(limit, time.Minute))
 		{
 			login.POST("/auth/login", d.Auth.Login)
 			login.GET("/auth/captcha", d.Auth.Captcha)

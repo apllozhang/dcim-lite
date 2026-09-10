@@ -292,8 +292,8 @@ func (s *PDUStore) DeviceHasRoleConnection(deviceID uuid.UUID, role string) (boo
 }
 
 var (
-	errHasChildren     = &bizErr{"HAS_CHILDREN"}
-	errSocketConnected = &bizErr{"SOCKET_CONNECTED"}
+	errHasChildren     = &bizErr{"RESOURCE_HAS_CHILDREN"}
+	errSocketConnected = &bizErr{"PDU_SOCKET_CONNECTED"}
 	errPDURackMismatch = &bizErr{"PDU_DEVICE_RACK_MISMATCH"}
 	errSocketBusy      = &bizErr{"SOCKET_UNAVAILABLE"}
 )

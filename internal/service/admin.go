@@ -29,6 +29,16 @@ type UserAdminInput struct {
 	AuthSource  string   `json:"authSource"`
 	Enabled     *bool    `json:"enabled"`
 	RoleCodes   []string `json:"roleCodes"`
+	// Roles 为厂商基线字段名（roles），与 roleCodes 等价；两者都传时以 roleCodes 为准。
+	Roles []string `json:"roles"`
+}
+
+// desiredRoleCodes 兼容厂商的 roles 字段命名。
+func (in UserAdminInput) desiredRoleCodes() []string {
+	if len(in.RoleCodes) > 0 {
+		return in.RoleCodes
+	}
+	return in.Roles
 }
 
 type ResetPasswordInput struct {
@@ -64,7 +74,7 @@ func (s *AdminService) CreateUser(in UserAdminInput) (*model.User, error) {
 	if in.Enabled != nil {
 		enabled = *in.Enabled
 	}
-	roles, err := s.resolveRoles(in.RoleCodes)
+	roles, err := s.resolveRoles(in.desiredRoleCodes())
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +114,12 @@ func (s *AdminService) UpdateUser(id uuid.UUID, version uint, in UserAdminInput)
 		}
 		in.Username = strings.TrimSpace(in.Username)
 		in.DisplayName = strings.TrimSpace(in.DisplayName)
-		if in.Username == "" || in.DisplayName == "" {
-			return apperr.InvalidResource("用户名和显示名称不能为空")
+		// 厂商基线允许部分更新：未传的字段保留原值（S11-USER-DISABLE 等差分用例）
+		if in.Username == "" {
+			in.Username = existing.Username
+		}
+		if in.DisplayName == "" {
+			in.DisplayName = existing.DisplayName
 		}
 		if in.AuthSource == "" {
 			in.AuthSource = existing.AuthSource
@@ -114,9 +128,15 @@ func (s *AdminService) UpdateUser(id uuid.UUID, version uint, in UserAdminInput)
 		if in.Enabled != nil {
 			enabled = *in.Enabled
 		}
-		roles, err := s.resolveRoles(in.RoleCodes)
-		if err != nil {
-			return err
+		desired := in.desiredRoleCodes()
+		var roles []model.Role
+		if len(desired) == 0 {
+			roles = existing.Roles // 未提供角色 → 保留现有
+		} else {
+			roles, err = s.resolveRoles(desired)
+			if err != nil {
+				return err
+			}
 		}
 		// 最后管理员保护：禁止停用或去掉 system_admin
 		if existing.HasRole("system_admin") && (!enabled || !hasRoleCode(roles, "system_admin")) {
@@ -125,7 +145,7 @@ func (s *AdminService) UpdateUser(id uuid.UUID, version uint, in UserAdminInput)
 				return err
 			}
 			if n == 0 {
-				return apperr.New(409, "LAST_ADMIN", "不能停用或降级最后一个管理员")
+				return apperr.New(409, "LAST_ADMIN_PROTECTED", "不能停用或降级最后一个管理员")
 			}
 		}
 		// 用户名冲突
@@ -160,7 +180,7 @@ func (s *AdminService) DeleteUser(id uuid.UUID, version uint) error {
 				return err
 			}
 			if n == 0 {
-				return apperr.New(409, "LAST_ADMIN", "不能删除最后一个管理员")
+				return apperr.New(409, "LAST_ADMIN_PROTECTED", "不能删除最后一个管理员")
 			}
 		}
 		return mapStoreErr(users.SoftDeleteUser(id, version))

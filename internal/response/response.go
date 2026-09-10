@@ -34,6 +34,16 @@ func OK(c *gin.Context, data interface{}) {
 	})
 }
 
+// Created 资源创建成功：与厂商基线一致返回 201（绑定/校验失败仍为 4xx）。
+func Created(c *gin.Context, data interface{}) {
+	c.JSON(http.StatusCreated, Envelope{
+		Code:      "SUCCESS",
+		Message:   "操作成功",
+		Data:      data,
+		RequestID: requestID(c),
+	})
+}
+
 func Fail(c *gin.Context, status int, code, message string) {
 	c.AbortWithStatusJSON(status, Envelope{
 		Code:      code,

@@ -74,10 +74,23 @@ type DeviceInput struct {
 }
 
 type PositionChangeInput struct {
-	TargetRackID uuid.UUID `json:"targetRackId" binding:"required"`
-	StartU       int       `json:"startU" binding:"required"`
-	Orientation  string    `json:"orientation"`
-	Reason       string    `json:"reason"`
+	TargetRackID uuid.UUID `json:"targetRackId"`
+	// RackID 为厂商基线字段名（rackId），与 targetRackId 等价；ALE 前端使用此字段。
+	RackID      *uuid.UUID `json:"rackId"`
+	StartU      int        `json:"startU" binding:"required"`
+	Orientation string     `json:"orientation"`
+	Reason      string     `json:"reason"`
+}
+
+// desiredRackID 兼容厂商的 rackId 字段命名（差分回放实测：套件与 ALE 均用 rackId）。
+func (in PositionChangeInput) desiredRackID() (uuid.UUID, error) {
+	if in.TargetRackID != uuid.Nil {
+		return in.TargetRackID, nil
+	}
+	if in.RackID != nil && *in.RackID != uuid.Nil {
+		return *in.RackID, nil
+	}
+	return uuid.Nil, apperr.InvalidResource("缺少机柜 ID（rackId 或 targetRackId）")
 }
 
 type DecommissionInput struct {
@@ -115,6 +128,10 @@ func (s *DeviceService) CreateDeviceType(in DeviceTypeInput) (*model.DeviceType,
 	in.Name = strings.TrimSpace(in.Name)
 	if in.Category == "" {
 		return nil, apperr.InvalidResource("设备类型分类不能为空")
+	}
+	// 厂商基线对未知分类返回 400（S14-VAL-DTYPE-CAT 差分用例）
+	if !validDeviceCategory(in.Category) {
+		return nil, apperr.InvalidResource("设备分类无效")
 	}
 	if in.Status == "" {
 		in.Status = "ACTIVE"
@@ -205,7 +222,8 @@ func (s *DeviceService) ListDevices(q repository.DeviceQuery) ([]model.Device, i
 
 func (s *DeviceService) CreateDevice(in DeviceInput) (*model.Device, error) {
 	if in.TypeID == nil {
-		return nil, apperr.InvalidResource("缺少 typeId")
+		// 厂商基线对缺失设备类型返回 404（S14-VAL-DEV-NOTYPE 差分用例）
+		return nil, apperr.NotFound("设备类型")
 	}
 	dt, err := s.devices.GetDeviceType(*in.TypeID)
 	if err != nil {
@@ -413,7 +431,11 @@ func (s *DeviceService) placeInTx(id uuid.UUID, in PositionChangeInput, actor *u
 			return nil, apperr.New(409, "INVALID_RESOURCE", "当前状态不可移位")
 		}
 	}
-	rack, err := s.acks.GetRack(in.TargetRackID)
+	rackID, err := in.desiredRackID()
+	if err != nil {
+		return nil, err
+	}
+	rack, err := s.acks.GetRack(rackID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("机柜")
@@ -451,7 +473,7 @@ func (s *DeviceService) placeInTx(id uuid.UUID, in PositionChangeInput, actor *u
 			continue
 		}
 		if rangesOverlap(in.StartU, endU, o.StartU, o.EndU) {
-			return nil, apperr.New(409, "U_SLOT_CONFLICT", "U 位区间与在位设备重叠")
+			return nil, apperr.New(409, "RACK_U_CONFLICT", "U 位区间与在位设备重叠")
 		}
 	}
 
@@ -472,7 +494,7 @@ func (s *DeviceService) placeInTx(id uuid.UUID, in PositionChangeInput, actor *u
 	}
 	if err := s.devices.PlaceInRack(pos, &model.RackUOccupancy{}); err != nil {
 		if repository.IsExclusionViolation(err) || repository.IsUniqueViolation(err) {
-			return nil, apperr.New(409, "U_SLOT_CONFLICT", "U 位区间与在位设备重叠")
+			return nil, apperr.New(409, "RACK_U_CONFLICT", "U 位区间与在位设备重叠")
 		}
 		return nil, err
 	}
@@ -610,4 +632,13 @@ func (s *DeviceService) writeHistory(deviceID uuid.UUID, op string, from, to *mo
 
 func rangesOverlap(aStart, aEnd, bStart, bEnd int) bool {
 	return aStart <= bEnd && bStart <= aEnd
+}
+
+// validDeviceCategory 设备分类枚举（与种子数据一致；厂商基线拒绝未知分类）。
+func validDeviceCategory(c string) bool {
+	switch c {
+	case "SERVER", "NETWORK", "STORAGE", "SECURITY", "POWER_ENVIRONMENT", "ACCESSORY":
+		return true
+	}
+	return false
 }

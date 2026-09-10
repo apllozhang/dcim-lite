@@ -31,23 +31,23 @@ func InvalidCredentials() *Error {
 }
 
 func NotFound(resource string) *Error {
-	return New(http.StatusNotFound, "NOT_FOUND", resource+"不存在")
+	return New(http.StatusNotFound, "RESOURCE_NOT_FOUND", resource+"不存在")
 }
 
 func DuplicateCode() *Error {
-	return New(http.StatusConflict, "DUPLICATE_CODE", "编码已存在")
+	return New(http.StatusConflict, "RESOURCE_CODE_DUPLICATE", "编码已存在")
 }
 
 func ResourceVersion() *Error {
-	return New(http.StatusConflict, "RESOURCE_VERSION", "资源版本冲突，请刷新后重试")
+	return New(http.StatusConflict, "RESOURCE_VERSION_CONFLICT", "资源版本冲突，请刷新后重试")
 }
 
 func HasChildren() *Error {
-	return New(http.StatusConflict, "HAS_CHILDREN", "存在下级资源，无法删除")
+	return New(http.StatusConflict, "RESOURCE_HAS_CHILDREN", "存在下级资源，无法删除")
 }
 
 func ParentDisabled() *Error {
-	return New(http.StatusConflict, "PARENT_DISABLED", "父级资源已停用")
+	return New(http.StatusConflict, "PARENT_RESOURCE_DISABLED", "父级资源已停用")
 }
 
 func Forbidden() *Error {

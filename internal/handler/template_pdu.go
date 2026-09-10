@@ -38,7 +38,7 @@ func (h *TemplateHandler) Create(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *TemplateHandler) Update(c *gin.Context) {
@@ -95,7 +95,7 @@ func (h *TemplateHandler) CreateVersion(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 type PDUHandler struct{ service *service.PDUService }
@@ -132,7 +132,7 @@ func (h *PDUHandler) Create(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *PDUHandler) Update(c *gin.Context) {
@@ -197,7 +197,7 @@ func (h *PDUHandler) CreateSocket(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *PDUHandler) UpdateSocket(c *gin.Context) {
@@ -263,7 +263,7 @@ func (h *PDUHandler) Connect(c *gin.Context) {
 		writeAppError(c, err)
 		return
 	}
-	response.OK(c, item)
+	response.Created(c, item)
 }
 
 func (h *PDUHandler) Disconnect(c *gin.Context) {
