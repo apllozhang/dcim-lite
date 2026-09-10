@@ -1,0 +1,731 @@
+/* ============================================================
+   ALE WebUI 主题覆盖 · cabinet-management-tool 换肤层
+   依据：《ALE WebUI 设计与实现指导规范 v4.1》
+   色调基准：ALE Networking 技术培训站参考实现（10.20.30.103:8899，
+   tokens.css 实测值）——浅色画布 + 白色表面 + 紫色强调 + 墨色文字。
+   原理：前端基于 Element Plus 3.0，样式全量走 --el-* 变量（实测
+   2482 处引用）。本文件在 element-plus 样式之后加载，只覆盖变量、
+   侧栏/登录页的少量颜色规则，不改 DOM 结构与文案。
+   说明：业务组件的 scoped 样式带 [data-v-xxx] 属性选择器（两段
+   权重），纯类名选择器会落败；el-menu 的颜色来自组件 props 内联
+   变量。因此下方少数规则使用 !important，这比匹配构建哈希的属性
+   选择器更能经受对方将来换包。
+   ============================================================ */
+
+:root {
+  /* ---- 品牌主色：ALE Purple（参考实现 --ale-purple-600/700）---- */
+  --el-color-primary: #6b489d;
+  --el-color-primary-dark-2: #4f3478;      /* --ale-purple-700，悬停/按下 */
+  --el-color-primary-light-3: #977fba;
+  --el-color-primary-light-5: #b5a4ce;
+  --el-color-primary-light-7: #d3c8e2;
+  --el-color-primary-light-8: #e1daeb;
+  --el-color-primary-light-9: #f1ecf7;     /* --ale-purple-100，浅底/悬停 */
+
+  /* ---- 成功语义色（ALE WebUI v4.1 §3.1 / §15）----
+     文字/边框用深色派生 #007A73；圆点/图标/图形用亮色 #00B2A9。
+     禁止自行发明红绿灯绿等非官方色。 ---- */
+  --ale-success-graphic: #00b2a9;
+  --ale-success-text: #007a73;
+  --ale-success-soft: #e6f2f1;
+  --el-color-success: #007a73;
+  --el-color-success-dark-2: #00625c;
+  --el-color-success-light-3: #4da19d;
+  --el-color-success-light-5: #80bdb9;
+  --el-color-success-light-7: #b3d8d6;
+  --el-color-success-light-8: #cce5e3;
+  --el-color-success-light-9: #e6f2f1;
+
+  --el-color-warning: #9a4707;
+  --el-color-warning-dark-2: #7b3906;
+  --el-color-warning-light-3: #b97e4d;
+  --el-color-warning-light-5: #cda383;
+  --el-color-warning-light-7: #e1c8b9;
+  --el-color-warning-light-8: #ebdacd;
+  --el-color-warning-light-9: #f5ece0;
+
+  --el-color-danger: #a50034;              /* --ale-red */
+  --el-color-danger-dark-2: #84002a;
+  --el-color-danger-light-3: #c04d6f;
+  --el-color-danger-light-5: #d2809a;
+  --el-color-danger-light-7: #e5b3c4;
+  --el-color-danger-light-8: #edccd6;
+  --el-color-danger-light-9: #f6e6e8;
+  --el-color-error: #a50034;
+  --el-color-error-dark-2: #84002a;
+  --el-color-error-light-3: #c04d6f;
+  --el-color-error-light-5: #d2809a;
+  --el-color-error-light-7: #e5b3c4;
+  --el-color-error-light-8: #edccd6;
+  --el-color-error-light-9: #f6e6e8;
+
+  --el-color-info: #006aa2;                /* 规范 §3.1 color-info，不再用紫色替代 */
+  --el-color-info-dark-2: #005585;
+  --el-color-info-light-3: #4d94c4;
+  --el-color-info-light-5: #80b3d5;
+  --el-color-info-light-7: #b3d1e6;
+  --el-color-info-light-8: #cce0ef;
+  --el-color-info-light-9: #e6eff7;
+
+  /* ---- 文本（参考实现 ink 色阶）---- */
+  --el-text-color-primary: #1a1a1a;        /* --ink-900 */
+  --el-text-color-regular: #4b4d50;        /* --ink-700 */
+  --el-text-color-secondary: #75787b;      /* --ink-500 */
+  --el-text-color-placeholder: #a8a9ac;
+  --el-text-color-disabled: #c0c1c4;
+
+  /* ---- 边框（参考实现 --line / --line-soft）---- */
+  --el-border-color: #d9d9d6;
+  --el-border-color-light: #e9e8e4;
+  --el-border-color-lighter: #eeede9;
+  --el-border-color-extra-light: #f4f3f0;
+  --el-border-color-dark: #c9c8c5;
+  --el-border-color-hover: #b9b8b4;
+
+  /* ---- 填充 / 背景（参考实现 --surface-soft #f7f7f5）---- */
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: #f7f7f5;
+  --el-bg-color-overlay: #ffffff;
+  --el-fill-color: #f4f3f1;
+  --el-fill-color-light: #f7f7f5;
+  --el-fill-color-lighter: #f9f9f8;
+  --el-fill-color-extra-light: #fbfbfa;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-dark: #eceae7;
+  --el-fill-color-darker: #e4e3e0;
+
+  --el-disabled-bg-color: #f7f7f5;
+  --el-disabled-text-color: #c0c1c4;
+  --el-disabled-border-color: #e9e8e4;
+
+  /* ---- 字体（参考实现 --font-sans）---- */
+  --el-font-family: "Trebuchet MS", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+
+  /* ---- 圆角（参考实现 --radius-sm 8 / --radius-md 12）---- */
+  --el-border-radius-small: 6px;
+  --el-border-radius-base: 8px;
+}
+
+/* ---- 全局基线 ---- */
+
+/* 键盘焦点可见性（规范 11 / 23，WCAG 2.2 AA） */
+:focus-visible {
+  outline: 2px solid #6b489d;
+  outline-offset: 2px;
+}
+
+/* 应用画布（参考实现 body 背景） */
+html,
+body {
+  background: #f7f7f5;
+}
+
+/* ---- 减少动效（规范 24，必须尊重系统设置）---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   品牌层（基于对编译产物实际结构的分析）
+   —— 原侧栏为深底 #172033 + el-menu 组件 props 写死的颜色；
+      参考实现是浅色侧栏，故整体翻白并改用 RGB 彩色 logo。
+   —— 登录页 .brand 原为纯文本标题，浅色卡片，补官方彩色 logo。
+   —— el-menu 的颜色来自组件 props 转成的内联变量，需 !important。
+   ============================================================ */
+
+/* 侧栏翻白（原 scoped 规则 .sidebar[data-v-x]{background:#172033}） */
+.el-container .sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid #d9d9d6;
+}
+
+/* 覆盖 el-menu 组件 props 的内联变量 */
+.sidebar .el-menu {
+  --el-menu-bg-color: #ffffff !important;
+  --el-menu-text-color: #4b4d50 !important;
+  --el-menu-active-color: #4f3478 !important;
+  --el-menu-hover-bg-color: #f1ecf7 !important;
+}
+
+/* 当前项：紫色浅底 + 左侧紫条（对应参考实现导航选中态） */
+.sidebar .el-menu-item.is-active {
+  background: #f1ecf7 !important;
+  box-shadow: inset 3px 0 0 #6b489d;
+}
+
+/* 侧栏品牌位：官方彩色 Logo（附录 D.2）
+   - 浅色背景彩色版；等比 height，禁止拉伸
+   - 与下方菜单文字左缘对齐（padding 0 20px，同 el-menu-item）
+   - 垂直居中；净空靠上下留白，不画侵入分隔线 */
+.sidebar .logo {
+  font-size: 0 !important;
+  color: transparent !important;
+  height: 68px !important;
+  line-height: normal !important;
+  padding: 0 20px !important;
+  margin-bottom: 6px !important;
+  border-bottom: none !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  background: none !important;
+}
+/* 用伪元素承载图，避免 flex 与 background 对齐误差 */
+.sidebar .logo::before {
+  content: "" !important;
+  display: block !important;
+  width: 148px !important;                 /* 约 388px 宽 @ 1000×382 等比 */
+  height: 56px !important;                 /* 148 / (1000/382) ≈ 56 */
+  background: url("/assets/ale-logo.png") no-repeat left center !important;
+  background-size: contain !important;
+  flex: 0 0 auto !important;
+}
+
+/* 登录页：官方彩色 logo 置于产品名上方（品牌在前） */
+.brand::before {
+  content: "";
+  display: block;
+  width: 150px;
+  height: 57px;                            /* 150 / (1000/382) ≈ 57，等比 */
+  margin: 0 auto 16px;
+  background: url("/assets/ale-logo.png") no-repeat center;
+  background-size: contain;
+}
+.login-page {
+  background: #f7f7f5 !important;          /* 原 #f3f6fb */
+}
+.brand h1 {
+  color: #1a1a1a !important;               /* 原 #1f2937 */
+}
+.brand p {
+  color: #75787b !important;               /* 原 #6b7280 */
+}
+
+/* 主内容区画布（原 #f7f8fa → 参考实现 --surface-soft） */
+.main-content {
+  background: #f7f7f5 !important;
+}
+
+/* ------------------------------------------------------------
+   宽表固定列（Element Plus 2.14.x）
+   fixed 列用 position:sticky 贴在容器右缘，会盖住中间可滚列
+   （机柜台账的「电源 / PDU」「负责人」）。取消 sticky，
+   让所有列进入同一横向滚动区，操作列不再压字。
+   ------------------------------------------------------------ */
+.main-content .el-table .el-table-fixed-column--right,
+.main-content .el-table .el-table-fixed-column--left,
+.main-content .el-table th.el-table-fixed-column--right,
+.main-content .el-table td.el-table-fixed-column--right,
+.main-content .el-table th.el-table-fixed-column--left,
+.main-content .el-table td.el-table-fixed-column--left {
+  position: static !important;
+  right: auto !important;
+  left: auto !important;
+  z-index: auto !important;
+  box-shadow: none !important;
+  background: inherit !important;
+}
+/* 旧版独立浮层（若仍生成）直接隐藏 */
+.main-content .el-table__fixed-right {
+  display: none !important;
+}
+.main-content .el-table__body-wrapper {
+  overflow-x: auto !important;
+}
+.main-content .el-table {
+  width: 100% !important;
+}
+.main-content .el-card.table-card,
+.main-content .el-card {
+  overflow: visible !important;
+}
+
+/* 表格可读性：单元格长文自动换行（表头仍单行） */
+.el-table .el-table__body td .cell,
+.el-table .el-table__body .cell,
+.main-content .el-table td .cell {
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.45 !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  max-height: none !important;
+}
+.el-table th .cell {
+  white-space: nowrap !important;
+}
+.el-table td,
+.el-table th {
+  vertical-align: middle !important;
+}
+/* 表头排序 caret（table-ux.js） */
+.el-table th.cmt-sortable,
+.el-table .el-table__cell.cmt-sortable {
+  cursor: pointer !important;
+  user-select: none !important;
+}
+.el-table th.cmt-sortable .cell::after,
+.el-table .el-table__cell.cmt-sortable .cell::after {
+  content: "↕";
+  margin-left: 4px;
+  opacity: 0.35;
+  font-size: 12px;
+}
+.el-table th.cmt-sort-asc .cell::after,
+.el-table .el-table__cell.cmt-sort-asc .cell::after {
+  content: "▲";
+  opacity: 0.9;
+  color: #6b489d;
+}
+.el-table th.cmt-sort-desc .cell::after,
+.el-table .el-table__cell.cmt-sort-desc .cell::after {
+  content: "▼";
+  opacity: 0.9;
+  color: #6b489d;
+}
+/* 列宽拖拽 */
+.el-table th.cmt-resizable,
+.el-table .el-table__cell.cmt-resizable {
+  position: relative !important;
+}
+.el-table th.cmt-resizable::before,
+.el-table .el-table__cell.cmt-resizable::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 2;
+}
+/* 操作列折叠 */
+.el-table .cmt-ops-cell {
+  text-align: center !important;
+}
+.el-table .cmt-ops-hidden {
+  display: none !important;
+}
+.cmt-ops-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d9d9d6;
+  border-radius: 6px;
+  background: #fff;
+  color: #4b4d50;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.cmt-ops-btn:hover {
+  background: #f1ecf7;
+  color: #6b489d;
+  border-color: #b5a4ce;
+}
+.cmt-ops-menu {
+  position: absolute;
+  z-index: 3000;
+  min-width: 120px;
+  background: #fff;
+  border: 1px solid #d9d9d6;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cmt-ops-item {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #4b4d50;
+  font-size: 14px;
+}
+.cmt-ops-item:hover {
+  background: #f1ecf7;
+  color: #6b489d;
+}
+.cmt-ops-item.danger {
+  color: #a50034;
+}
+.cmt-ops-item.danger:hover {
+  background: #f6e6e8;
+  color: #a50034;
+}
+
+/* 顶部 + 底部横向滚动条：与表体 scrollLeft 三方同步 */
+.cmt-hscroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 12px;
+  margin: 0 0 6px;
+  border-radius: 4px;
+  background: #f4f3f0;
+  border: 1px solid #e9e8e4;
+  scrollbar-width: thin;
+  flex-shrink: 0;
+}
+.cmt-hscroll--bottom {
+  margin: 6px 0 0;
+}
+.cmt-hscroll-inner {
+  height: 1px;
+}
+.cmt-hscroll::-webkit-scrollbar {
+  height: 10px;
+}
+.cmt-hscroll::-webkit-scrollbar-thumb {
+  background: #b5a4ce;
+  border-radius: 6px;
+}
+.cmt-hscroll::-webkit-scrollbar-track {
+  background: #f4f3f0;
+}
+
+/* 图形类 success（圆点/勾/进度）优先亮色 #00B2A9；文字类用 --el-color-success #007A73 */
+.el-progress__text,
+.el-step__head.is-success .el-step__icon,
+.el-icon.el-step__icon.is-success {
+  color: var(--ale-success-graphic) !important;
+}
+.el-step__head.is-success {
+  border-color: var(--ale-success-graphic) !important;
+  color: var(--ale-success-graphic) !important;
+}
+.el-step__title.is-success {
+  color: var(--ale-success-text) !important;
+}
+.el-tag.el-tag--success {
+  color: var(--ale-success-text) !important;
+  border-color: var(--el-color-success-light-5) !important;
+  background: var(--ale-success-soft) !important;
+}
+
+/* 顶栏：参考实现的签名细节——紫色下边线 */
+.topbar {
+  border-bottom: 3px solid #6b489d !important;
+}
+
+/* 仪表盘"开发进度"卡片内三个导航链接本应同色：原开发把
+   "打开机房大屏"写成 el-link type=success（绿色），与相邻两个
+   紫色 primary 链接不一致。导航链接统一主紫，语义绿不受影响。 */
+.next-card .el-link--success {
+  --el-color-success: var(--el-color-primary);
+}
+
+/* ============================================================
+   机房资源大屏：深蓝科技底色（参考"告警态势感知"类大屏风格）
+   原 .screen-page 为黑蓝偏青渐变（#0a3153→#030d1d），现为宝蓝；
+   左侧控制面板与主画布同步调蓝；青色高亮 #2dc8f0 与设备分类色保留。
+   ============================================================ */
+.screen-page {
+  background:
+    linear-gradient(rgba(80, 130, 230, 0.05) 1px, transparent 1px) 0 0 / 100% 46px,
+    linear-gradient(90deg, rgba(80, 130, 230, 0.05) 1px, transparent 1px) 0 0 / 46px 100%,
+    radial-gradient(circle at 75% 15%, #17429a 0, #0e2a6e 36%, #071a4a 78%) !important;
+}
+.control-panel {
+  border-right: 1px solid rgba(80, 150, 255, 0.3) !important;
+  background: linear-gradient(180deg, rgba(9, 30, 80, 0.97), rgba(5, 15, 44, 0.98)) !important;
+  box-shadow: 12px 0 40px rgba(0, 10, 40, 0.4) !important;
+}
+.canvas-shell {
+  border: 1px solid rgba(80, 150, 255, 0.35) !important;
+  background: rgba(8, 25, 66, 0.78) !important;
+  box-shadow: inset 0 0 50px rgba(20, 60, 160, 0.22), 0 10px 45px rgba(0, 5, 25, 0.3) !important;
+}
+.room-boundary {
+  border: 1px solid #2a4f96 !important;
+  background-color: #0a2154 !important;
+  background-image:
+    linear-gradient(rgba(60, 110, 200, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(60, 110, 200, 0.35) 1px, transparent 1px) !important;
+  background-size: 46px 46px, 46px 46px !important;
+}
+.rack-row-section {
+  border: 1px solid rgba(70, 130, 230, 0.4) !important;
+  background: rgba(11, 35, 90, 0.8) !important;
+}
+.room-card,
+.legend-card,
+.selected-card {
+  border: 1px solid rgba(70, 130, 230, 0.3) !important;
+  background: linear-gradient(135deg, rgba(14, 42, 110, 0.72), rgba(7, 22, 62, 0.66)) !important;
+}
+.stat-item {
+  border: 1px solid rgba(70, 130, 230, 0.26) !important;
+  background: rgba(9, 28, 76, 0.72) !important;
+}
+.screen-page .filter-bar {
+  border-bottom: 1px solid rgba(70, 130, 230, 0.28) !important;
+  background: rgba(6, 20, 56, 0.55) !important;
+}
+.screen-page .rack-card {
+  border: 1px solid #2c5aa8 !important;
+  background: linear-gradient(180deg, #0e2f70, #081c4c) !important;
+}
+.screen-page .rack-card.selected {
+  background: linear-gradient(180deg, #123a86, #0a2460) !important;
+}
+/* 大屏左下角操作按钮：原为深黑底+暗字，深蓝底上不可读 */
+.panel-actions button {
+  border: 1px solid rgba(90, 160, 255, 0.55) !important;
+  color: #cfe4ff !important;
+  background: rgba(20, 60, 150, 0.45) !important;
+}
+.panel-actions button:hover {
+  border-color: #2dc8f0 !important;
+  color: #e8f7ff !important;
+  background: rgba(45, 200, 240, 0.18) !important;
+}
+
+/* ============================================================
+   布局增强（rebuild 注入）：侧栏折叠 / 顶栏工具 / 暗色主题
+   ============================================================ */
+
+.cmt-collapse-btn {
+  position: absolute !important;
+  top: 10px;
+  right: 8px;
+  z-index: 5;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #d9d9d6;
+  border-radius: 6px;
+  background: #fff;
+  color: #4b4d50;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.cmt-collapse-btn:hover {
+  background: #f1ecf7;
+  color: #6b489d;
+  border-color: #b5a4ce;
+}
+
+.cmt-menu-icon {
+  display: inline-flex;
+  width: 20px;
+  margin-right: 8px;
+  vertical-align: middle;
+  opacity: 0.85;
+}
+.el-menu-item.is-active .cmt-menu-icon {
+  color: #6b489d;
+  opacity: 1;
+}
+
+/* 折叠态：图标栏 */
+.el-aside.sidebar.cmt-collapsed,
+.sidebar.cmt-collapsed {
+  width: 64px !important;
+  overflow: visible !important;
+}
+.el-aside.sidebar.cmt-collapsed .logo,
+.sidebar.cmt-collapsed .logo {
+  background-position: center center !important;
+  background-size: auto 28px !important;
+  padding: 8px 4px !important;
+  height: 48px !important;
+}
+.el-aside.sidebar.cmt-collapsed .el-menu {
+  width: 64px !important;
+  border-right: none !important;
+}
+.el-aside.sidebar.cmt-collapsed .el-menu-item {
+  padding: 0 22px !important;
+  height: 48px !important;
+  line-height: 48px !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-indent: -9999px !important;
+  position: relative !important;
+}
+.el-aside.sidebar.cmt-collapsed .el-menu-item .cmt-menu-icon {
+  position: absolute !important;
+  left: 22px !important;
+  top: 14px !important;
+  margin: 0 !important;
+  text-indent: 0 !important;
+}
+.el-aside.sidebar.cmt-collapsed .el-menu-item::after {
+  content: attr(data-tip);
+}
+.el-aside.sidebar.cmt-collapsed .collapse-btn,
+.sidebar.cmt-collapsed .cmt-collapse-btn {
+  position: relative !important;
+  top: auto;
+  right: auto;
+  margin: 8px auto 4px;
+  display: flex !important;
+}
+
+/* 顶栏工具按钮 */
+.cmt-top-tools {
+  display: inline-flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  margin-right: 12px !important;
+  vertical-align: middle !important;
+}
+.cmt-tool-btn {
+  min-width: 36px !important;
+  height: 32px !important;
+  padding: 0 8px !important;
+  border: 1px solid #d9d9d6 !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  color: #4b4d50 !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  line-height: 30px !important;
+}
+.cmt-tool-btn:hover {
+  background: #f1ecf7 !important;
+  color: #6b489d !important;
+  border-color: #b5a4ce !important;
+}
+.topbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+/* 暗色主题（data-theme=dark） */
+html[data-theme="dark"],
+body[data-theme="dark"] {
+  --el-bg-color: #1b1b1f !important;
+  --el-bg-color-page: #121216 !important;
+  --el-bg-color-overlay: #232328 !important;
+  --el-fill-color: #2a2a30 !important;
+  --el-fill-color-light: #2f2f36 !important;
+  --el-fill-color-lighter: #34343c !important;
+  --el-fill-color-extra-light: #3a3a44 !important;
+  --el-fill-color-dark: #222228 !important;
+  --el-text-color-primary: #ececf0 !important;
+  --el-text-color-regular: #c8c8d0 !important;
+  --el-text-color-secondary: #9a9aa3 !important;
+  --el-text-color-placeholder: #6e6e78 !important;
+  --el-text-color-disabled: #55555e !important;
+  --el-border-color: #3a3a44 !important;
+  --el-border-color-light: #32323a !important;
+  --el-border-color-lighter: #2c2c34 !important;
+  --el-border-color-extra-light: #282830 !important;
+  --el-border-color-dark: #484852 !important;
+  --el-mask-color: rgba(0, 0, 0, 0.6) !important;
+  --el-box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+  --el-box-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  color-scheme: dark;
+}
+html[data-theme="dark"] body,
+body[data-theme="dark"] {
+  background: #121216 !important;
+  color: #ececf0 !important;
+}
+html[data-theme="dark"] .el-container .sidebar,
+body[data-theme="dark"] .el-container .sidebar,
+html[data-theme="dark"] .sidebar,
+body[data-theme="dark"] .sidebar {
+  background: #1b1b1f !important;
+  border-right-color: #2c2c34 !important;
+}
+html[data-theme="dark"] .sidebar .el-menu,
+body[data-theme="dark"] .sidebar .el-menu {
+  --el-menu-bg-color: #1b1b1f !important;
+  --el-menu-text-color: #c8c8d0 !important;
+  --el-menu-active-color: #b5a4ce !important;
+  --el-menu-hover-bg-color: #2a2038 !important;
+}
+html[data-theme="dark"] .sidebar .el-menu-item.is-active,
+body[data-theme="dark"] .sidebar .el-menu-item.is-active {
+  background: #2a2038 !important;
+}
+html[data-theme="dark"] .main-content,
+body[data-theme="dark"] .main-content {
+  background: #121216 !important;
+}
+html[data-theme="dark"] .topbar,
+body[data-theme="dark"] .topbar {
+  background: #1b1b1f !important;
+  color: #ececf0 !important;
+}
+html[data-theme="dark"] .el-card,
+body[data-theme="dark"] .el-card {
+  background: #1b1b1f !important;
+  border-color: #2c2c34 !important;
+  color: #ececf0 !important;
+}
+html[data-theme="dark"] .el-table,
+body[data-theme="dark"] .el-table {
+  --el-table-bg-color: #1b1b1f !important;
+  --el-table-tr-bg-color: #1b1b1f !important;
+  --el-table-header-bg-color: #232328 !important;
+  --el-table-row-hover-bg-color: #2a2a30 !important;
+  --el-table-border-color: #32323a !important;
+  color: #c8c8d0 !important;
+  background: #1b1b1f !important;
+}
+html[data-theme="dark"] .el-table th,
+body[data-theme="dark"] .el-table th {
+  background: #232328 !important;
+  color: #ececf0 !important;
+}
+html[data-theme="dark"] .el-table td,
+body[data-theme="dark"] .el-table td,
+html[data-theme="dark"] .el-table__cell,
+body[data-theme="dark"] .el-table__cell {
+  background: #1b1b1f !important;
+  color: #c8c8d0 !important;
+  border-color: #32323a !important;
+}
+html[data-theme="dark"] .cmt-tool-btn,
+html[data-theme="dark"] .cmt-collapse-btn,
+body[data-theme="dark"] .cmt-tool-btn,
+body[data-theme="dark"] .cmt-collapse-btn {
+  background: #232328 !important;
+  border-color: #3a3a44 !important;
+  color: #c8c8d0 !important;
+}
+html[data-theme="dark"] .cmt-tool-btn:hover,
+html[data-theme="dark"] .cmt-collapse-btn:hover,
+body[data-theme="dark"] .cmt-tool-btn:hover,
+body[data-theme="dark"] .cmt-collapse-btn:hover {
+  background: #2a2038 !important;
+  color: #b5a4ce !important;
+}
+html[data-theme="dark"] .el-input__inner,
+html[data-theme="dark"] .el-textarea__inner,
+body[data-theme="dark"] .el-input__inner,
+body[data-theme="dark"] .el-textarea__inner {
+  background: #232328 !important;
+  border-color: #3a3a44 !important;
+  color: #ececf0 !important;
+}
+html[data-theme="dark"] .el-button,
+body[data-theme="dark"] .el-button {
+  --el-button-bg-color: #2a2a30;
+  --el-button-border-color: #3a3a44;
+  --el-button-text-color: #c8c8d0;
+}
+
+/* ============================================================
+   边界：结构层增强已迁入 rebuild 注入脚本 layout-enhance.js
+   ============================================================ */

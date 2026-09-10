@@ -1,0 +1,1 @@
+function n(e,o){return{...e,code:o?"":e.code,autoGenerateCode:o}}function r(e,o,t=!1){return!!o.trim()&&(t||!!e.trim())}function a(e){const o=e.code.trim();return{...e,code:o,autoGenerateCode:!o}}export{a,r as h,n as w};
