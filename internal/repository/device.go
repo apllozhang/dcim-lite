@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"dcim-lite/internal/model"
 )
@@ -173,6 +174,19 @@ func (s *DeviceStore) ListDevices(q DeviceQuery) ([]model.Device, int64, error) 
 func (s *DeviceStore) GetDevice(id uuid.UUID) (*model.Device, error) {
 	var item model.Device
 	err := s.db.Preload("Type").First(&item, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+// GetDeviceLock 读取设备并加行锁（FOR UPDATE）。审批事务用它锁定"申请时的设备版本"，
+// place/decommission 在写位置前用它锁定设备，统一跨聚合锁序（先设备行后机柜行），
+// 既消除"版本校验后设备被并发修改"的窗口，也避免审批与普通上架互相死锁。
+func (s *DeviceStore) GetDeviceLock(id uuid.UUID) (*model.Device, error) {
+	var item model.Device
+	err := s.db.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Preload("Type").First(&item, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

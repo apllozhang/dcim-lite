@@ -539,24 +539,30 @@ func (s *ResourceService) UpdateRack(id uuid.UUID, version uint, in RackInput) (
 }
 
 func (s *ResourceService) DeleteRack(id uuid.UUID, version uint) error {
-	if _, err := s.store.GetRack(id); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperr.NotFound("机柜")
+	err := s.store.DB().Transaction(func(tx *gorm.DB) error {
+		store := s.store.WithTx(tx)
+		// 先锁 rack 行再统计：与上架（placeInTx）、PDU 创建共用同一把行锁，
+		// 消除"检查通过后并发上架/接入 PDU"的 TOCTOU 窗口
+		if _, err := store.GetRackLock(id); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("机柜")
+			}
+			return err
 		}
-		return err
-	}
-	// R3：机柜下存在在位设备或 PDU 时禁止删除，避免软删后留下不可见的在位数据
-	if n, err := s.store.CountActivePositions(id); err != nil {
-		return err
-	} else if n > 0 {
-		return apperr.New(409, "RESOURCE_HAS_CHILDREN", "机柜内存在在位设备，无法删除")
-	}
-	if n, err := s.store.CountPDUsByRack(id); err != nil {
-		return err
-	} else if n > 0 {
-		return apperr.New(409, "RESOURCE_HAS_CHILDREN", "机柜下存在 PDU，无法删除")
-	}
-	return mapStoreErr(s.store.SoftDeleteRack(id, version))
+		// R3：机柜下存在在位设备或 PDU 时禁止删除，避免软删后留下不可见的在位数据
+		if n, err := store.CountActivePositions(id); err != nil {
+			return err
+		} else if n > 0 {
+			return apperr.New(409, "RESOURCE_HAS_CHILDREN", "机柜内存在在位设备，无法删除")
+		}
+		if n, err := store.CountPDUsByRack(id); err != nil {
+			return err
+		} else if n > 0 {
+			return apperr.New(409, "RESOURCE_HAS_CHILDREN", "机柜下存在 PDU，无法删除")
+		}
+		return store.SoftDeleteRack(id, version)
+	})
+	return mapStoreErr(err)
 }
 
 func mapStoreErr(err error) error {

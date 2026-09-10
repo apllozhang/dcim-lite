@@ -103,9 +103,13 @@ func (s *AdminService) CreateUser(in UserAdminInput) (*model.User, error) {
 }
 
 func (s *AdminService) UpdateUser(id uuid.UUID, version uint, in UserAdminInput) (*model.User, error) {
-	// 事务 + 目标用户行锁：并发修改/删除最后管理员时，不变量校验与写入串行化
+	// 事务 + 管理员集合不变量锁：先取事务级 advisory 锁再校验，两个事务各自降级
+	// 不同管理员的写偏斜（互降级双双放行、系统归零管理员）在此串行化
 	err := s.users.DB().Transaction(func(tx *gorm.DB) error {
 		users := s.users.WithTx(tx)
+		if err := users.LockAdminInvariant(tx); err != nil {
+			return err
+		}
 		existing, err := users.FindByIDLock(tx, id)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -168,6 +172,9 @@ func (s *AdminService) UpdateUser(id uuid.UUID, version uint, in UserAdminInput)
 func (s *AdminService) DeleteUser(id uuid.UUID, version uint) error {
 	return s.users.DB().Transaction(func(tx *gorm.DB) error {
 		users := s.users.WithTx(tx)
+		if err := users.LockAdminInvariant(tx); err != nil {
+			return err
+		}
 		existing, err := users.FindByIDLock(tx, id)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {

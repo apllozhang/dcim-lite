@@ -41,7 +41,7 @@ func (s *UserStore) FindByID(id uuid.UUID) (*model.User, error) {
 	return &u, nil
 }
 
-// FindByIDLock 读取用户并加行锁，供“最后管理员”校验等事务内不变量使用。
+// FindByIDLock 读取用户并加行锁，供事务内串行化对同一用户的并发修改。
 func (s *UserStore) FindByIDLock(tx *gorm.DB, id uuid.UUID) (*model.User, error) {
 	var u model.User
 	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
@@ -50,6 +50,17 @@ func (s *UserStore) FindByIDLock(tx *gorm.DB, id uuid.UUID) (*model.User, error)
 		return nil, err
 	}
 	return &u, nil
+}
+
+// adminInvariantLockKey 与迁移锁（872341001）区分；事务级 advisory 锁随事务结束自动释放。
+const adminInvariantLockKey = 872341002
+
+// LockAdminInvariant 取事务级 advisory 锁，串行化所有可能减少启用管理员的操作。
+// 只锁目标用户行防不住写偏斜：两个事务各自降级不同管理员时，都能读到对方
+// "仍是管理员"的已提交旧快照而双双放行，系统归零管理员。UpdateUser/DeleteUser
+// 的事务必须先取这把锁再做不变量校验。创建用户只会增加管理员数量，无需取锁。
+func (s *UserStore) LockAdminInvariant(tx *gorm.DB) error {
+	return tx.Exec(`SELECT pg_advisory_xact_lock(?)`, adminInvariantLockKey).Error
 }
 
 func (s *UserStore) FindByUsername(username string) (*model.User, error) {
@@ -483,6 +494,18 @@ func (s *ResourceStore) CountRacks(roomID uuid.UUID) (int64, error) {
 func (s *ResourceStore) GetRack(id uuid.UUID) (*model.Rack, error) {
 	var item model.Rack
 	err := s.db.First(&item, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+// GetRackLock 读取机柜并加行锁（FOR UPDATE）。是删除保护（DeleteRack）与
+// 上架（placeInTx）、PDU 创建（PDUService.Create）共用的串行化点：删除侧与
+// 创建侧必须锁同一行，否则"检查通过后并发上架"的窗口无法消除。
+func (s *ResourceStore) GetRackLock(id uuid.UUID) (*model.Rack, error) {
+	var item model.Rack
+	err := s.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&item, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

@@ -165,8 +165,9 @@ func (s *ApprovalService) Approve(id uuid.UUID, version uint, comment string, ac
 			}
 			return err
 		}
-		// 2. 校验设备自申请以来未被修改
-		dev, err := s.devices.WithTx(tx).GetDevice(rec.DeviceID)
+		// 2. 锁定设备行并校验自申请以来未被修改：锁内校验、锁内执行，
+		//    消除"版本检查通过后设备被并发编辑/移位"的竞态窗口
+		dev, err := s.devices.WithTx(tx).GetDeviceLock(rec.DeviceID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return apperr.NotFound("设备")

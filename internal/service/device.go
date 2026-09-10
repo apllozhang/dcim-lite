@@ -434,7 +434,10 @@ func (s *DeviceService) place(id uuid.UUID, in PositionChangeInput, actor *uuid.
 }
 
 func (s *DeviceService) placeInTx(id uuid.UUID, in PositionChangeInput, actor *uuid.UUID, requestID, op string, requireOff bool) (*model.Device, error) {
-	dev, err := s.devices.GetDevice(id)
+	// 锁序约定：先设备行、后机柜行（与审批事务、机柜删除、PDU 创建的加锁顺序一致，避免死锁）。
+	// 设备行锁同时保证审批的版本校验与后续写入之间无窗口；机柜行锁与 DeleteRack 构成
+	// 删除保护边界——锁内读到的机柜必然未被软删，锁释放前也不会被删除。
+	dev, err := s.devices.GetDeviceLock(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("设备")
@@ -454,7 +457,7 @@ func (s *DeviceService) placeInTx(id uuid.UUID, in PositionChangeInput, actor *u
 	if err != nil {
 		return nil, err
 	}
-	rack, err := s.acks.GetRack(rackID)
+	rack, err := s.acks.GetRackLock(rackID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("机柜")
@@ -549,7 +552,8 @@ func (s *DeviceService) Decommission(id uuid.UUID, in DecommissionInput, actor *
 }
 
 func (s *DeviceService) decommissionInTx(id uuid.UUID, in DecommissionInput, actor *uuid.UUID, requestID string) (*model.Device, error) {
-	dev, err := s.devices.GetDevice(id)
+	// 与 place 相同的设备行锁：状态检查与位置移除之间无并发窗口
+	dev, err := s.devices.GetDeviceLock(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("设备")
