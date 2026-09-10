@@ -7,9 +7,11 @@
 package integration
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -33,6 +35,8 @@ var (
 	testApp  *app.App
 	server   *httptest.Server
 	adminTok string
+	// userTok 为普通用户（无 system_admin 角色）令牌，权限矩阵测试用
+	userTok string
 	// testDB 供个别测试做 API 之外的兜底恢复（如互降级测试中 itadmin 暂时失去管理员）
 	testDB *gorm.DB
 )
@@ -68,12 +72,21 @@ func TestMain(m *testing.M) {
 		// 与生产一致的强度要求（32+ 字节）
 		JWTSecret:    "integration-test-secret-32bytes!!",
 		JWTExpiresIn: 2 * time.Hour,
+		// 权限矩阵等测试会在 1 分钟内多次登录（mustLogin 每次消耗 captcha+login 两格），
+		// 测试环境放宽限流；生产行为不受影响
+		LoginRatePerMin: 200,
 	}
 	testApp = app.Build(db, cfg)
 	server = httptest.NewServer(testApp.Engine)
 	defer server.Close()
 
 	adminTok = mustLogin("itadmin", "ItAdmin#2026!")
+
+	// 权限矩阵测试用的普通用户（已存在则忽略 409）
+	call("POST", "/api/v1/admin/users", map[string]any{
+		"username": "ituser", "displayName": "普通用户", "password": "ItUser#2026!",
+		"roleCodes": []string{"user"}, "enabled": true}, adminTok)
+	userTok = mustLogin("ituser", "ItUser#2026!")
 	os.Exit(m.Run())
 }
 
@@ -1081,5 +1094,95 @@ func TestImportDraftOwnerMismatch(t *testing.T) {
 		map[string]any{"token": token, "decisions": []any{}}, adminTok)
 	if st != 200 {
 		t.Fatalf("owner commit must succeed, got %d %v", st, done)
+	}
+}
+
+// P1-10 复评验收：全路由权限矩阵。对 RouteInventory 清单中的每条路由，
+// 以匿名/普通用户/管理员三种身份实测，结果必须与声明的权限级别完全一致；
+// 同时断言管理员的合法请求不产生 5xx（顺带兜住 handler panic）。
+// 路由清单来自 app.RouteInventory（单一事实源，与 TestRouteInventory 同源），
+// 新增路由未登记权限级别时本测试直接失败。
+func TestAuthMatrixAllRoutes(t *testing.T) {
+	fakeID := "00000000-0000-0000-0000-000000000001"
+	paramRe := regexp.MustCompile(`:[^/]+`)
+
+	// 部分路由需要特判请求体，避免执行真实副作用：
+	// - PUT /admin/approval-policy 回填当前值，净零变化
+	// - POST /auth/logout 会吊销发送它的 token，管理员态改用一次性登录令牌
+	currentPolicy := map[string]any{}
+	if st, p := call("GET", "/api/v1/admin/approval-policy", nil, adminTok); st == 200 {
+		currentPolicy["assignApprovalEnabled"] = data(p)["assignApprovalEnabled"]
+	}
+	bodyFor := func(spec app.RouteSpec) map[string]any {
+		if spec.Method == "PUT" && spec.Path == "/api/v1/admin/approval-policy" {
+			return currentPolicy
+		}
+		return nil
+	}
+
+	type stance struct {
+		name string
+		tok  string
+	}
+	// 路由的期望判定：allowed = 非 401/403/5xx，deny401 = 401，deny403 = 403
+	check := func(t *testing.T, spec app.RouteSpec, s stance, want func(st int) bool, why string) {
+		t.Helper()
+		url := server.URL + paramRe.ReplaceAllString(spec.Path, fakeID)
+		var bodyReader io.Reader
+		if spec.Method != "GET" {
+			b, _ := json.Marshal(bodyFor(spec))
+			bodyReader = bytes.NewReader(b)
+		}
+		req, _ := http.NewRequest(spec.Method, url, bodyReader)
+		req.Header.Set("Content-Type", "application/json")
+		if s.tok != "" {
+			req.Header.Set("Authorization", "Bearer "+s.tok)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Errorf("%s %s [%s]: request error %v", spec.Method, spec.Path, s.name, err)
+			return
+		}
+		defer resp.Body.Close()
+		st := resp.StatusCode
+		if !want(st) {
+			t.Errorf("%s %s [%s]: %s, got %d", spec.Method, spec.Path, s.name, why, st)
+		}
+	}
+
+	for _, spec := range app.RouteInventory() {
+		// logout 会吊销发送它的 token：任何已登录身份态都用一次性令牌发送，
+		// 避免消耗测试主令牌（userTok/adminTok）
+		if spec.Method == "POST" && spec.Path == "/api/v1/auth/logout" {
+			check(t, spec, stance{"匿名", ""}, func(st int) bool { return st == 401 }, "must reject anonymous with 401")
+			check(t, spec, stance{"普通用户一次性", mustLogin("ituser", "ItUser#2026!")}, func(st int) bool { return st != 401 && st != 403 && st < 500 }, "must allow any authenticated user")
+			continue
+		}
+		switch spec.Auth {
+		case "public":
+			check(t, spec, stance{"匿名", ""}, func(st int) bool { return st != 401 && st != 403 && st < 500 }, "public must be reachable anonymously")
+			check(t, spec, stance{"普通用户", userTok}, func(st int) bool { return st != 401 && st != 403 && st < 500 }, "public must ignore roles")
+			// 管理员态：public 路由无额外保证，跳过（login/captcha/health 已在匿名覆盖）
+		case "user":
+			check(t, spec, stance{"匿名", ""}, func(st int) bool { return st == 401 }, "must reject anonymous with 401")
+			check(t, spec, stance{"普通用户", userTok}, func(st int) bool { return st != 401 && st != 403 && st < 500 }, "must allow any authenticated user")
+			// 管理员态见下（与 admin 路由统一处理）
+		case "admin":
+			check(t, spec, stance{"匿名", ""}, func(st int) bool { return st == 401 }, "must reject anonymous with 401")
+			check(t, spec, stance{"普通用户", userTok}, func(st int) bool { return st == 403 }, "must reject non-admin with 403")
+		}
+	}
+
+	// 管理员态：user/admin 全部路由必须放行（非 401/403/5xx）
+	for _, spec := range app.RouteInventory() {
+		if spec.Auth == "public" {
+			continue
+		}
+		tok := adminTok
+		if spec.Method == "POST" && spec.Path == "/api/v1/auth/logout" {
+			// logout 吊销发送它的 token，不能消耗测试主令牌
+			tok = mustLogin("itadmin", "ItAdmin#2026!")
+		}
+		check(t, spec, stance{"管理员", tok}, func(st int) bool { return st != 401 && st != 403 && st < 500 }, "must allow system_admin")
 	}
 }
