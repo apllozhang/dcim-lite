@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"dcim-lite/internal/model"
 )
@@ -136,6 +137,18 @@ func (s *PDUStore) GetPDU(id uuid.UUID) (*model.PDU, error) {
 	return &item, nil
 }
 
+// GetPDULock 读取 PDU 并加行锁（FOR UPDATE）。Connect/Delete/ForceArchive 共用
+// 该串行化点：连接操作不更新 PDU version，单靠乐观锁挡不住"确认影响清单后并发
+// 新增连接"，归档会把用户未确认的连接一并断开。
+func (s *PDUStore) GetPDULock(id uuid.UUID) (*model.PDU, error) {
+	var item model.PDU
+	err := s.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&item, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
 func (s *PDUStore) CreatePDU(item *model.PDU) error {
 	return s.db.Create(item).Error
 }
@@ -174,20 +187,26 @@ func (s *PDUStore) CountActiveConnectionsByPDU(pduID uuid.UUID) (int64, error) {
 // 调用方必须已确认无活动连接，否则会产生「设备由已删除 PDU 供电」的孤儿记录。
 func (s *PDUStore) SoftDeletePDUWithSockets(id uuid.UUID, expected uint) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		res := tx.Model(&model.PDU{}).
-			Where("id = ? AND version = ?", id, expected).
-			Updates(map[string]any{"deleted_at": time.Now(), "version": gorm.Expr("version + 1")})
-		if res.Error != nil {
-			return res.Error
-		}
-		if res.RowsAffected == 0 {
-			return errVersion()
-		}
-		return tx.Model(&model.PDUSocket{}).
-			Where("pdu_id = ?", id).
-			Updates(map[string]any{"deleted_at": time.Now(), "version": gorm.Expr("version + 1")}).
-			Error
+		return s.WithTx(tx).SoftDeletePDUWithSocketsTx(id, expected)
 	})
+}
+
+// SoftDeletePDUWithSocketsTx 在调用方事务内执行级联软删（不开新事务），
+// 供服务层把行锁、连接复核与删除放进同一事务。
+func (s *PDUStore) SoftDeletePDUWithSocketsTx(id uuid.UUID, expected uint) error {
+	res := s.db.Model(&model.PDU{}).
+		Where("id = ? AND version = ?", id, expected).
+		Updates(map[string]any{"deleted_at": time.Now(), "version": gorm.Expr("version + 1")})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errVersion()
+	}
+	return s.db.Model(&model.PDUSocket{}).
+		Where("pdu_id = ?", id).
+		Updates(map[string]any{"deleted_at": time.Now(), "version": gorm.Expr("version + 1")}).
+		Error
 }
 
 func (s *PDUStore) CodeExistsPDU(code string, exclude uuid.UUID) (bool, error) {
@@ -232,27 +251,33 @@ func (s *PDUStore) PDUImpact(pduID uuid.UUID) (int64, []PDUImpactRow, error) {
 // 仅在调用方已确认影响清单后使用（服务层强制二次确认）。
 func (s *PDUStore) ForceArchivePDU(id uuid.UUID, expected uint) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		now := time.Now()
-		if err := tx.Model(&model.PDUConnection{}).
-			Where("socket_id IN (SELECT id FROM pdu_sockets WHERE pdu_id = ?)", id).
-			Updates(map[string]any{"deleted_at": now, "version": gorm.Expr("version + 1")}).Error; err != nil {
-			return err
-		}
-		if err := tx.Model(&model.PDUSocket{}).Where("pdu_id = ?", id).
-			Updates(map[string]any{"deleted_at": now, "version": gorm.Expr("version + 1")}).Error; err != nil {
-			return err
-		}
-		res := tx.Model(&model.PDU{}).
-			Where("id = ? AND version = ?", id, expected).
-			Updates(map[string]any{"deleted_at": now, "version": gorm.Expr("version + 1")})
-		if res.Error != nil {
-			return res.Error
-		}
-		if res.RowsAffected == 0 {
-			return errVersion()
-		}
-		return nil
+		return s.WithTx(tx).ForceArchivePDUTx(id, expected)
 	})
+}
+
+// ForceArchivePDUTx 在调用方事务内执行强制归档（不开新事务），
+// 供服务层把行锁、影响清单复检、归档与审计放进同一事务。
+func (s *PDUStore) ForceArchivePDUTx(id uuid.UUID, expected uint) error {
+	now := time.Now()
+	if err := s.db.Model(&model.PDUConnection{}).
+		Where("socket_id IN (SELECT id FROM pdu_sockets WHERE pdu_id = ?)", id).
+		Updates(map[string]any{"deleted_at": now, "version": gorm.Expr("version + 1")}).Error; err != nil {
+		return err
+	}
+	if err := s.db.Model(&model.PDUSocket{}).Where("pdu_id = ?", id).
+		Updates(map[string]any{"deleted_at": now, "version": gorm.Expr("version + 1")}).Error; err != nil {
+		return err
+	}
+	res := s.db.Model(&model.PDU{}).
+		Where("id = ? AND version = ?", id, expected).
+		Updates(map[string]any{"deleted_at": now, "version": gorm.Expr("version + 1")})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errVersion()
+	}
+	return nil
 }
 
 func (s *PDUStore) ListSockets(pduID uuid.UUID) ([]model.PDUSocket, error) {

@@ -270,36 +270,47 @@ func (s *PDUService) ListByRack(rackID uuid.UUID) ([]model.PDU, error) {
 }
 
 func (s *PDUService) Create(rackID uuid.UUID, in PDUInput) (*model.PDU, error) {
-	if _, err := s.acks.GetRack(rackID); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperr.NotFound("机柜")
+	var created *model.PDU
+	err := s.store.DB().Transaction(func(tx *gorm.DB) error {
+		store := s.store.WithTx(tx)
+		acks := s.acks.WithTx(tx)
+		// 锁 rack 行：与机柜删除保护共用串行化点，杜绝软删机柜下新增 PDU
+		if _, err := acks.GetRackLock(rackID); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("机柜")
+			}
+			return err
 		}
-		return nil, err
-	}
-	if in.Status == "" {
-		in.Status = model.PDUActive
-	}
-	exists, err := s.store.CodeExistsPDU(in.Code, uuid.Nil)
+		if in.Status == "" {
+			in.Status = model.PDUActive
+		}
+		exists, err := store.CodeExistsPDU(in.Code, uuid.Nil)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return apperr.DuplicateCode()
+		}
+		item := &model.PDU{
+			RackID: rackID, Code: strings.TrimSpace(in.Code), Name: strings.TrimSpace(in.Name),
+			Manufacturer: in.Manufacturer, ModelNumber: in.ModelNumber, SerialNumber: in.SerialNumber,
+			InputVoltage: in.InputVoltage, RatedPowerW: in.RatedPowerW, RatedCurrentA: in.RatedCurrentA,
+			Status: in.Status, Remarks: in.Remarks,
+		}
+		if err := store.CreatePDU(item); err != nil {
+			if repository.IsUniqueViolation(err) {
+				// D1: 旧 500 → 409 DUPLICATE_CODE
+				return apperr.DuplicateCode()
+			}
+			return err
+		}
+		created = item
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	if exists {
-		return nil, apperr.DuplicateCode()
-	}
-	item := &model.PDU{
-		RackID: rackID, Code: strings.TrimSpace(in.Code), Name: strings.TrimSpace(in.Name),
-		Manufacturer: in.Manufacturer, ModelNumber: in.ModelNumber, SerialNumber: in.SerialNumber,
-		InputVoltage: in.InputVoltage, RatedPowerW: in.RatedPowerW, RatedCurrentA: in.RatedCurrentA,
-		Status: in.Status, Remarks: in.Remarks,
-	}
-	if err := s.store.CreatePDU(item); err != nil {
-		if repository.IsUniqueViolation(err) {
-			// D1: 旧 500 → 409 DUPLICATE_CODE
-			return nil, apperr.DuplicateCode()
-		}
-		return nil, err
-	}
-	return item, nil
+	return created, nil
 }
 
 func (s *PDUService) Update(id uuid.UUID, in PDUInput) (*model.PDU, error) {
@@ -325,24 +336,28 @@ func (s *PDUService) Update(id uuid.UUID, in PDUInput) (*model.PDU, error) {
 }
 
 func (s *PDUService) Delete(id uuid.UUID, version uint) error {
-	if _, err := s.store.GetPDU(id); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperr.NotFound("PDU")
+	return s.store.DB().Transaction(func(tx *gorm.DB) error {
+		store := s.store.WithTx(tx)
+		// 删除边界画在「连接」上（见 docs/COMPAT-DECISIONS.md 的 D5 决策）：
+		// 插座是 PDU 的构成部分，随 PDU 一起下线；只要还有设备在取电就拒绝，
+		// 避免台账出现「由已删除 PDU 供电」的记录。
+		// 锁 PDU 行后再计数：与 Connect 串行化，杜绝"计数为零后并发接入新连接"。
+		if _, err := store.GetPDULock(id); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("PDU")
+			}
+			return err
 		}
-		return err
-	}
-	// 删除边界画在「连接」上（见 docs/COMPAT-DECISIONS.md 的 D5 决策）：
-	// 插座是 PDU 的构成部分，随 PDU 一起下线；只要还有设备在取电就拒绝，
-	// 避免台账出现「由已删除 PDU 供电」的记录。
-	conns, err := s.store.CountActiveConnectionsByPDU(id)
-	if err != nil {
-		return err
-	}
-	if conns > 0 {
-		return apperr.New(409, "PDU_IN_USE",
-			fmt.Sprintf("该 PDU 正在为设备供电（%d 条连接），请先断开连接后再删除", conns))
-	}
-	return mapStoreErr(s.store.SoftDeletePDUWithSockets(id, version))
+		conns, err := store.CountActiveConnectionsByPDU(id)
+		if err != nil {
+			return err
+		}
+		if conns > 0 {
+			return apperr.New(409, "PDU_IN_USE",
+				fmt.Sprintf("该 PDU 正在为设备供电（%d 条连接），请先断开连接后再删除", conns))
+		}
+		return mapStoreErr(store.SoftDeletePDUWithSocketsTx(id, version))
+	})
 }
 
 // PDUImpactDevice 影响清单里的设备条目。
@@ -374,11 +389,11 @@ func (s *PDUService) Impact(id uuid.UUID) (*PDUImpactResult, error) {
 		}
 		return nil, err
 	}
-	return s.impactOf(pdu)
+	return s.impactOf(s.store, pdu)
 }
 
-func (s *PDUService) impactOf(pdu *model.PDU) (*PDUImpactResult, error) {
-	sockets, rows, err := s.store.PDUImpact(pdu.ID)
+func (s *PDUService) impactOf(store *repository.PDUStore, pdu *model.PDU) (*PDUImpactResult, error) {
+	sockets, rows, err := store.PDUImpact(pdu.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -408,37 +423,51 @@ type ForceArchiveInput struct {
 
 // ForceArchive 管理员强制归档 PDU：二次确认（须回报连接数）+ 必填原因 + 审计留痕。
 // 用于「PDU 报废但设备仍在用」的现场处置场景（见 docs/COMPAT-DECISIONS.md D5）。
+// 确认校验在 PDU 行锁内以重读的影响清单为准：客户端从 Impact 接口拿到的连接数
+// 若已过期（期间并发接入了新连接），提交会被 409 拒绝，绝不归档未确认的连接。
 func (s *PDUService) ForceArchive(id uuid.UUID, in ForceArchiveInput, actor *uuid.UUID, requestID string) (*PDUImpactResult, error) {
-	pdu, err := s.store.GetPDU(id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperr.NotFound("PDU")
-		}
-		return nil, err
-	}
-	impact, err := s.impactOf(pdu)
-	if err != nil {
-		return nil, err
-	}
 	if strings.TrimSpace(in.Reason) == "" {
 		return nil, apperr.InvalidResource("强制归档必须填写原因")
 	}
-	// 二次确认：客户端必须先取得影响清单，并把连接数回报回来
-	if in.ConfirmConnections != int(impact.Connections) {
-		return nil, apperr.New(409, "IMPACT_CONFIRMATION_REQUIRED",
-			fmt.Sprintf("请先确认影响清单：该 PDU 下有 %d 条活动连接，需以 confirmConnections=%d 重新提交",
-				impact.Connections, impact.Connections))
-	}
-	if err := s.store.ForceArchivePDU(id, in.Version); err != nil {
+	var result *PDUImpactResult
+	err := s.store.DB().Transaction(func(tx *gorm.DB) error {
+		store := s.store.WithTx(tx)
+		pdu, err := store.GetPDULock(id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("PDU")
+			}
+			return err
+		}
+		// 锁内重读影响清单：Connect 也锁同一行，从复检到归档执行之间不可能新增连接
+		impact, err := s.impactOf(store, pdu)
+		if err != nil {
+			return err
+		}
+		if in.ConfirmConnections != int(impact.Connections) {
+			return apperr.New(409, "IMPACT_CONFIRMATION_REQUIRED",
+				fmt.Sprintf("影响清单已变化：该 PDU 现有 %d 条活动连接，请以 confirmConnections=%d 重新获取并提交",
+					impact.Connections, impact.Connections))
+		}
+		if err := store.ForceArchivePDUTx(id, in.Version); err != nil {
+			return err
+		}
+		// 详细审计与归档同事务：合规敏感动作不做 best-effort，审计写失败则归档一并回滚
+		if err := s.writeArchiveAudit(tx, pdu, impact, in, actor, requestID); err != nil {
+			return err
+		}
+		result = impact
+		return nil
+	})
+	if err != nil {
 		return nil, mapStoreErr(err)
 	}
-	s.writeArchiveAudit(pdu, impact, in, actor, requestID)
-	return impact, nil
+	return result, nil
 }
 
-// writeArchiveAudit 强制归档留痕：影响清单 + 原因写入 audit_logs（失败不影响归档结果，但记录告警）。
-func (s *PDUService) writeArchiveAudit(pdu *model.PDU, impact *PDUImpactResult,
-	in ForceArchiveInput, actor *uuid.UUID, requestID string) {
+// writeArchiveAudit 强制归档留痕：影响清单 + 原因写入 audit_logs（在归档事务内执行）。
+func (s *PDUService) writeArchiveAudit(tx *gorm.DB, pdu *model.PDU, impact *PDUImpactResult,
+	in ForceArchiveInput, actor *uuid.UUID, requestID string) error {
 	payload, _ := json.Marshal(map[string]any{
 		"pduCode":     pdu.Code,
 		"reason":      in.Reason,
@@ -448,12 +477,10 @@ func (s *PDUService) writeArchiveAudit(pdu *model.PDU, impact *PDUImpactResult,
 	})
 	after := string(payload)
 	pid := pdu.ID
-	if err := s.acks.WriteAudit(&model.AuditLog{
+	return s.acks.WithTx(tx).WriteAudit(&model.AuditLog{
 		UserID: actor, Action: "FORCE_ARCHIVE", ResourceType: "pdu", ResourceID: &pid,
 		RequestID: requestID, AfterJSON: &after, Result: "SUCCESS", Source: "api",
-	}); err != nil {
-		fmt.Printf("[AUDIT] force-archive audit write failed pdu=%s err=%v\n", pdu.ID, err)
-	}
+	})
 }
 
 func (s *PDUService) ListSockets(pduID uuid.UUID) ([]model.PDUSocket, error) {
@@ -566,8 +593,13 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 		if sock.Status == model.SocketConnected {
 			return apperr.New(409, "PDU_SOCKET_CONNECTED", "插座已被占用")
 		}
-		pdu, err := store.GetPDU(sock.PDUID)
+		// 锁 PDU 行：与 Delete/ForceArchive 串行化——归档/删除的确认与执行
+		// 都发生在锁内，这里的新增连接不可能"逃过"它们的事务内复检
+		pdu, err := store.GetPDULock(sock.PDUID)
 		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("PDU")
+			}
 			return err
 		}
 		dev, err := s.devs.GetDevice(in.DeviceID)
