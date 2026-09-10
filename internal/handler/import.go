@@ -25,7 +25,8 @@ func (h *ImportHandler) Validate(c *gin.Context) {
 		writeAppError(c, apperr.InvalidResource("%s", bindMessage(err)))
 		return
 	}
-	item, err := h.service.Validate(id, in)
+	actor := middleware.UserID(c)
+	item, err := h.service.Validate(id, in, &actor)
 	if err != nil {
 		writeAppError(c, err)
 		return
@@ -44,8 +45,7 @@ func (h *ImportHandler) Commit(c *gin.Context) {
 		return
 	}
 	actor := middleware.UserID(c)
-	_ = actor
-	item, err := h.service.Commit(id, in)
+	item, err := h.service.Commit(id, in, &actor)
 	if err != nil {
 		writeAppError(c, err)
 		return

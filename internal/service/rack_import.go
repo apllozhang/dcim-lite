@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -124,8 +125,11 @@ type ImportCommitResult struct {
 }
 
 type importDraft struct {
-	Token       string
-	RoomID      uuid.UUID
+	Token  string
+	RoomID uuid.UUID
+	// ActorID 为发起校验的用户；提交时必须同一用户（草稿不绑定发起人时，
+	// 任何持有 token 的管理员都能以他人校验结果提交，破坏审计语义）。
+	ActorID     uuid.UUID
 	CreatedAt   time.Time
 	Items       []ImportItem
 	Rows        map[string]ImportDeviceRow // itemID -> row
@@ -227,10 +231,22 @@ func NewImportService(drafts *ImportDraftStore, devices *DeviceService) *ImportS
 	return &ImportService{drafts: drafts, devices: devices}
 }
 
-func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*ImportValidateResult, error) {
+func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput, actor *uuid.UUID) (*ImportValidateResult, error) {
 	room, err := s.devices.acks.GetRoom(roomID)
 	if err != nil {
 		return nil, apperr.NotFound("机房")
+	}
+	// 路径机房是唯一事实源：body 中重复的 roomId/dataCenterId 若与路径或真实父级不一致，
+	// 属于请求构造错误，直接拒绝（防止两套标识漂移导致的越界导入）
+	if in.RoomID != "" {
+		if bodyRoom, err := uuid.Parse(in.RoomID); err != nil || bodyRoom != roomID {
+			return nil, apperr.InvalidResource("roomId 与 URL 中的机房不一致")
+		}
+	}
+	if in.DataCenterID != "" {
+		if bodyDC, err := uuid.Parse(in.DataCenterID); err != nil || bodyDC != room.DataCenterID {
+			return nil, apperr.InvalidResource("dataCenterId 与机房的所属数据中心不一致")
+		}
 	}
 	defaultType := uuid.Nil
 	if in.DefaultTypeID != "" {
@@ -247,16 +263,28 @@ func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*Imp
 	}
 
 	// index existing devices on covered racks
+	// P0-02（复评）：covered rack 必须属于 URL 指定的机房——否则以机房 A 的路径
+	// 可以引用机房 B 的机柜，破坏路径资源边界与导入审计语义
 	covered := make([]uuid.UUID, 0, len(in.CoveredRackIDs))
+	coveredSet := make(map[uuid.UUID]bool, len(in.CoveredRackIDs))
 	for _, id := range in.CoveredRackIDs {
 		rid, err := uuid.Parse(id)
 		if err != nil {
 			return nil, apperr.InvalidResource("coveredRackIds 含非法 ID")
 		}
-		if _, err := s.devices.acks.GetRack(rid); err != nil {
-			return nil, apperr.NotFound("机柜")
+		rack, err := s.devices.acks.GetRack(rid)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, apperr.NotFound("机柜")
+			}
+			return nil, err
+		}
+		if rack.RoomID != roomID {
+			return nil, apperr.InvalidResource(
+				fmt.Sprintf("机柜 %s 不属于当前机房，coveredRackIds 只能包含 URL 指定机房内的机柜", id))
 		}
 		covered = append(covered, rid)
+		coveredSet[rid] = true
 	}
 	existingByRack := map[uuid.UUID][]*model.RackDevicePosition{}
 	seenDevice := map[uuid.UUID]bool{}
@@ -299,6 +327,14 @@ func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*Imp
 			items = append(items, item)
 			continue
 		}
+		// P0-02（复评）：每行的 rackId 必须是覆盖机柜集合成员，行级阻断
+		if !coveredSet[rackID] {
+			item.Kind = KindError
+			item.Message = "rackId 不在 coveredRackIds 覆盖集合内"
+			summary.Errors++
+			items = append(items, item)
+			continue
+		}
 		if row.StartU < 1 || row.EndU < row.StartU {
 			item.Kind = KindError
 			item.Message = "U 位区间非法"
@@ -306,7 +342,6 @@ func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*Imp
 			items = append(items, item)
 			continue
 		}
-		height := row.EndU - row.StartU + 1
 
 		// match source device
 		var src *model.Device
@@ -361,8 +396,6 @@ func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*Imp
 			item.SourceDeviceCode = src.Code
 		}
 		rows[itemID] = row
-		_ = height
-		_ = room
 		items = append(items, item)
 	}
 
@@ -397,8 +430,11 @@ func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*Imp
 	if err != nil {
 		return nil, err
 	}
+	if actor == nil || *actor == uuid.Nil {
+		return nil, apperr.Forbidden()
+	}
 	draft := &importDraft{
-		Token: newToken(), RoomID: roomID, CreatedAt: time.Now(),
+		Token: newToken(), RoomID: roomID, ActorID: *actor, CreatedAt: time.Now(),
 		Items: items, Rows: rows, DefaultType: defaultType,
 		Fingerprint: fingerprint, CoveredRacks: covered,
 	}
@@ -408,11 +444,18 @@ func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*Imp
 
 // Commit 两阶段导入的提交阶段：全部行操作在单个数据库事务中执行，
 // 任意一行失败整体回滚（零残留）；失败时草稿回填，修复决策后可重试。
-func (s *ImportService) Commit(roomID uuid.UUID, in ImportCommitInput) (*ImportCommitResult, error) {
+func (s *ImportService) Commit(roomID uuid.UUID, in ImportCommitInput, actor *uuid.UUID) (*ImportCommitResult, error) {
 	draft, ok := s.drafts.Take(in.Token)
 	if !ok {
 		// 厂商行为：草稿过期返回 410 Gone（S12-IMPORT-RECOMMIT-EXPIRED 实测）
 		return nil, apperr.New(410, "RACK_DIAGRAM_IMPORT_DRAFT_EXPIRED", "导入校验已过期，请重新选择文件校验")
+	}
+	// 草稿与发起人绑定：其他管理员取得 token 也不能以他人校验结果提交。
+	// 校验失败回填草稿，原发起人仍可重试。
+	if actor == nil || *actor == uuid.Nil || draft.ActorID != *actor {
+		s.drafts.Put(draft)
+		return nil, apperr.New(403, "IMPORT_DRAFT_OWNER_MISMATCH",
+			"导入草稿属于发起校验的用户，请由该用户提交或重新校验")
 	}
 	if draft.RoomID != roomID {
 		s.drafts.Put(draft)
