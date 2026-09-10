@@ -5,6 +5,30 @@
 
 ---
 
+## 0. 复评响应（2026-09-10 同日，第二版本报告前的增量记录）
+
+外部复评（`PR6-PR7-新源码重建复评与下一轮指导-20260910.md`）判定：5 个 P0 全部实锤，**允许内部试运行、不建议承载不可恢复生产数据**。作者**接受该结论**，以下为逐项响应（均已 PR 合并进 `main`，CI 全绿）：
+
+| 复评问题 | 响应 | 证据 |
+|---|---|---|
+| P0-01 最后管理员写偏斜 | 事务级 advisory lock（键 872341002）串行化全部降级/删除校验 | PR #8；`TestLastAdminMutualDemoteNoWriteSkew`：A/B 互降级 100 轮恰一成功，修复前该场景会双双放行归零管理员 |
+| P0-03 机柜删除 TOCTOU | 删除事务内 `FOR UPDATE` 机柜行；上架（placeInTx）与 PDU 创建锁同一行，统一跨聚合锁序「设备行→机柜行」防死锁 | PR #8；`TestRackDeleteVsPlaceRace` / `TestRackDeleteVsPDURace` 各 15 轮互斥 |
+| P0-04 PDU 归档确认 TOCTOU | Connect/Delete/ForceArchive 在 PDU 行锁上串行；归档在**锁内重读**影响清单，过期确认 409；详细审计与归档同事务（复评 P1-12 部分采纳） | PR #8；`TestPDUArchiveStaleConfirmationRejected`、`TestPDUDeleteVsConnectRace` |
+| P0-05 审批版本竞态 | 审批事务内 `FOR UPDATE` 锁设备行后校验版本；place/decommission 同样先锁设备行 | PR #8；`TestApproveVsDeviceEditMatrix` 10 轮互斥 + 终态语义复核 |
+| P0-02 导入越机房 | covered rack 必须属 URL 机房（400）；body `roomId`/`dataCenterId` 与路径一致性校验；行 `rackId` 必须 ∈ covered 集合；草稿绑定发起人（非属主 403 `IMPORT_DRAFT_OWNER_MISMATCH`） | PR #9；`TestImportCrossRoomRackRejected`、`TestImportRowRackOutsideCoveredRejected`、`TestImportDraftOwnerMismatch` |
+| P1-01 JS 断言失效 / P1-06 非零退出 | `not errs` 直接判空；失败 `SystemExit(1)`；README 定位改为「实验性诊断脚本/手动探针」，明确有副作用、硬编码、fixture 不隔离三项限制，pytest 化后另行接 CI | PR #7（合并前追加修复） |
+| P1-07 迁移锁不绑连接 / P1-08 Go 版本冲突 / P1-10 权限矩阵 / race 等 | **未在本轮关闭**，列入下一批（见下） | — |
+
+**未采纳项及理由**：复评 P0-04 的 `impactToken = HMAC(...)` 方案——行锁 + 锁内复检已达同等保证，单实例内部系统不引入密钥管理与 token 生命周期复杂度。
+
+**集成测试现状**：真实 PostgreSQL 上 **19/19 × 2 轮全绿**（此前 10/10，新增 9 个复评验收用例）。
+
+**下一批计划**（按复评 §9 顺序）：① 第二批「可信门禁」——Linux CI 加 `go test -race`、权限矩阵表驱动测试、PR #7 脚本 pytest 化隔离、差分断言扩到关键字段；② 第三批——迁移锁改专用连接或 xact lock、`go.mod` 与 CI/Dockerfile 统一 Go 版本、session version；③ 新前端源码替代的启动节奏由业务方按授权战略决定（复评 §8 的目标认可，时间表不由工程单方决定）。
+
+> 本文其余章节为复评前版本，保留原样作为历史记录；其中 §5 的盲区 1/2/3 表述与现状的差异以上表为准。
+
+---
+
 ## 1. 这份文档想解决什么
 
 专家评审容易遇到两个问题：看不清哪些结论有硬证据、哪些只是"看起来对"。本文按证据强度组织：**§3 是实测数据**，§4 是我的技术判断及依据，**§5 是已知不足与盲区**，§6 建议重点核查。若时间有限，建议直接看 §5 与 §6。
