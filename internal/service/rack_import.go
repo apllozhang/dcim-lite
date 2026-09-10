@@ -125,14 +125,14 @@ type ImportCommitResult struct {
 }
 
 type importDraft struct {
-	Token       string
-	RoomID      uuid.UUID
+	Token  string
+	RoomID uuid.UUID
 	// ActorID 为发起校验的用户；提交时必须同一用户（草稿不绑定发起人时，
 	// 任何持有 token 的管理员都能以他人校验结果提交，破坏审计语义）。
-	ActorID   uuid.UUID
-	CreatedAt time.Time
-	Items     []ImportItem
-	Rows      map[string]ImportDeviceRow // itemID -> row
+	ActorID     uuid.UUID
+	CreatedAt   time.Time
+	Items       []ImportItem
+	Rows        map[string]ImportDeviceRow // itemID -> row
 	DefaultType uuid.UUID
 	// Fingerprint 为校验时覆盖机柜内「在位设备-位置」的指纹；提交前重算，
 	// 不一致即判定数据已变化（厂商 409 RACK_DIAGRAM_IMPORT_STALE）。
