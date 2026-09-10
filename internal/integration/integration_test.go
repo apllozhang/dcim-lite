@@ -979,3 +979,107 @@ func TestApproveVsDeviceEditMatrix(t *testing.T) {
 		}
 	}
 }
+
+// P0-02 复评验收：机房 A 的导入路径引用机房 B 的机柜 → validate 直接 400，零写入。
+func TestImportCrossRoomRackRejected(t *testing.T) {
+	fxA := newFixture(t, "XA")
+	fxB := newFixture(t, "XB")
+	st, body := call("POST", "/api/v1/rooms/"+fxA.roomID+"/rack-diagram-import/validate", map[string]any{
+		"formatVersion":  "1",
+		"coveredRackIds": []string{fxA.rackID, fxB.rackID},
+		"devices": []map[string]any{
+			{"clientId": "a", "rackId": fxB.rackID, "startU": 1, "endU": 1, "name": "跨机房探针X"},
+		},
+	}, adminTok)
+	if st != 400 {
+		t.Fatalf("covered rack from another room must 400, got %d %v", st, body)
+	}
+	// 零写入：拒绝发生在草稿创建之前，无 token 可提交
+	st, list := call("GET", "/api/v1/devices?search=跨机房探针X", nil, adminTok)
+	if st != 200 || data(list)["total"].(float64) != 0 {
+		t.Fatalf("rejected import must leave zero residue, got %d %v", st, list)
+	}
+}
+
+// P0-02 复评验收：行级 rackId 不在 coveredRackIds 覆盖集合内 → 行级 ERROR，commit 阻断。
+func TestImportRowRackOutsideCoveredRejected(t *testing.T) {
+	fx := newFixture(t, "XC")
+	// 同数据中心另建一间机房与机柜，行 rackId 指向它（不在覆盖集合内）
+	st, room2 := call("POST", "/api/v1/data-centers/"+fx.dcID+"/rooms",
+		map[string]any{"code": "R2-" + short(), "name": "it"}, adminTok)
+	if st != 200 && st != 201 {
+		t.Fatalf("create room2: %d %v", st, room2)
+	}
+	room2ID := data(room2)["id"].(string)
+	st, rack2 := call("POST", "/api/v1/rooms/"+room2ID+"/racks",
+		map[string]any{"code": "K2-" + short(), "name": "it", "uHeight": 10}, adminTok)
+	if st != 200 && st != 201 {
+		t.Fatalf("create rack2: %d %v", st, rack2)
+	}
+	outside := data(rack2)["id"].(string)
+
+	st, val := call("POST", "/api/v1/rooms/"+fx.roomID+"/rack-diagram-import/validate", map[string]any{
+		"formatVersion":  "1",
+		"coveredRackIds": []string{fx.rackID},
+		"devices": []map[string]any{
+			{"clientId": "a", "rackId": outside, "startU": 1, "endU": 1, "name": "越界行探针X"},
+		},
+	}, adminTok)
+	if st != 200 {
+		t.Fatalf("validate itself should still answer with row errors, got %d %v", st, val)
+	}
+	sum := data(val)["summary"].(map[string]any)
+	if sum["errors"].(float64) < 1 {
+		t.Fatalf("row outside covered set must be flagged as error, got %v", sum)
+	}
+	token := data(val)["token"].(string)
+	st, body := call("POST", "/api/v1/rooms/"+fx.roomID+"/rack-diagram-import/commit",
+		map[string]any{"token": token, "decisions": []any{}}, adminTok)
+	if st != 400 {
+		t.Fatalf("commit with blocking row errors must 400, got %d %v", st, body)
+	}
+	st, list := call("GET", "/api/v1/devices?search=越界行探针X", nil, adminTok)
+	if st != 200 || data(list)["total"].(float64) != 0 {
+		t.Fatalf("blocked import must leave zero residue, got %d %v", st, list)
+	}
+}
+
+// P0-02 复评验收：导入草稿与发起人绑定。管理员 B 持 A 的草稿 token 提交 → 403；
+// 原发起人 A 重试仍可成功（草稿已回填，未被 B 的失败尝试消耗）。
+func TestImportDraftOwnerMismatch(t *testing.T) {
+	fx := newFixture(t, "OW")
+	nameB := "imp-b-" + short()
+	st, c := call("POST", "/api/v1/admin/users", map[string]any{
+		"username": nameB, "displayName": nameB, "password": "ImpOwner#2026!",
+		"roleCodes": []string{"system_admin"}, "enabled": true}, adminTok)
+	if st != 200 && st != 201 {
+		t.Fatalf("create second admin: %d %v", st, c)
+	}
+	tokB := mustLogin(nameB, "ImpOwner#2026!")
+
+	st, val := call("POST", "/api/v1/rooms/"+fx.roomID+"/rack-diagram-import/validate", map[string]any{
+		"formatVersion":  "1",
+		"coveredRackIds": []string{fx.rackID},
+		"defaultTypeId":  fx.typeID,
+		"devices": []map[string]any{
+			{"clientId": "a", "rackId": fx.rackID, "startU": 1, "endU": 1, "name": "草稿属主探针"},
+		},
+	}, adminTok)
+	if st != 200 {
+		t.Fatalf("validate: %d %v", st, val)
+	}
+	token := data(val)["token"].(string)
+
+	// B 不是草稿发起人 → 403，且草稿不被消耗
+	st, body := call("POST", "/api/v1/rooms/"+fx.roomID+"/rack-diagram-import/commit",
+		map[string]any{"token": token, "decisions": []any{}}, tokB)
+	if st != 403 || code(body) != "IMPORT_DRAFT_OWNER_MISMATCH" {
+		t.Fatalf("commit by non-owner must 403 IMPORT_DRAFT_OWNER_MISMATCH, got %d %v", st, body)
+	}
+	// 原发起人仍可提交
+	st, done := call("POST", "/api/v1/rooms/"+fx.roomID+"/rack-diagram-import/commit",
+		map[string]any{"token": token, "decisions": []any{}}, adminTok)
+	if st != 200 {
+		t.Fatalf("owner commit must succeed, got %d %v", st, done)
+	}
+}
