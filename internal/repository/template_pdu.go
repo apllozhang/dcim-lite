@@ -159,24 +159,35 @@ func (s *PDUStore) UpdatePDU(item *model.PDU, expected uint) error {
 	return s.db.First(item, "id = ?", item.ID).Error
 }
 
-func (s *PDUStore) SoftDeletePDU(id uuid.UUID, expected uint) error {
+// CountActiveConnectionsByPDU 统计该 PDU 名下插座上的活动连接数。
+// 这是删除保护的真实边界：插座是 PDU 的构成部分，连接才是跨实体的业务事实。
+func (s *PDUStore) CountActiveConnectionsByPDU(pduID uuid.UUID) (int64, error) {
 	var n int64
-	if err := s.db.Model(&model.PDUSocket{}).Where("pdu_id = ?", id).Count(&n).Error; err != nil {
-		return err
-	}
-	if n > 0 {
-		return errHasChildren
-	}
-	res := s.db.Model(&model.PDU{}).
-		Where("id = ? AND version = ?", id, expected).
-		Updates(map[string]any{"deleted_at": time.Now(), "version": gorm.Expr("version + 1")})
-	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected == 0 {
-		return errVersion()
-	}
-	return nil
+	err := s.db.Model(&model.PDUConnection{}).
+		Where(`EXISTS (SELECT 1 FROM pdu_sockets so
+			WHERE so.id = pdu_connections.socket_id AND so.pdu_id = ? AND so.deleted_at IS NULL)`, pduID).
+		Count(&n).Error
+	return n, err
+}
+
+// SoftDeletePDUWithSockets 级联软删 PDU 及其插座（插座随 PDU 一起下线）。
+// 调用方必须已确认无活动连接，否则会产生「设备由已删除 PDU 供电」的孤儿记录。
+func (s *PDUStore) SoftDeletePDUWithSockets(id uuid.UUID, expected uint) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&model.PDU{}).
+			Where("id = ? AND version = ?", id, expected).
+			Updates(map[string]any{"deleted_at": time.Now(), "version": gorm.Expr("version + 1")})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errVersion()
+		}
+		return tx.Model(&model.PDUSocket{}).
+			Where("pdu_id = ?", id).
+			Updates(map[string]any{"deleted_at": time.Now(), "version": gorm.Expr("version + 1")}).
+			Error
+	})
 }
 
 func (s *PDUStore) CodeExistsPDU(code string, exclude uuid.UUID) (bool, error) {

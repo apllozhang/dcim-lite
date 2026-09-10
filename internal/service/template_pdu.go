@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -329,13 +330,18 @@ func (s *PDUService) Delete(id uuid.UUID, version uint) error {
 		}
 		return err
 	}
-	if err := s.store.SoftDeletePDU(id, version); err != nil {
-		if repository.IsBizCode(err, "RESOURCE_HAS_CHILDREN") {
-			return apperr.New(409, "RESOURCE_HAS_CHILDREN", "PDU 下存在插座，无法删除")
-		}
-		return mapStoreErr(err)
+	// 删除边界画在「连接」上（见 docs/COMPAT-DECISIONS.md 的 D5 决策）：
+	// 插座是 PDU 的构成部分，随 PDU 一起下线；只要还有设备在取电就拒绝，
+	// 避免台账出现「由已删除 PDU 供电」的记录。
+	conns, err := s.store.CountActiveConnectionsByPDU(id)
+	if err != nil {
+		return err
 	}
-	return nil
+	if conns > 0 {
+		return apperr.New(409, "PDU_IN_USE",
+			fmt.Sprintf("该 PDU 正在为设备供电（%d 条连接），请先断开连接后再删除", conns))
+	}
+	return mapStoreErr(s.store.SoftDeletePDUWithSockets(id, version))
 }
 
 func (s *PDUService) ListSockets(pduID uuid.UUID) ([]model.PDUSocket, error) {
