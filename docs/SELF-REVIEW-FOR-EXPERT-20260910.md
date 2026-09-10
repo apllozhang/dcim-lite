@@ -25,6 +25,24 @@
 
 **下一批计划**（按复评 §9 顺序）：① 第二批「可信门禁」——Linux CI 加 `go test -race`、权限矩阵表驱动测试、PR #7 脚本 pytest 化隔离、差分断言扩到关键字段；② 第三批——迁移锁改专用连接或 xact lock、`go.mod` 与 CI/Dockerfile 统一 Go 版本、session version；③ 新前端源码替代的启动节奏由业务方按授权战略决定（复评 §8 的目标认可，时间表不由工程单方决定）。
 
+### 0.1 复评第二批响应（2026-09-11）
+
+复评 §9 第二批已执行（PR #11/#12/#13，全部 CI 全绿合并）：
+
+| 复评要求 | 响应 | 证据 |
+|---|---|---|
+| 权限矩阵全路由测试（P1-10） | `app.RouteInventory()` 成为路由契约+权限级别（public/user/admin）单一事实源；集成测试以匿名/普通用户/管理员三态实测全部 71 条路由，断言 401/403 与声明一致且管理员态无 5xx；新路由未登记权限级别即测试失败 | PR #11；`TestAuthMatrixAllRoutes` |
+| `go test -race` 进 Linux CI | quality 与 integration 两个 job 均已 `-race`，首批即全绿 | PR #12；CI run（quality: unit tests race + integration: race） |
+| pytest 化隔离套件（P1-02/03/04/06/07） | 一次性脚本删除，重写为 conftest + pytest：环境变量化（无硬编码）、`E2E_ALLOW_MUTATION` 变异门控、自建 run ID 数据全隔离、teardown 恢复策略并清理（成功/失败两场景实测零残留）、失败截图、非零退出 | PR #13；线上重建栈连续两轮 4/4 全绿 |
+| 审批批准闭环（§5-1 遗留） | **首次端到端走通**：UI 上架 → PENDING → /admin 按自身行定位（绝不误批存量单）→ 通过 → OK → API 复核 RUNNING | PR #13；`test_approval_ui_flow` |
+| 旧「上架弹窗不稳定」根因 | 定位为**搜索问题而非弹窗时序**：自建设备不在列表首页，旧脚本从未触发；现先按编码搜索再操作，配显式等待+重试 | PR #13 |
+| 迁移锁绑连接（P1-07，属第三批提前完成） | `runMigrations` 改单事务：xact lock 与全部迁移同连接、自动释放；建表移入锁内（双副本并发冷启动实测撞 pg_type 唯一约束后修正）；NULL checksum 回填；四个种子路径并发幂等 | PR #12；双进程真 PG 验证：双副本均启动、迁移恰一次 6/6 |
+| Go 版本统一（P1-08） | `go.mod` 1.25 → 1.24，与 CI/Dockerfile 一致（1.25 仅靠自动工具链下载碰巧通过） | PR #12 |
+
+**第二批未完成项（如实声明）**：差分断言扩展到关键字段/库状态/审计事件（需重建差分沙箱重放 350 用例，单独一轮执行）；并发不变式差异（`successes=1 vs 0`）的逐条关闭（同依赖差分沙箱复现）。二者排在差分复验轮。
+
+**复评 §9 第三批剩余**：完整 OpenAPI schema、session version/共享限流、audit outbox、metrics/tracing、SBOM 与依赖扫描。
+
 > 本文其余章节为复评前版本，保留原样作为历史记录；其中 §5 的盲区 1/2/3 表述与现状的差异以上表为准。
 
 ---
