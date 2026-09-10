@@ -61,11 +61,12 @@ func (s *AdminService) ListUsers(q UserListQuery) ([]model.User, error) {
 func (s *AdminService) CreateUser(in UserAdminInput) (*model.User, error) {
 	in.Username = strings.TrimSpace(in.Username)
 	in.DisplayName = strings.TrimSpace(in.DisplayName)
+	// 厂商对用户字段错误返回 INVALID_USER（差分用例 S14-VAL-USER-EMPTYNAME/SHORTPW、S15-USER-NO-PASSWORD）
 	if in.Username == "" || in.DisplayName == "" {
-		return nil, apperr.InvalidResource("用户名和显示名称不能为空")
+		return nil, apperr.New(400, "INVALID_USER", "invalid user: 用户名和显示名称不能为空")
 	}
-	if in.Password == "" {
-		return nil, apperr.InvalidResource("密码不能为空")
+	if len([]rune(in.Password)) < 8 {
+		return nil, apperr.New(400, "INVALID_USER", "invalid user: 本地用户密码至少 8 位")
 	}
 	if in.AuthSource == "" {
 		in.AuthSource = "local"
@@ -188,8 +189,8 @@ func (s *AdminService) DeleteUser(id uuid.UUID, version uint) error {
 }
 
 func (s *AdminService) ResetPassword(id uuid.UUID, version uint, password string) error {
-	if len(password) < 6 {
-		return apperr.InvalidResource("密码至少 6 位")
+	if len([]rune(password)) < 8 {
+		return apperr.New(400, "INVALID_USER", "invalid user: 本地用户密码至少 8 位")
 	}
 	if _, err := s.users.FindByID(id); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
