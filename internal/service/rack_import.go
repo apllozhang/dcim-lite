@@ -2,8 +2,10 @@ package service
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -32,7 +34,15 @@ const (
 	ActionCreateNew      = "CREATE_NEW"
 	ActionDecommission   = "DECOMMISSION"
 	ActionIgnore         = "IGNORE"
+	// ActionSkip 为调用方使用的等价忽略动作（厂商侧接受 SKIP；
+	// 差分用例 S12-IMPORT-COMMIT 实测：套件在重建侧发送 SKIP，此前被判「删除项动作非法」→ 400）
+	ActionSkip = "SKIP"
 )
+
+// ignored 判断是否为「忽略」类动作（IGNORE 与 SKIP 等价）。
+func ignored(action string) bool {
+	return action == ActionIgnore || action == ActionSkip
+}
 
 type ImportDeviceRow struct {
 	ClientID            string   `json:"clientId"`
@@ -120,6 +130,11 @@ type importDraft struct {
 	Items       []ImportItem
 	Rows        map[string]ImportDeviceRow // itemID -> row
 	DefaultType uuid.UUID
+	// Fingerprint 为校验时覆盖机柜内「在位设备-位置」的指纹；提交前重算，
+	// 不一致即判定数据已变化（厂商 409 RACK_DIAGRAM_IMPORT_STALE）。
+	// CoveredRacks 与 Fingerprint 必须成对使用，保证两侧机柜集合一致（否则会误报 STALE）。
+	Fingerprint  string
+	CoveredRacks []uuid.UUID
 }
 
 type ImportDraftStore struct {
@@ -163,6 +178,43 @@ func newToken() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	return "imp_" + hex.EncodeToString(b)
+}
+
+// rackPositionsFingerprint 计算覆盖机柜内在位设备位置的指纹（排序拼接后散列）。
+func (s *ImportService) rackPositionsFingerprint(rackIDs []uuid.UUID) (string, error) {
+	type posRow struct {
+		RackID  uuid.UUID
+		StartU  int
+		EndU    int
+		DevID   uuid.UUID
+		HeightU int
+	}
+	var all []posRow
+	for _, rid := range rackIDs {
+		var positions []model.RackDevicePosition
+		if err := s.devices.devices.DB().
+			Where("rack_id = ? AND deleted_at IS NULL", rid).Find(&positions).Error; err != nil {
+			return "", err
+		}
+		for _, p := range positions {
+			all = append(all, posRow{p.RackID, p.StartU, p.EndU, p.DeviceID, p.HeightU})
+		}
+	}
+	sort.Slice(all, func(i, j int) bool {
+		if all[i].RackID != all[j].RackID {
+			return all[i].RackID.String() < all[j].RackID.String()
+		}
+		if all[i].StartU != all[j].StartU {
+			return all[i].StartU < all[j].StartU
+		}
+		return all[i].DevID.String() < all[j].DevID.String()
+	})
+	var sb strings.Builder
+	for _, r := range all {
+		fmt.Fprintf(&sb, "%s|%d|%d|%s|%d;", r.RackID, r.StartU, r.EndU, r.DevID, r.HeightU)
+	}
+	sum := sha256.Sum256([]byte(sb.String()))
+	return hex.EncodeToString(sum[:]), nil
 }
 
 // ImportService implements rack-diagram two-phase import.
@@ -341,9 +393,14 @@ func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*Imp
 		}
 	}
 
+	fingerprint, err := s.rackPositionsFingerprint(covered)
+	if err != nil {
+		return nil, err
+	}
 	draft := &importDraft{
 		Token: newToken(), RoomID: roomID, CreatedAt: time.Now(),
 		Items: items, Rows: rows, DefaultType: defaultType,
+		Fingerprint: fingerprint, CoveredRacks: covered,
 	}
 	s.drafts.Put(draft)
 	return &ImportValidateResult{Token: draft.Token, Items: items, Summary: summary}, nil
@@ -354,7 +411,8 @@ func (s *ImportService) Validate(roomID uuid.UUID, in ImportValidateInput) (*Imp
 func (s *ImportService) Commit(roomID uuid.UUID, in ImportCommitInput) (*ImportCommitResult, error) {
 	draft, ok := s.drafts.Take(in.Token)
 	if !ok {
-		return nil, apperr.New(400, "RACK_DIAGRAM_IMPORT_DRAFT_EXPIRED", "导入草稿不存在或已过期，请重新校验")
+		// 厂商行为：草稿过期返回 410 Gone（S12-IMPORT-RECOMMIT-EXPIRED 实测）
+		return nil, apperr.New(410, "RACK_DIAGRAM_IMPORT_DRAFT_EXPIRED", "导入校验已过期，请重新选择文件校验")
 	}
 	if draft.RoomID != roomID {
 		s.drafts.Put(draft)
@@ -363,6 +421,18 @@ func (s *ImportService) Commit(roomID uuid.UUID, in ImportCommitInput) (*ImportC
 	actionByItem := map[string]string{}
 	for _, d := range in.Decisions {
 		actionByItem[d.ItemID] = d.Action
+	}
+
+	// 校验后数据是否被改动（厂商 409 RACK_DIAGRAM_IMPORT_STALE）
+	if draft.Fingerprint != "" {
+		current, err := s.rackPositionsFingerprint(draft.CoveredRacks)
+		if err != nil {
+			return nil, err
+		}
+		if current != draft.Fingerprint {
+			return nil, apperr.New(409, "RACK_DIAGRAM_IMPORT_STALE",
+				"校验后机柜或设备数据发生变化，请重新校验")
+		}
 	}
 
 	res := &ImportCommitResult{}
@@ -377,7 +447,7 @@ func (s *ImportService) Commit(roomID uuid.UUID, in ImportCommitInput) (*ImportC
 			case KindUnchanged:
 				continue
 			case KindCreateNew:
-				if item.RequiresDecision && actionByItem[item.ID] == ActionIgnore {
+				if item.RequiresDecision && ignored(actionByItem[item.ID]) {
 					res.Ignored++
 					continue
 				}
@@ -397,7 +467,7 @@ func (s *ImportService) Commit(roomID uuid.UUID, in ImportCommitInput) (*ImportC
 				res.Moved++
 			case KindRemoveMissing:
 				action := actionByItem[item.ID]
-				if action == ActionIgnore || action == "" {
+				if ignored(action) || action == "" {
 					res.Ignored++
 					continue
 				}
@@ -411,7 +481,7 @@ func (s *ImportService) Commit(roomID uuid.UUID, in ImportCommitInput) (*ImportC
 			case KindNeedsDecision:
 				action := actionByItem[item.ID]
 				switch action {
-				case ActionIgnore:
+				case ActionIgnore, ActionSkip:
 					res.Ignored++
 				case ActionUpdateExisting:
 					if err := s.commitUpdate(svc, item, row); err != nil {

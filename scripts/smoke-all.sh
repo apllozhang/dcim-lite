@@ -225,7 +225,7 @@ st, imp_com = call("POST", f"/api/v1/rooms/{imp_room['data']['id']}/rack-diagram
 check("import-commit", st == 200 and imp_com["data"]["created"] == 1, str(imp_com.get("data")))
 st, imp_again = call("POST", f"/api/v1/rooms/{imp_room['data']['id']}/rack-diagram-import/commit",
                      {"token": imp_val["data"]["token"], "decisions": []})
-check("import-token-once", st == 400)
+check("import-token-once", st == 410)  # 草稿已消费 -> 410 Gone（对齐厂商）
 
 # --- concurrent race ---
 results = []
