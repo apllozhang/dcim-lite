@@ -185,8 +185,12 @@ with sync_playwright() as p:
             lc = (d2.get("data") or {}).get("lifecycleStatus")
             rec("审批·UI 批准后设备 RUNNING", lc == "RUNNING", lc)
     api("PUT", "/api/v1/admin/approval-policy", {"assignApprovalEnabled": False}, tok)
-    rec("无 JS 致命异常", not [e for e in errs if "pageerror" in e], errs[:1])
+    # pageerror 回调里的 str(e) 是异常消息本身（如 "TypeError: ..."），不含 "pageerror" 字样，
+    # 必须直接判空 errs，否则任何 JS 异常都会被漏报
+    rec("无 JS 致命异常", not errs, errs[:1])
     br.close()
 
 fails = [n for n, ok in res if not ok]
 print("ALE_V6_" + ("PASS" if not fails else "FAIL " + ",".join(fails)))
+# 任一断言失败必须非零退出，否则 CI 会把失败判为成功
+raise SystemExit(1 if fails else 0)
