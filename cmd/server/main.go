@@ -92,75 +92,89 @@ func main() {
 	log.Printf("stopped")
 }
 
+// runMigrations 在单个数据库事务内完成：建表、取事务级 advisory lock、逐个执行迁移、
+// 记录 checksum，任一失败整体回滚（零部分应用状态）。
+//
+// 复评 P1-07 修复：此前的 session 级 pg_advisory_lock 通过连接池执行，锁、迁移、
+// unlock 可能落在三个不同物理连接上，锁形同虚设。GORM 事务绑定单一连接，
+// 事务级 xact lock 与迁移语句因此必然同连接，且随事务提交/回滚自动释放，无 unlock 泄漏。
+// 前提：迁移 SQL 文件内不得包含事务控制语句（BEGIN/COMMIT），如需引入须改用独立 migration job。
 func runMigrations(db *gorm.DB, dir string) error {
-	if err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
-		version text PRIMARY KEY,
-		checksum text,
-		applied_at timestamptz NOT NULL DEFAULT now()
-	)`).Error; err != nil {
-		return err
-	}
-	// 兼容历史表结构（无 checksum 列时补齐）
-	if err := db.Exec(`ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum text`).Error; err != nil {
-		return err
-	}
-
-	// 多副本同时启动时串行化迁移，避免重复执行/写冲突
-	if err := db.Exec(`SELECT pg_advisory_lock(872341001)`).Error; err != nil {
-		return err
-	}
-	defer db.Exec(`SELECT pg_advisory_unlock(872341001)`)
-
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	var files []string
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sql") {
-			continue
+	var appliedList []string
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		// 先取锁再做任何 DDL：CREATE TABLE IF NOT EXISTS 在多副本同时冷启动时
+		// 存在 pg_type 目录并发插入的竞态（23505），必须在锁内串行执行
+		if err := tx.Exec(`SELECT pg_advisory_xact_lock(872341001)`).Error; err != nil {
+			return err
 		}
-		if strings.HasSuffix(e.Name(), ".down.sql") {
-			continue
+		if err := tx.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
+			version text PRIMARY KEY,
+			checksum text,
+			applied_at timestamptz NOT NULL DEFAULT now()
+		)`).Error; err != nil {
+			return err
 		}
-		files = append(files, e.Name())
-	}
-	sort.Strings(files)
+		if err := tx.Exec(`ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum text`).Error; err != nil {
+			return err
+		}
 
-	for _, name := range files {
-		body, err := os.ReadFile(filepath.Join(dir, name))
+		entries, err := os.ReadDir(dir)
 		if err != nil {
 			return err
 		}
-		sum := fmt.Sprintf("%x", sha256.Sum256(body))
-
-		var applied struct {
-			Version  string
-			Checksum *string
-		}
-		err = db.Raw(`SELECT version, checksum FROM schema_migrations WHERE version = ?`, name).Scan(&applied).Error
-		if err != nil {
-			return err
-		}
-		if applied.Version != "" {
-			// 已应用：内容被改动则拒绝启动，防止环境间 schema 漂移
-			if applied.Checksum != nil && *applied.Checksum != sum {
-				return fmt.Errorf("%s: already applied with different content (schema drift detected)", name)
+		var files []string
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".sql") {
+				continue
 			}
-			continue
+			if strings.HasSuffix(e.Name(), ".down.sql") {
+				continue
+			}
+			files = append(files, e.Name())
 		}
-		tx := db.Begin()
-		if err := tx.Exec(string(body)).Error; err != nil {
-			tx.Rollback()
-			return fmt.Errorf("%s: %w", name, err)
+		sort.Strings(files)
+
+		for _, name := range files {
+			body, err := os.ReadFile(filepath.Join(dir, name))
+			if err != nil {
+				return err
+			}
+			sum := fmt.Sprintf("%x", sha256.Sum256(body))
+
+			var applied struct {
+				Version  string
+				Checksum *string
+			}
+			if err := tx.Raw(`SELECT version, checksum FROM schema_migrations WHERE version = ?`, name).Scan(&applied).Error; err != nil {
+				return err
+			}
+			if applied.Version != "" {
+				// 已应用：内容被改动则拒绝启动，防止环境间 schema 漂移
+				if applied.Checksum != nil && *applied.Checksum != sum {
+					return fmt.Errorf("%s: already applied with different content (schema drift detected)", name)
+				}
+				// 历史行缺 checksum（如老版本写入）：以当前文件内容回填，避免永久 NULL
+				if applied.Checksum == nil {
+					if err := tx.Exec(`UPDATE schema_migrations SET checksum = ? WHERE version = ?`, sum, name).Error; err != nil {
+						return err
+					}
+				}
+				continue
+			}
+			if err := tx.Exec(string(body)).Error; err != nil {
+				return fmt.Errorf("%s: %w", name, err)
+			}
+			if err := tx.Exec(`INSERT INTO schema_migrations(version, checksum) VALUES (?, ?)`, name, sum).Error; err != nil {
+				return err
+			}
+			appliedList = append(appliedList, name)
 		}
-		if err := tx.Exec(`INSERT INTO schema_migrations(version, checksum) VALUES (?, ?)`, name, sum).Error; err != nil {
-			tx.Rollback()
-			return err
-		}
-		if err := tx.Commit().Error; err != nil {
-			return err
-		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	// 事务已提交，此时打印才是真实的
+	for _, name := range appliedList {
 		log.Printf("migration applied: %s", name)
 	}
 	return nil

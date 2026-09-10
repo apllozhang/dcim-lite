@@ -111,7 +111,14 @@ func (s *TemplateStore) SeedSystemTemplateIfEmpty() error {
 		Revision: 1, Type: "STANDARD", UHeight: 42, WidthMm: 600, DepthMm: 1200, HeightMm: 2000,
 		ChangeNote: "系统初始化版本",
 	}
-	return s.Create(&t, &v)
+	if err := s.Create(&t, &v); err != nil {
+		// 多副本同时冷启动：对方已写入系统模板则唯一索引冲突，视为已存在
+		if IsUniqueViolation(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 type PDUStore struct{ db *gorm.DB }
