@@ -14,6 +14,8 @@ export default defineConfig({
     AutoImport({ resolvers: [ElementPlusResolver()] }),
     Components({ resolvers: [ElementPlusResolver()] }),
   ],
+  // P0-R2:ALE_ 前缀为历史兼容(旧 ALE_LEGACY_BASE);客户端注入一律用 VITE_ 前缀
+  envPrefix: ["VITE_", "ALE_"],
   define: {
     // ErrorReporter 的 release 标识(P1-R05):构建时注入,缺省 dev
     __APP_RELEASE__: JSON.stringify(process.env.APP_RELEASE ?? "dev"),

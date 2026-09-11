@@ -2,7 +2,13 @@
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSessionStore } from "@/features/auth/session";
-import { getRouteFlag, setRouteFlag, legacyUrlFor, type RouteFlag } from "@/app/flags";
+import {
+  getRouteFlag,
+  setRouteFlag,
+  legacyUrlFor,
+  overridesUnlocked,
+  type RouteFlag,
+} from "@/app/flags";
 
 const session = useSessionStore();
 const route = useRoute();
@@ -38,6 +44,7 @@ async function doLogout() {
       <span class="brand"> <span class="brand-mark">ALE</span> 机柜管理 </span>
       <div class="header-right">
         <el-select
+          v-if="overridesUnlocked()"
           :model-value="uiVersion"
           size="small"
           class="ui-switch"

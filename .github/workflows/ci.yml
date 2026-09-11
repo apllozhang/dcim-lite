@@ -9,8 +9,8 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25"
           cache: true
@@ -39,11 +39,13 @@ jobs:
           python3 tests/sandbox/selfcheck_evidence_compiler.py
           python3 tests/sandbox/selfcheck_finalize_run.py
           python3 tests/sandbox/selfcheck_finalize_run_v5.py
+          # P1-R5:语义字段门禁负向自测(未知路径/错误枚举/null/敏感值/非时间戳/CLOSED 重现/ratchet)
+          python3 tests/diff/selfcheck_field_gate.py
           # pytest 不得误收集 selfcheck 文件（收集到的用例数必须为 0）
           n=$(python3 -m pytest tests/sandbox/ --collect-only -q 2>/dev/null | grep -c "::" || true)
           echo "collected: $n"
           test "$n" -eq 0
-      - name: field-decision ledger gate (P1-C③：台账 schema/唯一键 + 与冻结差分报告双向一致)
+      - name: field-decision ledger gate (P1-C③+P1-R5：语义门禁与冻结差分报告双向一致)
         run: |
           python3 -m pip install --quiet pyyaml
           python3 tests/diff/field_gate.py \
@@ -55,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres@sha256:e013e867e712fec275706a6c51c966f0bb0c93cfa8f51000f85a15f9865a28cb # 16-alpine
         env:
           POSTGRES_USER: it
           POSTGRES_PASSWORD: it
@@ -69,8 +71,8 @@ jobs:
     env:
       TEST_DATABASE_URL: postgres://it:it@localhost:5432/it?sslmode=disable
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25"
           cache: true
@@ -88,8 +90,8 @@ jobs:
   supply-chain:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25"
           cache: true
@@ -103,10 +105,10 @@ jobs:
           [ "$ok" = "1" ] || exit 1
       - name: govulncheck（标准库与依赖漏洞，仅报告实际调用的符号）
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
           $(go env GOPATH)/bin/govulncheck ./...
       - name: SBOM (SPDX)
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           format: spdx-json
           artifact-name: dcim-lite-sbom
@@ -118,7 +120,7 @@ jobs:
         working-directory: frontend/app
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres@sha256:e013e867e712fec275706a6c51c966f0bb0c93cfa8f51000f85a15f9865a28cb # 16-alpine
         env:
           POSTGRES_USER: it
           POSTGRES_PASSWORD: it
@@ -130,13 +132,13 @@ jobs:
           --health-timeout 3s
           --health-retries 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/app/package-lock.json
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25"
           cache: true
@@ -182,13 +184,48 @@ jobs:
             sleep 2
           done
           curl -sf http://127.0.0.1:18080/health/ready || (cat /tmp/backend.log && exit 1)
-      - name: Playwright e2e (real backend, P1-R07)
+      - name: start real legacy static site (P0-R1:回退演练必须加载真旧页面)
+        run: |
+          mkdir -p /tmp/legacy-site
+          cp -r frontend/ale/. /tmp/legacy-site/
+          # 旧 index.html 用绝对路径 /assets/...,改写到 /legacy/assets/ 才能经 preview 代理命中旧站点
+          sed -i 's|/assets/|/legacy/assets/|g' /tmp/legacy-site/index.html
+          docker run -d --name legacy-site -v /tmp/legacy-site:/usr/share/nginx/html:ro -p 18081:80 nginx:alpine
+          for i in $(seq 1 20); do
+            curl -sf -o /dev/null http://127.0.0.1:18081/index.html && break
+            sleep 1
+          done
+          curl -sf -o /dev/null http://127.0.0.1:18081/index.html
+      - name: Playwright e2e (real backend, real legacy site)
         env:
           ALE_API_PROXY: http://127.0.0.1:18080
-          ALE_LEGACY_PROXY: http://127.0.0.1:18080
+          # P0-R1:legacy 代理必须指向真实旧 bundle 站点(此前错指后端,回退演练为假阳性)
+          ALE_LEGACY_PROXY: http://127.0.0.1:18081
           E2E_USERNAME: admin
           E2E_PASSWORD: E2E#Passw0rd!
           APP_RELEASE: ci-${{ github.sha }}
         run: |
           npx playwright install --with-deps chromium
           npx playwright test
+      - name: e2e negative (P0-R1:legacy 代理错指后端时演练必须失败)
+        env:
+          ALE_API_PROXY: http://127.0.0.1:18080
+          ALE_LEGACY_PROXY: http://127.0.0.1:18080
+          E2E_USERNAME: admin
+          E2E_PASSWORD: E2E#Passw0rd!
+          APP_RELEASE: ci-negative
+        run: |
+          set +e
+          npx playwright test shell.spec.ts -g "回退演练" --retries=0 --workers=1
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "NEGATIVE FAILED: 回退演练在 legacy 代理错指后端时仍然通过 → 断言无鉴别力"
+            exit 1
+          fi
+          echo "NEGATIVE OK: 错误配置下演练如预期失败,断言有效"
+      - name: flag build-injection check (P0-R2:构建注入必须进入产物)
+        run: |
+          VITE_ALE_LEGACY_BASE=/wl-inject npx vite build --outDir dist-inject --emptyOutDir --logLevel error
+          grep -q "/wl-inject" dist-inject/assets/*.js
+          rm -rf dist-inject
