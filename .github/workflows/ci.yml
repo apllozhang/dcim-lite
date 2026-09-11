@@ -32,6 +32,16 @@ jobs:
         run: go test ./internal/app/ -run TestRouteInventory -v -count=1
       - name: build
         run: go build ./cmd/server
+      - name: python evidence selftests (复评 P1-N2：证据工具自身回归门禁)
+        run: |
+          python3 -m pip install --quiet pyyaml pytest
+          python3 tests/sandbox/selfcheck_evidence_compiler.py
+          python3 tests/sandbox/selfcheck_finalize_run.py
+          python3 tests/sandbox/selfcheck_finalize_run_v5.py
+          # pytest 不得误收集 selfcheck 文件（收集到的用例数必须为 0）
+          n=$(python3 -m pytest tests/sandbox/ --collect-only -q 2>/dev/null | grep -c "::" || true)
+          echo "collected: $n"
+          test "$n" -eq 0
 
   integration:
     runs-on: ubuntu-latest

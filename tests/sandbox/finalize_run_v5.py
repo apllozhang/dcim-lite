@@ -145,7 +145,7 @@ def main():
                 if method in ("get", "post", "put", "delete", "patch"):
                     ops.append((method.upper(), path))
         gate("openapi-parseable", True)
-        gate("openapi-count-66", len(ops) == 66, f"got {len(ops)}")
+        gate("openapi-count-72", len(ops) == 72, f"got {len(ops)}")
     except Exception as e:
         gate("openapi-parseable", False, str(e)[:80])
         ops = []
@@ -157,7 +157,7 @@ def main():
             m, p = key.split(" ", 1)
             req_map[(m, p)] = set(spec.get("required", []))
         gate("requirements-parseable", True)
-        gate("requirements-count-66", len(req_map) == 66, f"got {len(req_map)}")
+        gate("requirements-count-72", len(req_map) == 72, f"got {len(req_map)}")
         req_keys = set(req_map.keys())
         openapi_keys = set(ops)
         gate("requirements-match-openapi", req_keys == openapi_keys,
@@ -249,9 +249,9 @@ def main():
             "evidence_cases": ";".join(sorted(set(c["caseId"] for c in mc if c["kind"] == "TEST"))[:5]),
         })
 
-    gate("coverage-reached-66", reached == 66, f"got {reached}/66")
+    gate("coverage-reached-72", reached == 72, f"got {reached}/72")
     # P0-C: 真门禁（非写死）
-    gate("coverage-behavior-complete-66", behavior_complete == 66, f"got {behavior_complete}/66")
+    gate("coverage-behavior-complete-72", behavior_complete == 72, f"got {behavior_complete}/72")
 
     # 写矩阵
     cov_dir = FR / "coverage"

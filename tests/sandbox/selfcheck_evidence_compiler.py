@@ -2,6 +2,12 @@
 """Evidence Compiler 自测（EC-01~EC-15）+ 正向夹具验证。
 纯本地合成数据。exit 0=全过。"""
 import sys, os
+
+# Windows 控制台默认 GBK：输出含 Unicode 会崩（复评 P1-N2）。统一 UTF-8 输出，
+# 不让测试正确性依赖终端编码；CI 侧同样以 UTF-8 运行。
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from evidence_compiler import compile_evidence, _match_op, ALLOWED_CATEGORIES
 

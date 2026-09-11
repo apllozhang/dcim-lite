@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """GT v4 Finalizer 负向/正向自测（指南 §7，14 组）。
-纯本地合成数据，不连接网络/数据库。用法: python3 test_finalize_run.py（exit 0=全过）。"""
+纯本地合成数据，不连接网络/数据库。用法: python3 selfcheck_finalize_run.py（exit 0=全过）。"""
 import hashlib
 import json
 import os
 import shutil
 import subprocess
 import sys
+
+# Windows 控制台默认 GBK:输出含 Unicode 会崩(复评 P1-N2)。统一 UTF-8 输出,
+# 不让测试正确性依赖终端编码;CI 侧同样以 UTF-8 运行。
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))

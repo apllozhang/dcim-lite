@@ -118,30 +118,139 @@ def page(browser):
 
 
 @pytest.fixture
-def env(admin_token):
+def env(request, admin_token):
     """自建隔离环境：唯一 run ID 的数据中心/机房/机柜 + 设备工厂。
 
-    teardown 无条件清理（try/finally 语义），清理失败会打印警告但不掩盖用例结果。
+    清理协议（复评 P1-N1 修复，T01）：
+    - 创建即保存 id+version，teardown 直接逆序 DELETE——不再调用不存在的
+      GET /racks|rooms|data-centers/{id}（旧清理因此 404 跳过删除，从未生效）；
+    - request.addfinalizer 注册：fixture 在 yield 前失败也清理已创建资源；
+    - 乐观锁 409 时经 resource-tree / 设备详情重取最新 version 重试一次；
+    - 清理失败让 teardown 报错（不再 WARN 掩盖），末尾按 run ID 做零残留断言。
     """
     run_id = uuid.uuid4().hex[:8]
     ctx = {
         "run_id": run_id, "tok": admin_token,
         "dc": None, "room": None, "rack": None, "devices": [],
         "policy_backup": None,
+        "_dc_row": None, "_room_row": None, "_rack_row": None, "_device_rows": [],
     }
 
     def _create(path, body, what):
         st, resp = api("POST", path, body, admin_token)
         assert st in (200, 201), f"fixture create {what}: {st} {resp}"
-        return data_of(resp)
+        d = data_of(resp)
+        assert d.get("id") and d.get("version") is not None, \
+            f"fixture create {what}: response missing id/version: {d}"
+        return d
+
+    def _version_from_tree(obj_id):
+        """resource-tree 全树定位 dc/room/rack 的最新 version；不在树中返回 None。"""
+        st, tree = api("GET", "/api/v1/resource-tree", None, admin_token)
+        if st != 200:
+            return None
+
+        def walk(node):
+            if isinstance(node, dict):
+                if node.get("id") == obj_id:
+                    return node.get("version")
+                for v in node.values():
+                    r = walk(v)
+                    if r is not None:
+                        return r
+            elif isinstance(node, list):
+                for it in node:
+                    r = walk(it)
+                    if r is not None:
+                        return r
+            return None
+
+        return walk(data_of(tree))
+
+    def _purge(kind, row):
+        """DELETE {kind}/{id}?version=；409 重取 version 重试一次。返回错误消息或 None。"""
+        obj_id, ver = row["id"], row["version"]
+        for _ in range(2):
+            st, body = api("DELETE", f"/api/v1/{kind}/{obj_id}?version={ver:.0f}", None, admin_token)
+            if st in (200, 404):
+                return None
+            if st == 409:
+                latest = _version_from_tree(obj_id)
+                if latest is None:
+                    return f"{kind} {obj_id}: 409 but not found in resource-tree"
+                ver = latest
+                continue
+            return f"{kind} {obj_id}: cleanup DELETE got {st} {body}"
+        return f"{kind} {obj_id}: cleanup failed after version retry"
+
+    def _purge_device(row):
+        obj_id = row["id"]
+        st, d = api("GET", f"/api/v1/devices/{obj_id}", None, admin_token)
+        if st == 200 and data_of(d).get("lifecycleStatus") == "RUNNING":
+            st2, b2 = api("POST", f"/api/v1/devices/{obj_id}/decommission",
+                          {"reason": "E2E 清理"}, admin_token)
+            if st2 != 200:
+                return f"device {obj_id}: decommission got {st2} {b2}"
+        ver = row["version"]
+        for _ in range(2):
+            st, body = api("DELETE", f"/api/v1/devices/{obj_id}?version={ver:.0f}", None, admin_token)
+            if st in (200, 404):
+                return None
+            if st == 409:
+                st, d = api("GET", f"/api/v1/devices/{obj_id}", None, admin_token)
+                if st == 404:
+                    return None
+                if st != 200:
+                    return f"device {obj_id}: refetch got {st}"
+                latest = data_of(d).get("version")
+                if latest is None:
+                    return f"device {obj_id}: refetch missing version"
+                ver = latest
+                continue
+            return f"device {obj_id}: cleanup DELETE got {st} {body}"
+        return f"device {obj_id}: cleanup failed after version retry"
+
+    def _finalizer():
+        problems = []
+        if ctx["policy_backup"] is not None:
+            st, _ = api("PUT", "/api/v1/admin/approval-policy", ctx["policy_backup"], admin_token)
+            if st != 200:
+                problems.append(f"approval-policy restore failed: {st}")
+        for row in reversed(ctx["_device_rows"]):
+            err = _purge_device(row)
+            if err:
+                problems.append(err)
+        for kind, key in (("racks", "_rack_row"), ("rooms", "_room_row"), ("data-centers", "_dc_row")):
+            row = ctx[key]
+            if row:
+                err = _purge(kind, row)
+                if err:
+                    problems.append(err)
+        # 零残留断言：树中无 dc、设备列表无本 run 前缀
+        if ctx["dc"] and _version_from_tree(ctx["dc"]) is not None:
+            problems.append(f"residue: dc {ctx['dc']} still in resource-tree")
+        st, devs = api("GET", "/api/v1/devices?page=1&pageSize=500", None, admin_token)
+        if st == 200:
+            prefix = f"E2E-D{run_id}"
+            hit = [m.get("code") for m in (data_of(devs).get("items") or [])
+                   if str(m.get("code", "")).startswith(prefix)]
+            if hit:
+                problems.append(f"residue devices with prefix {prefix}: {hit}")
+        if problems:
+            raise AssertionError("[env teardown] 清理不彻底：\n" + "\n".join(problems))
+
+    request.addfinalizer(_finalizer)
 
     dc = _create("/api/v1/data-centers", {"code": f"E2E-DC-{run_id}", "name": f"E2E数据中心{run_id}"}, "dc")
     ctx["dc"] = dc["id"]
+    ctx["_dc_row"] = dc
     room = _create(f"/api/v1/data-centers/{dc['id']}/rooms", {"code": f"R-{run_id}", "name": f"E2E机房{run_id}"}, "room")
     ctx["room"] = room["id"]
+    ctx["_room_row"] = room
     rack = _create(f"/api/v1/rooms/{room['id']}/racks",
                    {"code": f"K-{run_id}", "name": f"E2E机柜{run_id}", "uHeight": 12}, "rack")
     ctx["rack"] = rack["id"]
+    ctx["_rack_row"] = rack
 
     st, types = api("GET", "/api/v1/device-types", None, admin_token)
     assert st == 200, "list device types failed"
@@ -152,6 +261,7 @@ def env(admin_token):
                       {"typeId": ctx["type_id"], "code": f"E2E-D{run_id}{name_suffix}",
                        "name": f"E2E设备{run_id}{name_suffix}", "heightU": 1}, "device")
         ctx["devices"].append(dev["id"])
+        ctx["_device_rows"].append(dev)
         return dev
 
     ctx["make_device"] = make_device
@@ -160,40 +270,6 @@ def env(admin_token):
     st, pol = api("GET", "/api/v1/admin/approval-policy", None, admin_token)
     if st == 200:
         ctx["policy_backup"] = data_of(pol)
-
-    yield ctx
-
-    # ---- teardown：恢复策略 + 逆序清理 ----
-    if ctx["policy_backup"] is not None:
-        st, _ = api("PUT", "/api/v1/admin/approval-policy", ctx["policy_backup"], admin_token)
-        if st != 200:
-            print(f"\n[WARN] approval-policy restore failed: {st} (原值={ctx['policy_backup']})")
-    for dev_id in list(ctx["devices"]):
-        st, d = api("GET", f"/api/v1/devices/{dev_id}", None, admin_token)
-        if st != 200:
-            continue
-        if data_of(d).get("lifecycleStatus") == "RUNNING":
-            api("POST", f"/api/v1/devices/{dev_id}/decommission", {"reason": "E2E 清理"}, admin_token)
-        st, d = api("GET", f"/api/v1/devices/{dev_id}", None, admin_token)
-        ver = data_of(d).get("version")
-        if ver is not None:
-            s2, _ = api("DELETE", f"/api/v1/devices/{dev_id}?version={ver:.0f}", None, admin_token)
-            if s2 != 200:
-                print(f"\n[WARN] cleanup device {dev_id} failed: {s2}")
-    st, r = api("GET", f"/api/v1/racks/{ctx['rack']}", None, admin_token)
-    if st == 200:
-        ver = data_of(r).get("version")
-        st, resp = api("DELETE", f"/api/v1/racks/{ctx['rack']}?version={ver:.0f}", None, admin_token)
-        if st != 200:
-            print(f"\n[WARN] cleanup rack failed: {st} {resp}")
-    st, r = api("GET", f"/api/v1/rooms/{ctx['room']}", None, admin_token)
-    if st == 200:
-        ver = data_of(r).get("version")
-        api("DELETE", f"/api/v1/rooms/{ctx['room']}?version={ver:.0f}", None, admin_token)
-    st, r = api("GET", f"/api/v1/data-centers/{ctx['dc']}", None, admin_token)
-    if st == 200:
-        ver = data_of(r).get("version")
-        api("DELETE", f"/api/v1/data-centers/{ctx['dc']}?version={ver:.0f}", None, admin_token)
 
 
 @pytest.hookimpl(hookwrapper=True)

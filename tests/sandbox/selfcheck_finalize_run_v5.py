@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """GT v5 Finalizer + Freezer + Verifier 自测（22 项）。
-纯本地合成数据。用法: python3 test_finalize_run_v5.py（exit 0=全过）。"""
+纯本地合成数据。用法: python3 selfcheck_finalize_run_v5.py（exit 0=全过）。"""
 import hashlib
 import json
 import os
 import shutil
 import subprocess
 import sys
+
+# Windows 控制台默认 GBK:输出含 Unicode 会崩(复评 P1-N2)。统一 UTF-8 输出,
+# 不让测试正确性依赖终端编码;CI 侧同样以 UTF-8 运行。
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 import tempfile
 from pathlib import Path
 
@@ -229,7 +235,7 @@ def main():
         sp.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
         rc, out = run_cmd([sys.executable, V5, "--run-dir", rd, "--run-id", "test-run-0001",
                            "--openapi", openapi, "--requirements", requirements])
-        test("FZ-19", "behavior-not-66", 1, rc, out)
+        test("FZ-19", "behavior-incomplete", 1, rc, out)
 
         # ===== FZ-22: 解包后哈希变化 → verifier 1 =====
         rd = make_synthetic(tmp)
