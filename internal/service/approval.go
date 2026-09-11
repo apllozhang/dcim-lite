@@ -125,19 +125,35 @@ func (s *ApprovalService) Reject(id uuid.UUID, version uint, comment string, act
 		return nil, err
 	}
 	if rec.Status != model.ApprovalPending {
+		// 厂商语义（S08-APPROVE-STALE-REJECTED）：version 校验优先于状态——
+		// 携带过期 version 的重复决定返回 RESOURCE_VERSION_CONFLICT，而非状态冲突
+		if version != 0 && version != rec.Version {
+			return nil, apperr.ResourceVersion()
+		}
 		return nil, apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已处理")
 	}
 	if actor == nil {
 		return nil, apperr.Forbidden()
 	}
 	if err := s.store.Decide(id, version, model.ApprovalRejected, *actor, comment); err != nil {
-		// 条件更新失败：并发已处理或 version 过期，统一按状态冲突拒绝
+		// 条件更新失败：区分 version 过期与已被并发处理（同 Approve 的厂商语义）
 		if repository.IsVersionConflict(err) {
-			return nil, apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已被并发处理或版本过期，请刷新")
+			return nil, s.classifyDecideConflict(s.store.DB(), id)
 		}
 		return nil, mapStoreErr(err)
 	}
 	return s.store.GetApproval(id)
+}
+
+// classifyDecideConflict 区分条件占单失败的两种语义（厂商基线，S08-APPROVE-STALE-REJECTED）：
+// 审批单仍是 PENDING → 请求携带的 version 已过期（RESOURCE_VERSION_CONFLICT）；
+// 状态已变 → 被并发处理（APPROVAL_STATE_CONFLICT）。必须在同一事务内读当前状态。
+func (s *ApprovalService) classifyDecideConflict(tx *gorm.DB, id uuid.UUID) error {
+	cur, err := s.store.WithTx(tx).GetApproval(id)
+	if err == nil && cur.Status == model.ApprovalPending {
+		return apperr.ResourceVersion()
+	}
+	return apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已被并发处理，请刷新")
 }
 
 // Approve 在单个数据库事务内完成：条件更新审批单（乐观锁占单）→ 设备上架/移位 → 履历。
@@ -151,6 +167,10 @@ func (s *ApprovalService) Approve(id uuid.UUID, version uint, comment string, ac
 		return nil, err
 	}
 	if rec.Status != model.ApprovalPending {
+		// 同 Reject：version 校验优先于状态检查（厂商基线语义）
+		if version != 0 && version != rec.Version {
+			return nil, apperr.ResourceVersion()
+		}
 		return nil, apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已处理")
 	}
 	if actor == nil {
@@ -158,10 +178,11 @@ func (s *ApprovalService) Approve(id uuid.UUID, version uint, comment string, ac
 	}
 	var placed *model.Device
 	err = s.store.DB().Transaction(func(tx *gorm.DB) error {
-		// 1. 条件更新审批单：仍为 PENDING（且 version 匹配时校验乐观锁），并发批准只有一个成功
+		// 1. 条件更新审批单：仍为 PENDING（且 version 匹配时校验乐观锁），并发批准只有一个成功。
+		//    失败时区分 version 过期与被并发处理（厂商语义不同）
 		if err := s.store.WithTx(tx).Decide(id, version, model.ApprovalApproved, *actor, comment); err != nil {
 			if repository.IsVersionConflict(err) {
-				return apperr.New(409, "APPROVAL_STATE_CONFLICT", "审批单已被并发处理或版本过期，请刷新")
+				return s.classifyDecideConflict(tx, id)
 			}
 			return err
 		}
@@ -175,7 +196,8 @@ func (s *ApprovalService) Approve(id uuid.UUID, version uint, comment string, ac
 			return err
 		}
 		if rec.RequestedDeviceVersion != 0 && dev.Version != rec.RequestedDeviceVersion {
-			return apperr.New(409, "APPROVAL_STATE_CONFLICT", "设备已被修改，请重新申请")
+			// 厂商基线（S08-APPROVE-STALE-REJECTED）：设备在申请后被修改 → RESOURCE_VERSION_CONFLICT
+			return apperr.ResourceVersion()
 		}
 		// 3. 执行设备位置变更（与审批决定同事务，含履历）
 		op, requireOff := model.OpAssign, true

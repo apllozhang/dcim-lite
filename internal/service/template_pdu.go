@@ -140,6 +140,10 @@ func (s *TemplateService) CreateVersion(id uuid.UUID, version uint, in TemplateV
 	if t.Status != model.TemplateActive {
 		return nil, apperr.New(409, "TEMPLATE_DISABLED", "模板已停用，不能新建版本")
 	}
+	// 客户端携带的 version 必须与当前一致（S15-TPL-VERSION-STALE：stale 版本发布要拒绝）
+	if version != 0 && version != t.Version {
+		return nil, apperr.ResourceVersion()
+	}
 	rev := t.CurrentRevision + 1
 	v := applyVersionDefaults(in, actor)
 	v.Revision = rev

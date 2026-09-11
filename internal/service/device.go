@@ -110,6 +110,13 @@ type ULayoutPosition struct {
 	Device      *model.Device `json:"device,omitempty"`
 }
 
+// ULayoutFree 连续空闲 U 段（厂商 u-layout 的 free 数组形状：S06-ULAYOUT-READ）。
+type ULayoutFree struct {
+	StartU  int `json:"startU"`
+	EndU    int `json:"endU"`
+	HeightU int `json:"heightU"`
+}
+
 // ULayout matches old frontend RoomScreenView: data.positions[].device
 type ULayout struct {
 	RackID    uuid.UUID         `json:"rackId"`
@@ -118,6 +125,8 @@ type ULayout struct {
 	RackName  string            `json:"rackName"`
 	Status    string            `json:"status"`
 	Positions []ULayoutPosition `json:"positions"`
+	// Free 为空闲连续段（厂商形状必需，缺失会使依赖 free 选位的客户端失效）
+	Free []ULayoutFree `json:"free"`
 }
 
 func (s *DeviceService) ListDeviceTypes() ([]model.DeviceType, error) {
@@ -235,6 +244,10 @@ func (s *DeviceService) CreateDevice(in DeviceInput) (*model.Device, error) {
 	}
 	in.Name = strings.TrimSpace(in.Name)
 	in.Code = strings.TrimSpace(in.Code)
+	// 厂商基线拒绝非正高度（S15-DEV-NEG-HEIGHT：heightU=-1 → 400）
+	if in.HeightU != nil && *in.HeightU < 1 {
+		return nil, apperr.InvalidResource("heightU 必须为正整数")
+	}
 	if err := validateDeviceIPs(in.ManagementIP, in.BusinessIP); err != nil {
 		return nil, err
 	}
@@ -445,6 +458,10 @@ func (s *DeviceService) placeInTx(id uuid.UUID, in PositionChangeInput, actor *u
 		return nil, err
 	}
 	if requireOff {
+		if dev.LifecycleStatus == model.DeviceRunning || dev.LifecycleStatus == model.DeviceMaintenance {
+			// 厂商基线：在位设备重复上架返回 DEVICE_POSITIONED（S06-ASSIGN-DOUBLE-POSITION）
+			return nil, apperr.New(409, "DEVICE_POSITIONED", "设备已在位，不能重复上架")
+		}
 		if dev.LifecycleStatus != model.DeviceWaitingRack && dev.LifecycleStatus != model.DeviceOffRack {
 			return nil, apperr.New(409, "INVALID_RESOURCE", "当前状态不可上架")
 		}
@@ -639,6 +656,20 @@ func (s *DeviceService) ULayout(rackID uuid.UUID) (*ULayout, error) {
 			Orientation: p.Orientation, InstalledAt: p.InstalledAt, Reason: p.Reason,
 			Device: dev,
 		})
+	}
+	// 计算 free 连续空闲段：按已排序 positions 扫描空隙，形状与厂商一致
+	occupied := positions
+	next := 1
+	for _, p := range occupied {
+		if p.StartU > next {
+			out.Free = append(out.Free, ULayoutFree{StartU: next, EndU: p.StartU - 1, HeightU: p.StartU - next})
+		}
+		if p.EndU+1 > next {
+			next = p.EndU + 1
+		}
+	}
+	if rack.UHeight >= next {
+		out.Free = append(out.Free, ULayoutFree{StartU: next, EndU: rack.UHeight, HeightU: rack.UHeight - next + 1})
 	}
 	return out, nil
 }

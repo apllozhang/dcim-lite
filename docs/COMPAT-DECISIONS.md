@@ -39,3 +39,32 @@
 - `POST /api/v1/pdus/{id}/force-archive`：须回报 `confirmConnections`（等于清单中的连接数，否则 409 `IMPACT_CONFIRMATION_REQUIRED`）且 `reason` 必填
 - 执行：断开全部连接 + 下线插座 + 归档 PDU（单事务）
 - 留痕：影响清单与原因写入 `audit_logs`（action=`FORCE_ARCHIVE`）
+
+## 差分复验轮（2026-09-11）新增对齐与登记
+
+第四轮差分回放（双侧干净沙箱 + 415 用例 golden 套件 + 关键字段扩展比对，报告见 docs/DIFF-REPLAY-FINAL-20260911.md）修复的兼容缺陷与新增登记：
+
+### 本轮修复的行为对齐（厂商可实测）
+
+| 编号 | 端点 | 修复 |
+|---|---|---|
+| C1 | POST /devices | 负/零 heightU 拒绝（400），此前静默回退默认高度 |
+| C2 | POST /devices/{id}/assign | 在位设备重复上架返回 409 `DEVICE_POSITIONED`（此前 INVALID_RESOURCE） |
+| C3 | DELETE /pdu-connections/{id} | 修复响应体双写（缺 query version 时 body 兜底成功仍追加错误段）；缺 version 统一 400 `INVALID_REQUEST` |
+| C4 | POST /rack-templates/{id}/versions | stale version 校验（此前恒以当前版本条件更新，过期版本被接受） |
+| C5 | POST /admin/approvals/{id}/approve、/reject | version 校验优先于状态检查：过期 version → `RESOURCE_VERSION_CONFLICT`；申请后设备被修改 → `RESOURCE_VERSION_CONFLICT`（此前混返 APPROVAL_STATE_CONFLICT） |
+| C6 | POST /rooms/{id}/move、/racks/{id}/move | version 校验先于其他参数校验（厂商顺序） |
+| C7 | GET /health/live | data.status 对齐厂商 `alive`（此前 `live`） |
+| C8 | GET /racks/{id}/u-layout | 补齐 `free` 连续空闲段数组（厂商形状必需；缺失使依赖 free 选位的客户端全部失效） |
+| C9 | 登录 | 停用账户 403（厂商状态码；此前 401） |
+
+### 差异分类口径（v2 比对器，tests/sandbox/diff_compare_v2.py）
+
+- **SYMMETRIC_SWAP**：并发对称用例（CLIENT0/1 胜负互换、同一审批单 approve/reject 决策互换）——胜负分配是时序，两侧「恰一次生效」不变量断言均各自 PASS；
+- **INTENTIONAL（D 系列/D5）**：厂商 500 竞争缺陷修复为确定性响应；带电删除 PDU 的 D5 偏离；
+- **SHAPE_OR_DRIFT**：厂商在嵌套对象/模板快照中返回空壳值（0/空串），候选填充真实值；以及厂商自身 500 缺陷导致其库内数据统计 ±N 的漂移。逐项消除属新前端/新源码重建范围。
+
+### 残留差异（v2 口径实测，不阻塞）
+
+- 状态码+错误码口径兼容率 **83.4%**（可比 391），**真实断裂 0**；
+- 关键字段（响应形状）口径 **70.3%**——剩余差异集中在嵌套关联对象的填充深度与个别响应字段命名（如导入 summary 的 `unchanged`/`ignored`），属厂商响应形状的完整复刻工程。

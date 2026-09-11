@@ -271,20 +271,29 @@ func (h *PDUHandler) Disconnect(c *gin.Context) {
 	if !ok {
 		return
 	}
-	version, ok := queryVersion(c)
-	if !ok {
-		// 前端 DELETE 带 body {version}
+	// 厂商前端 DELETE 把 version 放 body，套件同样只发 body；query 缺失时不能走
+	// queryVersion（其会立即写错误响应，body 兜底成功后造成响应体双写）。
+	version := uint(0)
+	if raw := c.Query("version"); raw != "" {
+		n, err := strconv.ParseUint(raw, 10, 32)
+		if err != nil || n == 0 {
+			writeAppError(c, apperr.InvalidResource("invalid resource: version 必须为正整数"))
+			return
+		}
+		version = uint(n)
+	} else {
 		var body struct {
 			Version uint `json:"version"`
 		}
 		if !bindOptionalJSON(c, &body) {
 			return
 		}
-		if body.Version == 0 {
-			writeAppError(c, apperr.InvalidResource("缺少 version 参数"))
-			return
-		}
 		version = body.Version
+	}
+	if version == 0 {
+		// 厂商基线（S16-DISCONNECT-NO-VER）：缺 version 返回 400 INVALID_REQUEST
+		writeAppError(c, apperr.New(400, "INVALID_REQUEST", "缺少 version 参数"))
+		return
 	}
 	if err := h.service.Disconnect(id, version); err != nil {
 		writeAppError(c, err)

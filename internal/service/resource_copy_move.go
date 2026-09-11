@@ -223,15 +223,19 @@ func (s *ResourceService) CopyRack(id uuid.UUID, in CopyMoveInput) (*model.Rack,
 }
 
 func (s *ResourceService) MoveRoom(id uuid.UUID, version uint, in CopyMoveInput) (*model.Room, error) {
-	if in.TargetDataCenterID == nil {
-		return nil, apperr.InvalidResource("缺少 targetDataCenterId")
-	}
 	src, err := s.store.GetRoom(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("机房")
 		}
 		return nil, err
+	}
+	// 厂商基线（S15-ROOM-MOVE-STALE）：version 校验先于其他参数校验
+	if version != 0 && version != src.Version {
+		return nil, apperr.ResourceVersion()
+	}
+	if in.TargetDataCenterID == nil {
+		return nil, apperr.InvalidResource("缺少 targetDataCenterId")
 	}
 	if src.DataCenterID == *in.TargetDataCenterID {
 		return nil, apperr.InvalidResource("目标数据中心与当前相同")
@@ -292,15 +296,19 @@ func (s *ResourceService) MoveRoom(id uuid.UUID, version uint, in CopyMoveInput)
 }
 
 func (s *ResourceService) MoveRack(id uuid.UUID, version uint, in CopyMoveInput) (*model.Rack, error) {
-	if in.TargetRoomID == nil {
-		return nil, apperr.InvalidResource("缺少 targetRoomId")
-	}
 	src, err := s.store.GetRack(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("机柜")
 		}
 		return nil, err
+	}
+	// 同 MoveRoom：version 校验先于其他参数校验（厂商基线语义）
+	if version != 0 && version != src.Version {
+		return nil, apperr.ResourceVersion()
+	}
+	if in.TargetRoomID == nil {
+		return nil, apperr.InvalidResource("缺少 targetRoomId")
 	}
 	if src.RoomID == *in.TargetRoomID {
 		return nil, apperr.InvalidResource("目标机房与当前相同")
