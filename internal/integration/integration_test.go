@@ -1131,18 +1131,18 @@ func TestDisconnectVsForceArchiveRace(t *testing.T) {
 			t.Fatalf("round %d: connect: %d %v", round, st, conn)
 		}
 		connID := data(conn)["id"].(string)
-		connVer := fmt.Sprintf("%.0f", data(conn)["version"].(float64))
+		connVer := data(conn)["version"].(float64)
 		var stDis, stArc int
 		var wg sync.WaitGroup
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			stDis, _ = call("DELETE", "/api/v1/pdu-connections/"+connID, map[string]any{"version": connVer}, adminTok)
+			stDis, _ = call("DELETE", "/api/v1/pdu-connections/"+connID, map[string]any{"version": int(connVer)}, adminTok)
 		}()
 		go func() {
 			defer wg.Done()
 			stArc, _ = call("POST", "/api/v1/pdus/"+pduID+"/force-archive",
-				map[string]any{"version": fmt.Sprintf("%.0f", pduVer), "reason": "报废", "confirmConnections": 1}, adminTok)
+				map[string]any{"version": int(pduVer), "reason": "报废", "confirmConnections": 1}, adminTok)
 		}()
 		wg.Wait()
 		disOK, arcOK := stDis == 200, stArc == 200
