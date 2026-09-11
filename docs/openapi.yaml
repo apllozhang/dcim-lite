@@ -1513,6 +1513,38 @@ components:
         tags: { type: string }
         remarks: { type: string }
         version: { type: integer }
+        # A 族读模型首批：仅设备列表/详情读接口返回；未在位设备省略
+        currentPosition: { $ref: "#/components/schemas/CurrentPosition" }
+    CurrentPosition:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+        version: { type: integer }
+        deviceId: { type: string, format: uuid }
+        rackId: { type: string, format: uuid }
+        roomId: { type: string, format: uuid }
+        dataCenterId: { type: string, format: uuid }
+        startU: { type: integer }
+        heightU: { type: integer }
+        endU: { type: integer }
+        orientation: { type: string, enum: [NORMAL, REVERSE] }
+        installedAt: { type: string }
+        installedBy: { type: string, format: uuid, nullable: true }
+        reason: { type: string }
+        rack: { $ref: "#/components/schemas/PositionRackSummary" }
+    PositionRackSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        roomId: { type: string, format: uuid }
+        dataCenterId: { type: string, format: uuid }
+        uHeight: { type: integer }
+        status: { type: string }
+        version: { type: integer }
     DeviceList:
       type: object
       properties:

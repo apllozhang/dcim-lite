@@ -227,7 +227,33 @@ func (s *DeviceService) DeleteDeviceType(id uuid.UUID, version uint) error {
 }
 
 func (s *DeviceService) ListDevices(q repository.DeviceQuery) ([]model.Device, int64, error) {
-	return s.devices.ListDevices(q)
+	items, total, err := s.devices.ListDevices(q)
+	if err != nil {
+		return nil, 0, err
+	}
+	if err := s.attachCurrentPositions(items); err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
+}
+
+// attachCurrentPositions 组装在位读模型（A 族 currentPosition：设备列表/详情位置列）。
+// 仅读接口调用；批量取回避免 N+1。
+func (s *DeviceService) attachCurrentPositions(items []model.Device) error {
+	ids := make([]uuid.UUID, 0, len(items))
+	for i := range items {
+		ids = append(ids, items[i].ID)
+	}
+	views, err := s.devices.ListActivePositionsWithRack(ids)
+	if err != nil {
+		return err
+	}
+	for i := range items {
+		if v, ok := views[items[i].ID]; ok {
+			items[i].CurrentPosition = v
+		}
+	}
+	return nil
 }
 
 func (s *DeviceService) CreateDevice(in DeviceInput) (*model.Device, error) {
@@ -410,6 +436,13 @@ func (s *DeviceService) GetDevice(id uuid.UUID) (*model.Device, error) {
 			return nil, apperr.NotFound("设备")
 		}
 		return nil, err
+	}
+	views, err := s.devices.ListActivePositionsWithRack([]uuid.UUID{id})
+	if err != nil {
+		return nil, err
+	}
+	if v, ok := views[id]; ok {
+		dev.CurrentPosition = v
 	}
 	return dev, nil
 }

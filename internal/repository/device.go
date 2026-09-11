@@ -259,6 +259,51 @@ func (s *DeviceStore) GetActivePosition(deviceID uuid.UUID) (*model.RackDevicePo
 	return &p, nil
 }
 
+// ListActivePositionsWithRack 批量取设备在位记录并带出机柜摘要，
+// 供读模型组装（A 族 currentPosition：设备列表/详情的位置列）。
+func (s *DeviceStore) ListActivePositionsWithRack(deviceIDs []uuid.UUID) (map[uuid.UUID]*model.CurrentPositionView, error) {
+	out := map[uuid.UUID]*model.CurrentPositionView{}
+	if len(deviceIDs) == 0 {
+		return out, nil
+	}
+	var positions []model.RackDevicePosition
+	if err := s.db.Where("device_id IN ? AND deleted_at IS NULL", deviceIDs).Find(&positions).Error; err != nil {
+		return nil, err
+	}
+	if len(positions) == 0 {
+		return out, nil
+	}
+	rackIDs := make([]uuid.UUID, 0, len(positions))
+	for _, p := range positions {
+		rackIDs = append(rackIDs, p.RackID)
+	}
+	var racks []model.Rack
+	if err := s.db.Where("id IN ? AND deleted_at IS NULL", rackIDs).Find(&racks).Error; err != nil {
+		return nil, err
+	}
+	racksByID := map[uuid.UUID]*model.Rack{}
+	for i := range racks {
+		racksByID[racks[i].ID] = &racks[i]
+	}
+	for i := range positions {
+		p := &positions[i]
+		view := &model.CurrentPositionView{
+			ID: p.ID, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt, Version: p.Version,
+			DeviceID: p.DeviceID, RackID: p.RackID, RoomID: p.RoomID, DataCenterID: p.DataCenterID,
+			StartU: p.StartU, HeightU: p.HeightU, EndU: p.EndU, Orientation: p.Orientation,
+			InstalledAt: p.InstalledAt, InstalledBy: p.InstalledBy, Reason: p.Reason,
+		}
+		if r, ok := racksByID[p.RackID]; ok {
+			view.Rack = &model.PositionRackSummary{
+				ID: r.ID, Code: r.Code, Name: r.Name, RoomID: r.RoomID,
+				DataCenterID: r.DataCenterID, UHeight: r.UHeight, Status: r.Status, Version: r.Version,
+			}
+		}
+		out[p.DeviceID] = view
+	}
+	return out, nil
+}
+
 // CountActiveConnectionsByDevice 统计设备的活动供电连接数（D01 方案 A：
 // 有活动连接禁止移位）。GORM 软删模型自动排除已断开连接。
 func (s *DeviceStore) CountActiveConnectionsByDevice(deviceID uuid.UUID) (int64, error) {
