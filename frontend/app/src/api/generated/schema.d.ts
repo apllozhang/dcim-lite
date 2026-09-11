@@ -1252,7 +1252,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 移位（策略开启时生成 PENDING 审批单；rackId/targetRackId 均可） */
+        /** 移位（策略开启时生成 PENDING 审批单；rackId/targetRackId 均可；有活动供电连接 → 409 DEVICE_POWERED，D01 方案 A） */
         post: {
             parameters: {
                 query?: never;
@@ -1991,7 +1991,8 @@ export interface components {
              *     账户：INVALID_CREDENTIALS / USER_DISABLED / USER_LOCKED / USER_CONFLICT /
              *     LAST_ADMIN_PROTECTED / INVALID_USER / RATE_LIMITED。验证码：CAPTCHA_REQUIRED /
              *     CAPTCHA_INVALID。机柜与 U 位：RACK_UNAVAILABLE / RACK_U_CONFLICT /
-             *     DEVICE_POSITIONED / DEVICE_TYPE_IN_USE / DEVICE_NOT_POSITIONED。
+             *     DEVICE_POSITIONED / DEVICE_TYPE_IN_USE / DEVICE_NOT_POSITIONED /
+             *     DEVICE_POWERED（D01：有活动供电连接禁止移位）。
              *     模板：TEMPLATE_DISABLED / SYSTEM_TEMPLATE_PROTECTED。PDU：PDU_SOCKET_CONNECTED /
              *     PDU_IN_USE / PDU_DEVICE_RACK_MISMATCH / IMPACT_CONFIRMATION_REQUIRED。
              *     审批：APPROVAL_STATE_CONFLICT。导入：RACK_DIAGRAM_IMPORT_DRAFT_EXPIRED /

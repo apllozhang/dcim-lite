@@ -40,7 +40,8 @@
 - 乐观锁:PUT/DELETE 携带 `version`,过期 → 409 `RESOURCE_VERSION_CONFLICT`(UI 必须提示刷新);
 - 上架审批开启时:assign 产生 PENDING 单,批准后设备才 RUNNING;
 - 审批 approve/reject:stale version → `RESOURCE_VERSION_CONFLICT` 优先于状态冲突;
-- 强制归档:先 GET archive-impact 展示影响清单,提交须回填 `confirmConnections`,过期 → 409 `IMPACT_CONFIRMATION_REQUIRED`。
+- 强制归档:先 GET archive-impact 展示影响清单,提交须回填 `confirmConnections`,过期 → 409 `IMPACT_CONFIRMATION_REQUIRED`;
+- 移位(D01 方案 A):设备有活动供电连接时 move → 409 `DEVICE_POWERED`,UI 提示先断开;新前端移位表单须处理该冲突态。
 
 ## 4. 已知差异决策(新前端不复制的历史怪异)
 

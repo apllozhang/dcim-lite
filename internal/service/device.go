@@ -469,6 +469,18 @@ func (s *DeviceService) placeInTx(id uuid.UUID, in PositionChangeInput, actor *u
 		if dev.LifecycleStatus != model.DeviceRunning && dev.LifecycleStatus != model.DeviceMaintenance {
 			return nil, apperr.New(409, "INVALID_RESOURCE", "当前状态不可移位")
 		}
+		// D01 方案 A（业务确认）：有活动供电连接禁止移位——设备与 PDU 必须同机柜，
+		// 移位后旧连接将指向异柜 PDU。锁内检查，与 Connect/Disconnect 串行化无窗口。
+		if op == "MOVE" {
+			conns, err := s.devices.CountActiveConnectionsByDevice(id)
+			if err != nil {
+				return nil, err
+			}
+			if conns > 0 {
+				return nil, apperr.New(409, "DEVICE_POWERED",
+					"设备存在活动供电连接，请先断开连接后再移位")
+			}
+		}
 	}
 	rackID, err := in.desiredRackID()
 	if err != nil {

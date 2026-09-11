@@ -1539,3 +1539,67 @@ func TestDisableUserRevokesTokens(t *testing.T) {
 		t.Fatalf("fresh login after re-enable must work, got %d", st)
 	}
 }
+
+// ── D01 方案 A 验收:有活动供电连接禁止移位 ──────────────────
+
+// TestMoveWithActiveConnectionBlocked:接电设备 move → 409 DEVICE_POWERED;
+// 断开后 move → 200;重新接电再 move → 再次 409。
+func TestMoveWithActiveConnectionBlocked(t *testing.T) {
+	fx := newFixture(t, "MP")
+	for round := 0; round < 3; round++ {
+		pduID, sockID := setupPDUWithSocket(t, fx, "MP")
+		dev := createDevice(t, fx, "MP-D"+short(), 1)
+		if st, _ := call("POST", "/api/v1/devices/"+dev+"/assign",
+			map[string]any{"rackId": fx.rackID, "startU": round + 1}, adminTok); st != 200 {
+			t.Fatalf("round %d: assign failed: %d", round, st)
+		}
+		st, conn := call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
+			map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok)
+		if st != 200 && st != 201 {
+			t.Fatalf("round %d: connect failed: %d %v", round, st, conn)
+		}
+		// 接电 → 移位必须 409 DEVICE_POWERED
+		st, body := call("POST", "/api/v1/devices/"+dev+"/move",
+			map[string]any{"rackId": fx.rackID, "startU": 10 + round}, adminTok)
+		if st != 409 || code(body) != "DEVICE_POWERED" {
+			t.Fatalf("round %d: move on powered device must 409 DEVICE_POWERED, got %d %v", round, st, body)
+		}
+		// 断开 → 移位成功
+		st, conns := call("GET", "/api/v1/racks/"+fx.rackID+"/pdu-connections", nil, adminTok)
+		if st != 200 {
+			t.Fatalf("round %d: list connections: %d", round, st)
+		}
+		var connID string
+		var connVer float64
+		for _, it := range data(conns)["items"].([]any) {
+			m := it.(map[string]any)
+			if m["deviceId"].(string) == dev {
+				connID = m["id"].(string)
+				connVer = m["version"].(float64)
+				break
+			}
+		}
+		if connID == "" {
+			t.Fatalf("round %d: connection not found", round)
+		}
+		if st, _ := call("DELETE", "/api/v1/pdu-connections/"+connID,
+			map[string]any{"version": int(connVer)}, adminTok); st != 200 {
+			t.Fatalf("round %d: disconnect failed: %d", round, st)
+		}
+		if st, body := call("POST", "/api/v1/devices/"+dev+"/move",
+			map[string]any{"rackId": fx.rackID, "startU": 10 + round, "reason": "D01 验收"}, adminTok); st != 200 {
+			t.Fatalf("round %d: move after disconnect must 200, got %d %v", round, st, body)
+		}
+		// 重新接电 → 再移位再次 409
+		if st, _ := call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
+			map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok); st != 200 && st != 201 {
+			t.Fatalf("round %d: reconnect failed: %d", round, st)
+		}
+		st, body = call("POST", "/api/v1/devices/"+dev+"/move",
+			map[string]any{"rackId": fx.rackID, "startU": 15}, adminTok)
+		if st != 409 || code(body) != "DEVICE_POWERED" {
+			t.Fatalf("round %d: second move on re-powered device must 409, got %d %v", round, st, body)
+		}
+		_ = pduID
+	}
+}
