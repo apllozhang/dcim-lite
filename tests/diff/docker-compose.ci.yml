@@ -20,6 +20,9 @@ services:
       JWT_SECRET: ci-diff-replay-secret-32-bytes!!
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: "DiffCi#2026!"
+      # golden 套件在 1 分钟内多次登录（每次消耗 captcha+login 两格），CI 栈放宽限流；
+      # 生产默认 10/min 不受影响（复评：套件级限流放宽只在测试环境生效）
+      LOGIN_RATE_LIMIT_PER_MIN: "200"
     ports:
       - "127.0.0.1:18080:8080"
     depends_on:

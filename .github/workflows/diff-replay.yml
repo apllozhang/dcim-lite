@@ -49,6 +49,19 @@ jobs:
             --out "$GITHUB_WORKSPACE/out" \
             --api http://127.0.0.1:18080
 
+      - name: summarize failures (if any)
+        if: always()
+        run: |
+          f="$GITHUB_WORKSPACE/out/final-regression/results.jsonl"
+          [ -f "$f" ] && python3 -c "
+          import json
+          rows = [json.loads(l) for l in open('$f') if l.strip()]
+          bad = [r for r in rows if r['status'] in ('FAIL', 'ERROR', 'BLOCKED')]
+          print(f'FAIL/ERROR/BLOCKED: {len(bad)}')
+          for r in bad:
+              print(' ', r['status'], r['caseId'], '|', r['httpStatus'], r['actualCode'], '|', r.get('note', '')[:120])
+          " || echo "no results file"
+
       - name: compare against frozen vendor baseline
         working-directory: tests/sandbox
         run: |
