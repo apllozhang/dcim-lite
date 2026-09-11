@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 
 	"dcim-lite/internal/apperr"
+	"dcim-lite/internal/middleware"
 	"dcim-lite/internal/response"
 	"dcim-lite/internal/service"
 )
@@ -42,7 +43,8 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		writeAppError(c, apperr.InvalidResource("%s", bindMessage(err)))
 		return
 	}
-	item, err := h.service.CreateUser(in)
+	actor := middleware.UserID(c)
+	item, err := h.service.CreateUser(in, &actor)
 	if err != nil {
 		writeAppError(c, err)
 		return
@@ -64,7 +66,8 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 		writeAppError(c, apperr.InvalidResource("%s", bindMessage(err)))
 		return
 	}
-	item, err := h.service.UpdateUser(id, version, in)
+	actor := middleware.UserID(c)
+	item, err := h.service.UpdateUser(id, version, in, &actor)
 	if err != nil {
 		writeAppError(c, err)
 		return
@@ -81,7 +84,8 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteUser(id, version); err != nil {
+	actor := middleware.UserID(c)
+	if err := h.service.DeleteUser(id, version, &actor); err != nil {
 		writeAppError(c, err)
 		return
 	}
@@ -102,7 +106,8 @@ func (h *AdminHandler) ResetPassword(c *gin.Context) {
 		writeAppError(c, apperr.InvalidResource("%s", bindMessage(err)))
 		return
 	}
-	if err := h.service.ResetPassword(id, version, in.Password); err != nil {
+	actor := middleware.UserID(c)
+	if err := h.service.ResetPassword(id, version, in.Password, &actor); err != nil {
 		writeAppError(c, err)
 		return
 	}

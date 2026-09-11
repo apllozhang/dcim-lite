@@ -130,6 +130,12 @@ func (s *UserStore) CreateUser(u *model.User) error {
 	return s.db.Create(u).Error
 }
 
+// WriteAudit 写审计日志；传入 WithTx 的 store 时与业务写入同事务（合规敏感操作
+// 的业务审计不做 best-effort），传独立 store 时为独立写入。
+func (s *UserStore) WriteAudit(log *model.AuditLog) error {
+	return s.db.Create(log).Error
+}
+
 // UpdateUser 更新用户；bumpSession 在停用（启用→停用）时为真，递增会话版本
 // 吊销该用户全部已签发 token（否则重新启用后旧 token 复活）。
 func (s *UserStore) UpdateUser(id uuid.UUID, version uint, username, displayName, email, authSource string, enabled bool, roles []model.Role, bumpSession bool) error {

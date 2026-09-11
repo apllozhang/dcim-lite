@@ -12,9 +12,10 @@ type RouteSpec struct {
 // RouteInventory 全量路由清单（与 internal/router/router.go 的注册一一对应）。
 func RouteInventory() []RouteSpec {
 	return []RouteSpec{
-		// 公共：健康与登录
+		// 公共：健康、指标与登录
 		{Method: "GET", Path: "/health/live", Auth: "public"},
 		{Method: "GET", Path: "/health/ready", Auth: "public"},
+		{Method: "GET", Path: "/metrics", Auth: "public"},
 		{Method: "POST", Path: "/api/v1/auth/login", Auth: "public"},
 		{Method: "GET", Path: "/api/v1/auth/captcha", Auth: "public"},
 		// 登录即可（只读 + 登出）

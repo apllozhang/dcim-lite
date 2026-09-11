@@ -135,12 +135,23 @@ func (s *ApprovalService) Reject(id uuid.UUID, version uint, comment string, act
 	if actor == nil {
 		return nil, apperr.Forbidden()
 	}
-	if err := s.store.Decide(id, version, model.ApprovalRejected, *actor, comment); err != nil {
-		// 条件更新失败：区分 version 过期与已被并发处理（同 Approve 的厂商语义）
-		if repository.IsVersionConflict(err) {
-			return nil, s.classifyDecideConflict(s.store.DB(), id)
+	// 审批决定与审计同事务（合规敏感动作不做 best-effort）
+	if err := s.store.DB().Transaction(func(tx *gorm.DB) error {
+		if err := s.store.WithTx(tx).Decide(id, version, model.ApprovalRejected, *actor, comment); err != nil {
+			// 条件更新失败：区分 version 过期与已被并发处理（同 Approve 的厂商语义）
+			if repository.IsVersionConflict(err) {
+				return s.classifyDecideConflict(s.store.DB(), id)
+			}
+			return err
 		}
-		return nil, mapStoreErr(err)
+		rid := rec.ID
+		return tx.Create(&model.AuditLog{
+			UserID: actor, Action: "APPROVAL_REJECT", ResourceType: "approval", ResourceID: &rid,
+			AfterJSON: auditJSON(map[string]any{"deviceId": rec.DeviceID, "operation": rec.Operation, "comment": comment}),
+			Result:    "SUCCESS", Source: "api",
+		}).Error
+	}); err != nil {
+		return nil, err
 	}
 	return s.store.GetApproval(id)
 }
@@ -210,7 +221,16 @@ func (s *ApprovalService) Approve(id uuid.UUID, version uint, comment string, ac
 			Orientation:  rec.TargetOrientation,
 			Reason:       rec.Reason,
 		}, actor, requestID, op, requireOff)
-		return err
+		if err != nil {
+			return err
+		}
+		// 审批决定审计与业务同事务（合规敏感动作不做 best-effort）
+		rid := rec.ID
+		return tx.Create(&model.AuditLog{
+			UserID: actor, Action: "APPROVAL_APPROVE", ResourceType: "approval", ResourceID: &rid,
+			AfterJSON: auditJSON(map[string]any{"deviceId": rec.DeviceID, "operation": rec.Operation, "comment": comment}),
+			Result:    "SUCCESS", Source: "api",
+		}).Error
 	})
 	if err != nil {
 		return nil, err

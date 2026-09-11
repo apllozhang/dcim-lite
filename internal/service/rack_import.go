@@ -544,6 +544,18 @@ func (s *ImportService) Commit(roomID uuid.UUID, in ImportCommitInput, actor *uu
 				}
 			}
 		}
+		// 导入提交审计与业务同事务（合规敏感动作不做 best-effort）
+		roomID := draft.RoomID
+		if err := s.devices.acks.WithTx(tx).WriteAudit(&model.AuditLog{
+			UserID: actor, Action: "RACK_DIAGRAM_IMPORT_COMMIT", ResourceType: "room", ResourceID: &roomID,
+			AfterJSON: auditJSON(map[string]any{
+				"created": res.Created, "updated": res.Updated, "moved": res.Moved,
+				"decommissioned": res.Decommissioned, "ignored": res.Ignored,
+			}),
+			Result: "SUCCESS", Source: "api",
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
