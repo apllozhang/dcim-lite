@@ -15,7 +15,8 @@ meta:
   sourceReport: "DIFF-REPLAY-FINAL-20260911.json + dual-DB dualA/dualB + readmodel replay union"
   sourceReportSha256_12: "824593e591b0"
   generatedAtMain: "1914502"
-  determinismEvidence: "203 dual-DB run 2026-09-11: A/B fresh DBs, 329/333 EQUIVALENT, 4 race-aftermath field cases"
+  determinismEvidence: "203 dual-DB run 2026-09-11: A/B fresh DBs, 329/333 EQUIVALENT, 4 race-aftermath field cases; PROVISIONAL per round-4 4.2 — 3 consecutive scheduled nightlies required for permanent acceptance"
+  bFamilyVerification: PROVISIONAL_ACCEPTED
   categories: [REQUIRED_BY_NEW_UI, LEGACY_ONLY, INTENTIONAL_FIX, DATA_FIXTURE_NOISE, REAL_DEFECT]
   implementationStatuses: [IMPLEMENTED, PENDING]
   observationStatuses: [CLOSED, ACCEPTED_NOISE, OBSERVED]
@@ -168,7 +169,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -182,7 +183,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -196,7 +197,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -322,7 +323,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -336,7 +337,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -350,7 +351,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2030,7 +2031,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2044,7 +2045,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2170,7 +2171,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2184,7 +2185,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2198,7 +2199,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2212,7 +2213,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2226,7 +2227,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2240,7 +2241,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2254,7 +2255,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2268,7 +2269,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2282,7 +2283,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2408,7 +2409,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2422,7 +2423,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2436,7 +2437,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2562,7 +2563,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2576,7 +2577,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2590,7 +2591,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2744,7 +2745,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2786,7 +2787,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2800,7 +2801,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2926,7 +2927,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2940,7 +2941,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2954,7 +2955,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2968,7 +2969,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2982,7 +2983,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -2996,7 +2997,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3010,7 +3011,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3024,7 +3025,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3038,7 +3039,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3052,7 +3053,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3094,7 +3095,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3108,7 +3109,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3122,7 +3123,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3136,7 +3137,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3262,7 +3263,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3276,7 +3277,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3402,7 +3403,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3416,7 +3417,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3430,7 +3431,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3472,7 +3473,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3486,7 +3487,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3500,7 +3501,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3514,7 +3515,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3528,7 +3529,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3542,7 +3543,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3556,7 +3557,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3570,7 +3571,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3584,7 +3585,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
@@ -3920,7 +3921,7 @@ entries:
     observationStatus: ACCEPTED_NOISE
     noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
-    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
+    reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异;按第四轮 §4.2 裁定为 PROVISIONAL_ACCEPTED:连续 3 次 scheduled nightly(determinism gate 全绿)后转永久 ACCEPTED"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false

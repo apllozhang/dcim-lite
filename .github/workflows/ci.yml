@@ -232,3 +232,10 @@ jobs:
           VITE_ALE_LEGACY_BASE=/wl-inject npx vite build --outDir dist-inject --emptyOutDir --logLevel error
           grep -q "/wl-inject" dist-inject/assets/*.js
           rm -rf dist-inject
+      - name: upload dual-run evidence (P1-D 截图/上下文)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dualrun-evidence
+          path: frontend/app/test-results/
+          if-no-files-found: ignore
