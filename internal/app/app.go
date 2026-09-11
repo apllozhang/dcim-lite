@@ -85,6 +85,7 @@ func Build(db *gorm.DB, cfg *config.Config) *App {
 		LDAP:            handler.NewLDAPHandler(service.NewLDAPService(ldapStore)),
 		Import:          handler.NewImportHandler(importSvc),
 		ImportTpl:       handler.NewImportTemplateHandler(),
+		Telemetry:       handler.NewTelemetryHandler(handler.NewTelemetryStore()),
 		GinMode:         mode,
 	})
 
