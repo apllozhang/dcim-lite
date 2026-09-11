@@ -75,8 +75,13 @@
 
 - `POST /devices/{id}/move`：设备存在活动连接（pdu_connections 未软删记录）时返回
   409 `DEVICE_POWERED`（提示先断开连接）；断开后可正常移位。
-- 实现位置：placeInTx 移位分支、设备行锁内检查——与 Connect/Disconnect 的 PDU 行锁
-  串行化无竞态窗口（连接数复核不可能逃过锁）。
+- 实现位置：placeInTx 移位分支、设备行锁内检查。
+- **更正（第三轮复评 P0-R01）**：本项首次实现时宣称"与 Connect 串行化无竞态窗口"为**错误结论**——
+  Connect 原实现的设备读取（`s.devs.GetDevice/GetActivePosition`）逃逸事务且无锁，Move 的
+  连接数复核可被并发的 Connect 插队，留下指向异柜 PDU 的活动连接。已按跨聚合统一锁序
+  **device → rack/PDU → socket** 重写 Connect（设备行入事务加锁、锁内复检位置），并补
+  Decommission 带电阻断与三个并发矩阵测试（Move×Connect、Decommission×Connect、
+  Decommission×Disconnect，均含 SQL 终态不变量断言）。
 - 厂商对照：golden 套件无「带电移位」用例，本规则不构成差分偏离（nightly 零影响）；
   属重建版收紧的领域不变量（设备与 PDU 同机柜）。
 - 关联未决项：设备**下架**（decommission）与活动连接的关系同样待明确（同族问题），

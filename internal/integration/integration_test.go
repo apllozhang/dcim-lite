@@ -1603,3 +1603,184 @@ func TestMoveWithActiveConnectionBlocked(t *testing.T) {
 		_ = pduID
 	}
 }
+
+// ── 第三轮复评 P0-R01 验收:跨聚合并发矩阵(device→PDU→socket 统一锁序)──
+
+// setupSecondRack 在 fixture 机房下建第二个机柜(供 Move 跨柜场景)。
+func setupSecondRack(t *testing.T, fx fixture, code string) string {
+	t.Helper()
+	st, rack := call("POST", "/api/v1/rooms/"+fx.roomID+"/racks",
+		map[string]any{"code": code, "name": "rk2", "uHeight": 20}, adminTok)
+	if st != 200 && st != 201 {
+		t.Fatalf("create second rack: %d %v", st, rack)
+	}
+	return data(rack)["id"].(string)
+}
+
+// assertNoCrossRackConnection 终态不变量:任何活动连接的 PDU 机柜必须等于
+// 设备的在位机柜;设备已 OFF_RACK/SCRAPPED 则不得有活动连接。
+func assertNoCrossRackConnection(t *testing.T, round int) {
+	t.Helper()
+	rows := []map[string]any{}
+	r := testDB.Raw(`
+		SELECT c.id, c.device_id, p.rack_id AS pdu_rack,
+		       (SELECT rack_id FROM rack_device_positions
+		         WHERE device_id = c.device_id AND deleted_at IS NULL LIMIT 1) AS dev_rack
+		FROM pdu_connections c
+		JOIN pdu_sockets s ON s.id = c.socket_id AND s.deleted_at IS NULL
+		JOIN pdus p ON p.id = s.pdu_id AND p.deleted_at IS NULL
+		WHERE c.deleted_at IS NULL`).Scan(&rows)
+	if r.Error != nil {
+		t.Fatalf("round %d: invariant query: %v", round, r.Error)
+	}
+	for _, row := range rows {
+		pr, _ := row["pdu_rack"].(string)
+		dr, _ := row["dev_rack"].(string)
+		if dr == "" || pr != dr {
+			t.Fatalf("round %d: cross-rack active connection %v (pdu_rack=%q dev_rack=%q)",
+				round, row["id"], pr, dr)
+		}
+	}
+}
+
+// assertDeviceIdleNoConnection 终态不变量:OFF_RACK/SCRAPPED 设备不得有活动连接。
+func assertDeviceIdleNoConnection(t *testing.T, round int) {
+	t.Helper()
+	var n int64
+	if err := testDB.Raw(`
+		SELECT count(*) FROM pdu_connections c
+		JOIN devices d ON d.id = c.device_id
+		WHERE c.deleted_at IS NULL AND d.lifecycle_status IN ('OFF_RACK','SCRAPPED')`).
+		Scan(&n).Error; err != nil {
+		t.Fatalf("round %d: idle invariant query: %v", round, err)
+	}
+	if n != 0 {
+		t.Fatalf("round %d: %d active connections on decommissioned devices", round, n)
+	}
+}
+
+// TestDeviceMoveVsConnectRace:Move 与 Connect 并发,合法结局互斥——
+// Connect 赢则 Move 409 DEVICE_POWERED;Move 赢则 Connect 409(同柜校验失败)。
+// 每轮后做终态不变量断言(不存在跨机柜活动连接)。
+func TestDeviceMoveVsConnectRace(t *testing.T) {
+	fx := newFixture(t, "MC")
+	RK2 := setupSecondRack(t, fx, "MC2")
+	for round := 0; round < 20; round++ {
+		_, sockID := setupPDUWithSocket(t, fx, "MC")
+		dev := createDevice(t, fx, "MC-D"+short(), 1)
+		if st, _ := call("POST", "/api/v1/devices/"+dev+"/assign",
+			map[string]any{"rackId": fx.rackID, "startU": round + 1}, adminTok); st != 200 {
+			t.Fatalf("round %d: assign: %d", round, st)
+		}
+		var stCon, stMov int
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			stCon, _ = call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
+				map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok)
+		}()
+		go func() {
+			defer wg.Done()
+			stMov, _ = call("POST", "/api/v1/devices/"+dev+"/move",
+				map[string]any{"rackId": RK2, "startU": 15}, adminTok)
+		}()
+		wg.Wait()
+		conOK, movOK := stCon == 200 || stCon == 201, stMov == 200
+		if conOK == movOK {
+			t.Fatalf("round %d: connect=%d move=%d must be mutually exclusive", round, stCon, stMov)
+		}
+		if movOK {
+			// Move 赢:Connect 必须因同柜校验失败被拒
+			if stCon != 409 {
+				t.Fatalf("round %d: move won, connect must 409, got %d", round, stCon)
+			}
+		} else {
+			// Connect 赢:Move 必须因带电阻断
+			if stMov != 409 {
+				t.Fatalf("round %d: connect won, move must 409, got %d", round, stMov)
+			}
+		}
+		assertNoCrossRackConnection(t, round)
+	}
+}
+
+// TestDecommissionVsConnectRace:Decommission 与 Connect 并发——
+// Connect 赢则 Decommission 409 DEVICE_POWERED;Decommission 赢则 Connect 409。
+func TestDecommissionVsConnectRace(t *testing.T) {
+	fx := newFixture(t, "DC2")
+	for round := 0; round < 20; round++ {
+		_, sockID := setupPDUWithSocket(t, fx, "DC")
+		dev := createDevice(t, fx, "DC-D"+short(), 1)
+		if st, _ := call("POST", "/api/v1/devices/"+dev+"/assign",
+			map[string]any{"rackId": fx.rackID, "startU": round + 1}, adminTok); st != 200 {
+			t.Fatalf("round %d: assign: %d", round, st)
+		}
+		var stCon, stDec int
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			stCon, _ = call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
+				map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok)
+		}()
+		go func() {
+			defer wg.Done()
+			stDec, _ = call("POST", "/api/v1/devices/"+dev+"/decommission",
+				map[string]any{"reason": "并发验收"}, adminTok)
+		}()
+		wg.Wait()
+		conOK, decOK := stCon == 200 || stCon == 201, stDec == 200
+		if conOK == decOK {
+			t.Fatalf("round %d: connect=%d decommission=%d must be mutually exclusive", round, stCon, stDec)
+		}
+		assertDeviceIdleNoConnection(t, round)
+		assertNoCrossRackConnection(t, round)
+	}
+}
+
+// TestDecommissionVsDisconnectRace:Decommission 与 Disconnect 并发——
+// 合法结局:两者皆成功(断开先提交,下架读到 0 连接)或 断开成功+下架 409 带电;
+// 终态不变量:已下架设备不得残留活动连接。
+func TestDecommissionVsDisconnectRace(t *testing.T) {
+	fx := newFixture(t, "DD")
+	for round := 0; round < 20; round++ {
+		pduID, sockID := setupPDUWithSocket(t, fx, "DD")
+		dev := createDevice(t, fx, "DD-D"+short(), 1)
+		if st, _ := call("POST", "/api/v1/devices/"+dev+"/assign",
+			map[string]any{"rackId": fx.rackID, "startU": round + 1}, adminTok); st != 200 {
+			t.Fatalf("round %d: assign: %d", round, st)
+		}
+		st, conn := call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
+			map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok)
+		if st != 200 && st != 201 {
+			t.Fatalf("round %d: connect: %d %v", round, st, conn)
+		}
+		connID := data(conn)["id"].(string)
+		connVer := int(data(conn)["version"].(float64))
+		var stDis, stDec int
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			stDis, _ = call("DELETE", "/api/v1/pdu-connections/"+connID,
+				map[string]any{"version": connVer}, adminTok)
+		}()
+		go func() {
+			defer wg.Done()
+			stDec, _ = call("POST", "/api/v1/devices/"+dev+"/decommission",
+				map[string]any{"reason": "并发验收"}, adminTok)
+		}()
+		wg.Wait()
+		decOK := stDec == 200
+		if decOK {
+			// 下架成功的前提是连接已断(锁内读到 0),此时 Disconnect 必已成功
+			if stDis != 200 {
+				t.Fatalf("round %d: decommission won but disconnect=%d", round, stDis)
+			}
+		}
+		assertDeviceIdleNoConnection(t, round)
+		assertNoCrossRackConnection(t, round)
+		_ = pduID
+	}
+}
