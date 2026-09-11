@@ -51,8 +51,8 @@ func (s *AuthService) Login(username, password string) (*LoginResult, error) {
 		return nil, err
 	}
 	if !user.Enabled {
-		// 厂商基线对停用账户返回独立错误码（差分用例 S11-USER-DISABLED-LOGIN）
-		return nil, apperr.New(401, "USER_DISABLED", "账户已停用")
+		// 厂商基线对停用账户返回 403 + USER_DISABLED（S11-DISABLED-LOGIN-403 差分用例）
+		return nil, apperr.New(403, "USER_DISABLED", "账户已停用")
 	}
 	if user.LockedUntil != nil && user.LockedUntil.After(time.Now()) {
 		remain := time.Until(*user.LockedUntil).Round(time.Minute)

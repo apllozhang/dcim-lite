@@ -1,0 +1,1981 @@
+{
+ "v2_categories": {
+  "EQUIVALENT": 318,
+  "FIELD_BREAK": 51,
+  "SHAPE_OR_DRIFT": 8,
+  "INTENTIONAL": 7,
+  "SYMMETRIC_SWAP": 4,
+  "MISSING": 6,
+  "CODE_ALIAS": 1,
+  "ASSERTION_TEXT": 6
+ },
+ "considered": 391,
+ "compat_rate_status_code": 83.4,
+ "compat_rate_field": 70.3,
+ "breaks": [],
+ "field_breaks": [
+  {
+   "caseId": "SETUP-S02-RACK-CREATE",
+   "diffs": [
+    {
+     "field": "data.templateSnapshot.revision",
+     "baseline": 0,
+     "candidate": 1
+    },
+    {
+     "field": "data.templateSnapshot.uHeight",
+     "baseline": 0,
+     "candidate": 42
+    }
+   ]
+  },
+  {
+   "caseId": "S02-RESOURCE-TREE",
+   "diffs": [
+    {
+     "field": "data.items[0].rooms[0].racks[0].templateSnapshot.revision",
+     "baseline": 0,
+     "candidate": 1
+    },
+    {
+     "field": "data.items[0].rooms[0].racks[0].templateSnapshot.uHeight",
+     "baseline": 0,
+     "candidate": 42
+    }
+   ]
+  },
+  {
+   "caseId": "S06-ASSIGN-SUCCESS",
+   "diffs": [
+    {
+     "field": "data.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S06-ULAYOUT-READ",
+   "diffs": [
+    {
+     "field": "data.positions[0].version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.rack.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.status",
+     "baseline": "<absent>",
+     "candidate": "AVAILABLE"
+    },
+    {
+     "field": "data.uHeight",
+     "baseline": "<absent>",
+     "candidate": 42
+    }
+   ]
+  },
+  {
+   "caseId": "S06-ASSIGN-OVERLAP",
+   "diffs": [
+    {
+     "field": "details.conflictDevices[0].device.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "details.conflictDevices[0].device.lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "details.conflictDevices[0].device.type.status",
+     "baseline": "ACTIVE",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "details.conflictDevices[0].device.type.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "details.conflictDevices[0].device.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "details.conflictDevices[0].endU",
+     "baseline": 41,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "details.conflictDevices[0].heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "details.conflictDevices[0].orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "details.conflictDevices[0].startU",
+     "baseline": 40,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "details.conflictDevices[0].version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "details.heightU",
+     "baseline": 4,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "details.startU",
+     "baseline": 39,
+     "candidate": "<absent>"
+    }
+   ]
+  },
+  {
+   "caseId": "S06-MOVE-SUCCESS",
+   "diffs": [
+    {
+     "field": "data.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S06-DECOMMISSION",
+   "diffs": [
+    {
+     "field": "data.device.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.device.lifecycleStatus",
+     "baseline": "OFF_RACK",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.device.version",
+     "baseline": 4,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.executed",
+     "baseline": true,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.heightU",
+     "baseline": "<absent>",
+     "candidate": 2
+    },
+    {
+     "field": "data.lifecycleStatus",
+     "baseline": "<absent>",
+     "candidate": "OFF_RACK"
+    },
+    {
+     "field": "data.type.status",
+     "baseline": "<absent>",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.type.version",
+     "baseline": "<absent>",
+     "candidate": 1
+    },
+    {
+     "field": "data.version",
+     "baseline": "<absent>",
+     "candidate": 4
+    }
+   ]
+  },
+  {
+   "caseId": "S07-DC-COPY-SUCCESS",
+   "diffs": [
+    {
+     "field": "data.resource.status",
+     "baseline": "PLANNING",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.resource.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.status",
+     "baseline": "<absent>",
+     "candidate": "OPERATING"
+    },
+    {
+     "field": "data.version",
+     "baseline": "<absent>",
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S07-ROOM-COPY-SUCCESS",
+   "diffs": [
+    {
+     "field": "data.resource.status",
+     "baseline": "PLANNING",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.resource.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.status",
+     "baseline": "<absent>",
+     "candidate": "OPERATING"
+    },
+    {
+     "field": "data.version",
+     "baseline": "<absent>",
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S07-RACK-COPY-SUCCESS",
+   "diffs": [
+    {
+     "field": "data.resource.status",
+     "baseline": "PLANNING",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.resource.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.resource.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.status",
+     "baseline": "<absent>",
+     "candidate": "AVAILABLE"
+    },
+    {
+     "field": "data.templateSnapshot.revision",
+     "baseline": "<absent>",
+     "candidate": 1
+    },
+    {
+     "field": "data.templateSnapshot.uHeight",
+     "baseline": "<absent>",
+     "candidate": 42
+    },
+    {
+     "field": "data.uHeight",
+     "baseline": "<absent>",
+     "candidate": 42
+    },
+    {
+     "field": "data.version",
+     "baseline": "<absent>",
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S08-ASSIGN-CREATES-APPROVAL",
+   "diffs": [
+    {
+     "field": "data.approval.device.heightU",
+     "baseline": 0,
+     "candidate": 2
+    },
+    {
+     "field": "data.approval.device.lifecycleStatus",
+     "baseline": "",
+     "candidate": "WAITING_RACK"
+    },
+    {
+     "field": "data.approval.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.approval.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    },
+    {
+     "field": "data.approval.device.version",
+     "baseline": 0,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S08-APPROVE-SUCCESS",
+   "diffs": [
+    {
+     "field": "data.device.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.device.lifecycleStatus",
+     "baseline": "WAITING_RACK",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.device.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.heightU",
+     "baseline": "<absent>",
+     "candidate": 2
+    },
+    {
+     "field": "data.lifecycleStatus",
+     "baseline": "<absent>",
+     "candidate": "RUNNING"
+    },
+    {
+     "field": "data.status",
+     "baseline": "APPROVED",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.type.status",
+     "baseline": "<absent>",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.type.version",
+     "baseline": "<absent>",
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S08-APPROVALS-LIST",
+   "diffs": [
+    {
+     "field": "data.items[0].device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.items[0].device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S08-STALE-ASSIGN-CREATES-APPROVAL",
+   "diffs": [
+    {
+     "field": "data.approval.device.heightU",
+     "baseline": 0,
+     "candidate": 2
+    },
+    {
+     "field": "data.approval.device.lifecycleStatus",
+     "baseline": "",
+     "candidate": "WAITING_RACK"
+    },
+    {
+     "field": "data.approval.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.approval.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    },
+    {
+     "field": "data.approval.device.version",
+     "baseline": 0,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S08-REJECTABLE-ASSIGN",
+   "diffs": [
+    {
+     "field": "data.approval.device.heightU",
+     "baseline": 0,
+     "candidate": 2
+    },
+    {
+     "field": "data.approval.device.lifecycleStatus",
+     "baseline": "",
+     "candidate": "WAITING_RACK"
+    },
+    {
+     "field": "data.approval.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.approval.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    },
+    {
+     "field": "data.approval.device.version",
+     "baseline": 0,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S09-TPL-NEW-VERSION",
+   "diffs": [
+    {
+     "field": "data.isSystem",
+     "baseline": "<absent>",
+     "candidate": true
+    },
+    {
+     "field": "data.revision",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.status",
+     "baseline": "<absent>",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.uHeight",
+     "baseline": 45,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.version",
+     "baseline": 1,
+     "candidate": 2
+    },
+    {
+     "field": "data.versions[0].revision",
+     "baseline": "<absent>",
+     "candidate": 1
+    },
+    {
+     "field": "data.versions[0].uHeight",
+     "baseline": "<absent>",
+     "candidate": 42
+    },
+    {
+     "field": "data.versions[0].version",
+     "baseline": "<absent>",
+     "candidate": 1
+    },
+    {
+     "field": "data.versions[1].revision",
+     "baseline": "<absent>",
+     "candidate": 2
+    },
+    {
+     "field": "data.versions[1].uHeight",
+     "baseline": "<absent>",
+     "candidate": 45
+    },
+    {
+     "field": "data.versions[1].version",
+     "baseline": "<absent>",
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "SETUP-S09-RACKB-CREATE",
+   "diffs": [
+    {
+     "field": "data.templateSnapshot.revision",
+     "baseline": 0,
+     "candidate": 2
+    },
+    {
+     "field": "data.templateSnapshot.uHeight",
+     "baseline": 0,
+     "candidate": 45
+    },
+    {
+     "field": "data.uHeight",
+     "baseline": 42,
+     "candidate": 45
+    }
+   ]
+  },
+  {
+   "caseId": "SETUP-S10-DEVA-ASSIGN",
+   "diffs": [
+    {
+     "field": "data.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "SETUP-S10-DEVX-ASSIGN",
+   "diffs": [
+    {
+     "field": "data.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S10-CONNECTIONS-LIST",
+   "diffs": [
+    {
+     "field": "data.items[0].device.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].device.lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].device.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].socket.status",
+     "baseline": "CONNECTED",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].socket.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    }
+   ]
+  },
+  {
+   "caseId": "S10-PDU-LIST",
+   "diffs": [
+    {
+     "field": "data.items[0].sockets",
+     "baseline": "list[3]",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].sockets[0].status",
+     "baseline": "AVAILABLE",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].sockets[0].version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].sockets[1].status",
+     "baseline": "AVAILABLE",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].sockets[1].version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].sockets[2].status",
+     "baseline": "AVAILABLE",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].sockets[2].version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    }
+   ]
+  },
+  {
+   "caseId": "S05-DEV-LIST",
+   "diffs": [
+    {
+     "field": "data.items[0].currentPosition.endU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.version",
+     "baseline": 4,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.startU",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "OFF_RACK"
+    },
+    {
+     "field": "data.items[0].version",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[1].currentPosition.endU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.startU",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].heightU",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[1].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "WAITING_RACK"
+    },
+    {
+     "field": "data.items[1].version",
+     "baseline": 2,
+     "candidate": 1
+    },
+    {
+     "field": "data.items[2].lifecycleStatus",
+     "baseline": "WAITING_RACK",
+     "candidate": "RUNNING"
+    },
+    {
+     "field": "data.items[2].version",
+     "baseline": 1,
+     "candidate": 2
+    }
+   ]
+  },
+  {
+   "caseId": "S05-DEV-LIST-FILTER",
+   "diffs": [
+    {
+     "field": "data.items[0].currentPosition.endU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.version",
+     "baseline": 4,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.startU",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "OFF_RACK"
+    },
+    {
+     "field": "data.items[0].version",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[1].currentPosition.endU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.startU",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].heightU",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[1].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "WAITING_RACK"
+    },
+    {
+     "field": "data.items[1].version",
+     "baseline": 2,
+     "candidate": 1
+    },
+    {
+     "field": "data.items[2].lifecycleStatus",
+     "baseline": "WAITING_RACK",
+     "candidate": "RUNNING"
+    },
+    {
+     "field": "data.items[2].version",
+     "baseline": 1,
+     "candidate": 2
+    }
+   ]
+  },
+  {
+   "caseId": "S12-IMPORT-VALIDATE",
+   "diffs": [
+    {
+     "field": "data.items[1].allowedActions",
+     "baseline": "<absent>",
+     "candidate": "list[2]"
+    },
+    {
+     "field": "data.items[2].allowedActions",
+     "baseline": "<absent>",
+     "candidate": "list[2]"
+    },
+    {
+     "field": "data.summary.decisions",
+     "baseline": 0,
+     "candidate": 2
+    },
+    {
+     "field": "data.summary.total",
+     "baseline": 3,
+     "candidate": "<absent>"
+    }
+   ]
+  },
+  {
+   "caseId": "S12-IMPORT-COMMIT",
+   "diffs": [
+    {
+     "field": "data.ignored",
+     "baseline": "<absent>",
+     "candidate": 2
+    }
+   ]
+  },
+  {
+   "caseId": "S11-USER-RESET-PASSWORD",
+   "diffs": [
+    {
+     "field": "data.enabled",
+     "baseline": true,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.roles[0].version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    }
+   ]
+  },
+  {
+   "caseId": "SETUP-S08C-ASSIGN",
+   "diffs": [
+    {
+     "field": "data.approval.device.heightU",
+     "baseline": 0,
+     "candidate": 2
+    },
+    {
+     "field": "data.approval.device.lifecycleStatus",
+     "baseline": "",
+     "candidate": "WAITING_RACK"
+    },
+    {
+     "field": "data.approval.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.approval.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    },
+    {
+     "field": "data.approval.device.version",
+     "baseline": 0,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "SETUP-S10C-DEV0-ASSIGN",
+   "diffs": [
+    {
+     "field": "data.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "SETUP-S10C-DEV1-ASSIGN",
+   "diffs": [
+    {
+     "field": "data.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S10C-CONCURRENT-CONNECT-CLIENT1",
+   "diffs": [
+    {
+     "field": "data.version",
+     "baseline": "<absent>",
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S10C-CONCURRENT-CONNECT-CLIENT0",
+   "diffs": [
+    {
+     "field": "data.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    }
+   ]
+  },
+  {
+   "caseId": "S14-S14-PAGE-1",
+   "diffs": [
+    {
+     "field": "data.items[0].currentPosition.endU",
+     "baseline": 6,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.startU",
+     "baseline": 5,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "OFF_RACK"
+    },
+    {
+     "field": "data.items[0].version",
+     "baseline": 2,
+     "candidate": 4
+    }
+   ]
+  },
+  {
+   "caseId": "S14-S14-PAGE-2",
+   "diffs": [
+    {
+     "field": "data.items[0].currentPosition.endU",
+     "baseline": 4,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.startU",
+     "baseline": 3,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].heightU",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[0].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "WAITING_RACK"
+    },
+    {
+     "field": "data.items[0].version",
+     "baseline": 2,
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S14-S14-PAGE-FILTER-TYPE",
+   "diffs": [
+    {
+     "field": "data.items[0].currentPosition.endU",
+     "baseline": 6,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.startU",
+     "baseline": 5,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "OFF_RACK"
+    },
+    {
+     "field": "data.items[0].version",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[1].currentPosition.endU",
+     "baseline": 4,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.startU",
+     "baseline": 3,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].heightU",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[1].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "WAITING_RACK"
+    },
+    {
+     "field": "data.items[1].version",
+     "baseline": 2,
+     "candidate": 1
+    },
+    {
+     "field": "data.items[2].lifecycleStatus",
+     "baseline": "WAITING_RACK",
+     "candidate": "RUNNING"
+    },
+    {
+     "field": "data.items[2].version",
+     "baseline": 1,
+     "candidate": 2
+    }
+   ]
+  },
+  {
+   "caseId": "S14-S14-PAGE-FILTER-LIFE",
+   "diffs": [
+    {
+     "field": "data.items[0].heightU",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[1].version",
+     "baseline": 1,
+     "candidate": 2
+    },
+    {
+     "field": "data.total",
+     "baseline": 5,
+     "candidate": 4
+    }
+   ]
+  },
+  {
+   "caseId": "S14-S14-PAGE-FILTER-SEARCH",
+   "diffs": [
+    {
+     "field": "data.items[0].currentPosition.endU",
+     "baseline": 6,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.startU",
+     "baseline": 5,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "OFF_RACK"
+    },
+    {
+     "field": "data.items[0].version",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[1].currentPosition.endU",
+     "baseline": 4,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.rack.version",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.startU",
+     "baseline": 3,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[1].heightU",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[1].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "WAITING_RACK"
+    },
+    {
+     "field": "data.items[1].version",
+     "baseline": 2,
+     "candidate": 1
+    },
+    {
+     "field": "data.items[2].lifecycleStatus",
+     "baseline": "WAITING_RACK",
+     "candidate": "RUNNING"
+    },
+    {
+     "field": "data.items[2].version",
+     "baseline": 1,
+     "candidate": 2
+    }
+   ]
+  },
+  {
+   "caseId": "S14-S14-PAGE-FILTER-COMBO",
+   "diffs": [
+    {
+     "field": "data.items[0].heightU",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[1].version",
+     "baseline": 1,
+     "candidate": 2
+    },
+    {
+     "field": "data.total",
+     "baseline": 5,
+     "candidate": 4
+    }
+   ]
+  },
+  {
+   "caseId": "S15-TPL-LIST-SUCCESS",
+   "diffs": [
+    {
+     "field": "data.items[0].versions[0].revision",
+     "baseline": 2,
+     "candidate": 1
+    },
+    {
+     "field": "data.items[0].versions[0].uHeight",
+     "baseline": 45,
+     "candidate": 42
+    },
+    {
+     "field": "data.items[0].versions[1].revision",
+     "baseline": 1,
+     "candidate": 2
+    },
+    {
+     "field": "data.items[0].versions[1].uHeight",
+     "baseline": 42,
+     "candidate": 45
+    }
+   ]
+  },
+  {
+   "caseId": "S15-TPL-DUP-REVISION",
+   "diffs": [
+    {
+     "field": "data.isSystem",
+     "baseline": "<absent>",
+     "candidate": true
+    },
+    {
+     "field": "data.revision",
+     "baseline": 3,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.status",
+     "baseline": "<absent>",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.version",
+     "baseline": 1,
+     "candidate": 3
+    },
+    {
+     "field": "data.versions[0].revision",
+     "baseline": "<absent>",
+     "candidate": 1
+    },
+    {
+     "field": "data.versions[0].uHeight",
+     "baseline": "<absent>",
+     "candidate": 42
+    },
+    {
+     "field": "data.versions[0].version",
+     "baseline": "<absent>",
+     "candidate": 1
+    },
+    {
+     "field": "data.versions[1].revision",
+     "baseline": "<absent>",
+     "candidate": 2
+    },
+    {
+     "field": "data.versions[1].uHeight",
+     "baseline": "<absent>",
+     "candidate": 45
+    },
+    {
+     "field": "data.versions[1].version",
+     "baseline": "<absent>",
+     "candidate": 1
+    },
+    {
+     "field": "data.versions[2].revision",
+     "baseline": "<absent>",
+     "candidate": 3
+    },
+    {
+     "field": "data.versions[2].uHeight",
+     "baseline": "<absent>",
+     "candidate": 42
+    },
+    {
+     "field": "data.versions[2].version",
+     "baseline": "<absent>",
+     "candidate": 1
+    }
+   ]
+  },
+  {
+   "caseId": "S16-PAGE-1",
+   "diffs": [
+    {
+     "field": "data.items[0].lifecycleStatus",
+     "baseline": "WAITING_RACK",
+     "candidate": "OFF_RACK"
+    },
+    {
+     "field": "data.items[0].version",
+     "baseline": 1,
+     "candidate": 4
+    }
+   ]
+  },
+  {
+   "caseId": "S16-PAGE-2",
+   "diffs": [
+    {
+     "field": "data.items[0].heightU",
+     "baseline": 3,
+     "candidate": 4
+    }
+   ]
+  },
+  {
+   "caseId": "S16-DEV-WAITING",
+   "diffs": [
+    {
+     "field": "data.items[0].heightU",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[1].heightU",
+     "baseline": 3,
+     "candidate": 2
+    },
+    {
+     "field": "data.items[1].version",
+     "baseline": 1,
+     "candidate": 2
+    },
+    {
+     "field": "data.total",
+     "baseline": 7,
+     "candidate": 6
+    }
+   ]
+  },
+  {
+   "caseId": "S16-ASSIGN-OK",
+   "diffs": [
+    {
+     "field": "data.device.heightU",
+     "baseline": 2,
+     "candidate": 4
+    },
+    {
+     "field": "data.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    },
+    {
+     "field": "data.position.endU",
+     "baseline": 39,
+     "candidate": 41
+    },
+    {
+     "field": "data.position.heightU",
+     "baseline": 2,
+     "candidate": 4
+    }
+   ]
+  },
+  {
+   "caseId": "S16-ASSIGN-READBACK",
+   "diffs": [
+    {
+     "field": "data.currentPosition.endU",
+     "baseline": 39,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.rack.version",
+     "baseline": 4,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.startU",
+     "baseline": 38,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.heightU",
+     "baseline": 2,
+     "candidate": 4
+    }
+   ]
+  },
+  {
+   "caseId": "S16-MOVE-READBACK",
+   "diffs": [
+    {
+     "field": "data.heightU",
+     "baseline": 3,
+     "candidate": 2
+    },
+    {
+     "field": "data.version",
+     "baseline": 1,
+     "candidate": 2
+    }
+   ]
+  },
+  {
+   "caseId": "S17-DEV-PAGE-1",
+   "diffs": [
+    {
+     "field": "data.items[0].currentPosition.endU",
+     "baseline": 39,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.rack.version",
+     "baseline": 4,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.startU",
+     "baseline": 38,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.items[0].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "OFF_RACK"
+    },
+    {
+     "field": "data.items[0].version",
+     "baseline": 2,
+     "candidate": 4
+    }
+   ]
+  },
+  {
+   "caseId": "S17-DEV-PAGE-2",
+   "diffs": [
+    {
+     "field": "data.items[0].heightU",
+     "baseline": 3,
+     "candidate": 4
+    },
+    {
+     "field": "data.items[0].lifecycleStatus",
+     "baseline": "WAITING_RACK",
+     "candidate": "RUNNING"
+    },
+    {
+     "field": "data.items[0].version",
+     "baseline": 1,
+     "candidate": 2
+    }
+   ]
+  },
+  {
+   "caseId": "S17-ASSIGN-EXECUTE",
+   "diffs": [
+    {
+     "field": "data.device.heightU",
+     "baseline": 3,
+     "candidate": 2
+    },
+    {
+     "field": "data.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    },
+    {
+     "field": "data.device.version",
+     "baseline": 2,
+     "candidate": 3
+    },
+    {
+     "field": "data.position.endU",
+     "baseline": 42,
+     "candidate": 33
+    },
+    {
+     "field": "data.position.heightU",
+     "baseline": 3,
+     "candidate": 2
+    },
+    {
+     "field": "data.position.startU",
+     "baseline": 40,
+     "candidate": 32
+    }
+   ]
+  },
+  {
+   "caseId": "S18-ASSIGN-EXEC-13",
+   "diffs": [
+    {
+     "field": "data.device.type.status",
+     "baseline": "",
+     "candidate": "ACTIVE"
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": 0,
+     "candidate": 1
+    },
+    {
+     "field": "data.position.endU",
+     "baseline": 33,
+     "candidate": 35
+    },
+    {
+     "field": "data.position.startU",
+     "baseline": 32,
+     "candidate": 34
+    }
+   ]
+  },
+  {
+   "caseId": "S18-ASSIGN-READ-13",
+   "diffs": [
+    {
+     "field": "data.currentPosition.endU",
+     "baseline": 33,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.heightU",
+     "baseline": 2,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.orientation",
+     "baseline": "NORMAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.rack.version",
+     "baseline": 4,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.startU",
+     "baseline": 32,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.currentPosition.version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    }
+   ]
+  },
+  {
+   "caseId": "S18-ASSIGN-LAYOUT-13",
+   "diffs": [
+    {
+     "field": "data.free[0].heightU",
+     "baseline": 23,
+     "candidate": 21
+    },
+    {
+     "field": "data.free[0].startU",
+     "baseline": 7,
+     "candidate": 9
+    },
+    {
+     "field": "data.free[1].heightU",
+     "baseline": 4,
+     "candidate": 2
+    },
+    {
+     "field": "data.free[1].startU",
+     "baseline": 34,
+     "candidate": 36
+    },
+    {
+     "field": "data.free[2].endU",
+     "baseline": "<absent>",
+     "candidate": 42
+    },
+    {
+     "field": "data.free[2].heightU",
+     "baseline": "<absent>",
+     "candidate": 1
+    },
+    {
+     "field": "data.free[2].startU",
+     "baseline": "<absent>",
+     "candidate": 42
+    },
+    {
+     "field": "data.positions[0].device.heightU",
+     "baseline": 3,
+     "candidate": 2
+    },
+    {
+     "field": "data.positions[0].endU",
+     "baseline": 42,
+     "candidate": 2
+    },
+    {
+     "field": "data.positions[0].heightU",
+     "baseline": 3,
+     "candidate": 2
+    },
+    {
+     "field": "data.positions[0].startU",
+     "baseline": 40,
+     "candidate": 1
+    },
+    {
+     "field": "data.positions[0].version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.positions[1].endU",
+     "baseline": 39,
+     "candidate": 4
+    },
+    {
+     "field": "data.positions[1].startU",
+     "baseline": 38,
+     "candidate": 3
+    },
+    {
+     "field": "data.positions[1].version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.positions[2].endU",
+     "baseline": 33,
+     "candidate": 6
+    },
+    {
+     "field": "data.positions[2].startU",
+     "baseline": 32,
+     "candidate": 5
+    },
+    {
+     "field": "data.positions[2].version",
+     "baseline": 1,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.rack.status",
+     "baseline": "PARTIAL",
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.rack.uHeight",
+     "baseline": 42,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.rack.version",
+     "baseline": 4,
+     "candidate": "<absent>"
+    },
+    {
+     "field": "data.status",
+     "baseline": "<absent>",
+     "candidate": "AVAILABLE"
+    },
+    {
+     "field": "data.uHeight",
+     "baseline": "<absent>",
+     "candidate": 42
+    }
+   ]
+  }
+ ],
+ "missing": [
+  "S14-AUTH-003-PUT-607ef58f-1460-",
+  "S14-AUTH-004-DELE-607ef58f-1460-",
+  "S14-AUTH-007-PUT-b80e6f37-cba7-",
+  "S14-AUTH-008-DELE-b80e6f37-cba7-",
+  "S14-AUTH-012-PUT-2f377289-064a-",
+  "S14-AUTH-013-DELE-2f377289-064a-"
+ ]
+}

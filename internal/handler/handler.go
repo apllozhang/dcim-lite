@@ -23,7 +23,8 @@ type HealthHandler struct{ db *gorm.DB }
 func NewHealthHandler(db *gorm.DB) *HealthHandler { return &HealthHandler{db: db} }
 
 func (h *HealthHandler) Live(c *gin.Context) {
-	response.OK(c, gin.H{"status": "live"})
+	// 厂商基线 data.status = "alive"（S01-HEALTH-LIVE 差分用例）
+	response.OK(c, gin.H{"status": "alive"})
 }
 
 func (h *HealthHandler) Ready(c *gin.Context) {
