@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cabinet
+      POSTGRES_USER: cabinet
+      POSTGRES_PASSWORD: ci
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cabinet -d cabinet"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  backend:
+    image: diff-rebuild:ci
+    environment:
+      APP_ENV: production
+      HTTP_ADDR: ":8080"
+      MIGRATIONS_DIR: /app/migrations
+      DATABASE_URL: postgres://cabinet:ci@postgres:5432/cabinet?sslmode=disable
+      JWT_SECRET: ci-diff-replay-secret-32-bytes!!
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: "DiffCi#2026!"
+    ports:
+      - "127.0.0.1:18080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
