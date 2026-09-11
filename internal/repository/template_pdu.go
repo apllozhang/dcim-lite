@@ -266,6 +266,7 @@ func (s *PDUStore) ForceArchivePDU(id uuid.UUID, expected uint) error {
 // 供服务层把行锁、影响清单复检、归档与审计放进同一事务。
 func (s *PDUStore) ForceArchivePDUTx(id uuid.UUID, expected uint) error {
 	now := time.Now()
+	// 子查询不过滤已删插座：归档要连"挂在已软删插座上的残留连接"一并清掉
 	if err := s.db.Model(&model.PDUConnection{}).
 		Where("socket_id IN (SELECT id FROM pdu_sockets WHERE pdu_id = ?)", id).
 		Updates(map[string]any{"deleted_at": now, "version": gorm.Expr("version + 1")}).Error; err != nil {
@@ -302,6 +303,18 @@ func (s *PDUStore) GetSocket(id uuid.UUID) (*model.PDUSocket, error) {
 	return &item, nil
 }
 
+// GetSocketLock 读取插座并加行锁（FOR UPDATE）。PDU 聚合统一锁序为
+// PDU 行 → socket 行（见 service 层 CreateSocket/UpdateSocket/DeleteSocket/
+// Connect/Disconnect），全部 socket 级写路径都必须先持有其 PDU 行锁。
+func (s *PDUStore) GetSocketLock(id uuid.UUID) (*model.PDUSocket, error) {
+	var item model.PDUSocket
+	err := s.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&item, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
 func (s *PDUStore) CreateSocket(item *model.PDUSocket) error {
 	return s.db.Create(item).Error
 }
@@ -323,14 +336,10 @@ func (s *PDUStore) UpdateSocket(item *model.PDUSocket, expected uint) error {
 	return s.db.First(item, "id = ?", item.ID).Error
 }
 
+// SoftDeleteSocket 乐观锁软删插座。已连接检查不在本方法内：调用方必须在
+// PDU 行锁内经 CountActiveConnectionsBySocket 确认无活动连接后再调用，
+// 否则与 Connect 之间存在"计数为零后并发接入"的竞态窗口。
 func (s *PDUStore) SoftDeleteSocket(id uuid.UUID, expected uint) error {
-	var n int64
-	if err := s.db.Model(&model.PDUConnection{}).Where("socket_id = ?", id).Count(&n).Error; err != nil {
-		return err
-	}
-	if n > 0 {
-		return errSocketConnected
-	}
 	res := s.db.Model(&model.PDUSocket{}).
 		Where("id = ? AND version = ?", id, expected).
 		Updates(map[string]any{"deleted_at": time.Now(), "version": gorm.Expr("version + 1")})
@@ -341,6 +350,14 @@ func (s *PDUStore) SoftDeleteSocket(id uuid.UUID, expected uint) error {
 		return errVersion()
 	}
 	return nil
+}
+
+// CountActiveConnectionsBySocket 统计插座上的活动连接数（供 DeleteSocket 在锁内复核）。
+func (s *PDUStore) CountActiveConnectionsBySocket(socketID uuid.UUID) (int64, error) {
+	var n int64
+	err := s.db.Model(&model.PDUConnection{}).
+		Where("socket_id = ?", socketID).Count(&n).Error
+	return n, err
 }
 
 func (s *PDUStore) ListConnectionsByRack(rackID uuid.UUID) ([]model.PDUConnection, error) {
@@ -378,8 +395,18 @@ func (s *PDUStore) SoftDeleteConnection(id uuid.UUID, expected uint) error {
 	return nil
 }
 
+// UpdateSocketStatus 由 Connect/Disconnect 在 PDU→socket 行锁内调用，维护
+// socket 缓存状态。零行更新（插座已被并发删除/归档）必须报错回滚，防止
+// 事务在"连接指向已删插座"的不一致态下提交。
 func (s *PDUStore) UpdateSocketStatus(id uuid.UUID, status string) error {
-	return s.db.Model(&model.PDUSocket{}).Where("id = ?", id).Update("status", status).Error
+	res := s.db.Model(&model.PDUSocket{}).Where("id = ?", id).Update("status", status)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (s *PDUStore) DeviceHasRoleConnection(deviceID uuid.UUID, role string) (bool, error) {
@@ -391,7 +418,6 @@ func (s *PDUStore) DeviceHasRoleConnection(deviceID uuid.UUID, role string) (boo
 
 var (
 	errHasChildren     = &bizErr{"RESOURCE_HAS_CHILDREN"}
-	errSocketConnected = &bizErr{"PDU_SOCKET_CONNECTED"}
 	errPDURackMismatch = &bizErr{"PDU_DEVICE_RACK_MISMATCH"}
 	errSocketBusy      = &bizErr{"SOCKET_UNAVAILABLE"}
 )

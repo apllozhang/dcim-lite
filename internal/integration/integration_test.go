@@ -939,6 +939,280 @@ func TestPDUDeleteVsConnectRace(t *testing.T) {
 	}
 }
 
+// ── 复评 P0-N1 验收:PDU 插座聚合锁协议 ──────────────────────
+
+// setupPDUWithSocket 建一个 PDU + 单插座,返回 pduID 与 socketID。
+func setupPDUWithSocket(t *testing.T, fx fixture, prefix string) (string, string) {
+	t.Helper()
+	st, pdu := call("POST", "/api/v1/racks/"+fx.rackID+"/pdus",
+		map[string]any{"code": prefix + "-P" + short(), "name": "it"}, adminTok)
+	if st != 200 && st != 201 {
+		t.Fatalf("create pdu: %d %v", st, pdu)
+	}
+	pduID := data(pdu)["id"].(string)
+	st, sock := call("POST", "/api/v1/pdus/"+pduID+"/sockets",
+		map[string]any{"socketNo": 1, "standard": "CN", "amperageA": 16}, adminTok)
+	if st != 200 && st != 201 {
+		t.Fatalf("create socket: %d %v", st, sock)
+	}
+	return pduID, data(sock)["id"].(string)
+}
+
+// socketInfo 经 PDU 插座列表查插座状态与版本;ok=false 表示插座已不在活动列表。
+func socketInfo(t *testing.T, pduID, sockID string) (string, float64, bool) {
+	t.Helper()
+	st, body := call("GET", "/api/v1/pdus/"+pduID+"/sockets", nil, adminTok)
+	if st != 200 {
+		t.Fatalf("list sockets: %d %v", st, body)
+	}
+	for _, it := range data(body)["items"].([]any) {
+		m := it.(map[string]any)
+		if m["id"].(string) == sockID {
+			return m["status"].(string), m["version"].(float64), true
+		}
+	}
+	return "", 0, false
+}
+
+// pduVersionOf 经机柜 PDU 列表查 PDU 当前 version。
+func pduVersionOf(t *testing.T, fx fixture, pduID string) float64 {
+	t.Helper()
+	st, body := call("GET", "/api/v1/racks/"+fx.rackID+"/pdus", nil, adminTok)
+	if st != 200 {
+		t.Fatalf("list pdus: %d %v", st, body)
+	}
+	for _, it := range data(body)["items"].([]any) {
+		m := it.(map[string]any)
+		if m["id"].(string) == pduID {
+			return m["version"].(float64)
+		}
+	}
+	t.Fatalf("pdu %s not found in rack list", pduID)
+	return 0
+}
+
+// B01:DeleteSocket vs Connect 并发互斥——删除赢则接入必须失败,接入赢则
+// 删除必须 409;绝不允许「活动连接指向已软删插座」的孤儿终态。
+func TestSocketDeleteVsConnectRace(t *testing.T) {
+	fx := newFixture(t, "SD")
+	for round := 0; round < 10; round++ {
+		pduID, sockID := setupPDUWithSocket(t, fx, "SD")
+		_, sockVer, ok := socketInfo(t, pduID, sockID)
+		if !ok {
+			t.Fatalf("round %d: socket missing right after create", round)
+		}
+		dev := createDevice(t, fx, "SD-D"+short(), 1)
+		if st, _ := call("POST", "/api/v1/devices/"+dev+"/assign",
+			map[string]any{"rackId": fx.rackID, "startU": round + 1}, adminTok); st != 200 {
+			t.Fatalf("round %d: assign failed", round)
+		}
+		var stDel, stCon int
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			stDel, _ = call("DELETE", fmt.Sprintf("/api/v1/pdu-sockets/%s?version=%.0f", sockID, sockVer), nil, adminTok)
+		}()
+		go func() {
+			defer wg.Done()
+			stCon, _ = call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
+				map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok)
+		}()
+		wg.Wait()
+		if (stDel == 200) == (stCon == 200 || stCon == 201) {
+			t.Fatalf("round %d: socket-delete=%d connect=%d must be mutually exclusive", round, stDel, stCon)
+		}
+		// 孤儿终态检查:删除成功 → 连接不得存在;接入成功 → 插座状态必须 CONNECTED
+		if stDel == 200 {
+			st, conns := call("GET", "/api/v1/racks/"+fx.rackID+"/pdu-connections", nil, adminTok)
+			if st != 200 {
+				t.Fatalf("round %d: list connections: %d", round, st)
+			}
+			for _, it := range data(conns)["items"].([]any) {
+				if it.(map[string]any)["socketId"].(string) == sockID {
+					t.Fatalf("round %d: orphan connection to deleted socket", round)
+				}
+			}
+		} else {
+			if s, _, ok := socketInfo(t, pduID, sockID); !ok || s != "CONNECTED" {
+				t.Fatalf("round %d: connect won but socket status=%q exists=%v", round, s, ok)
+			}
+		}
+	}
+}
+
+// B01:CreateSocket vs Delete PDU 并发——PDU 删除成功后其名下不得残留活动插座
+// (CreateSocket 持 PDU 锁:先赢则随级联软删,后赢则 404)。
+func TestSocketCreateVsPDUDeleteRace(t *testing.T) {
+	fx := newFixture(t, "SC")
+	for round := 0; round < 10; round++ {
+		st, pdu := call("POST", "/api/v1/racks/"+fx.rackID+"/pdus",
+			map[string]any{"code": "SC-P" + short(), "name": "it"}, adminTok)
+		if st != 200 && st != 201 {
+			t.Fatalf("round %d: create pdu: %d %v", round, st, pdu)
+		}
+		pduID := data(pdu)["id"].(string)
+		pduVer := fmt.Sprintf("%.0f", data(pdu)["version"].(float64))
+		var stCreate, stDel int
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			stCreate, _ = call("POST", "/api/v1/pdus/"+pduID+"/sockets",
+				map[string]any{"socketNo": 9, "standard": "CN", "amperageA": 10}, adminTok)
+		}()
+		go func() {
+			defer wg.Done()
+			stDel, _ = call("DELETE", "/api/v1/pdus/"+pduID+"?version="+pduVer, nil, adminTok)
+		}()
+		wg.Wait()
+		if stDel != 200 {
+			t.Fatalf("round %d: pdu delete unexpected status %d (create=%d)", round, stDel, stCreate)
+		}
+		// 终态不变量:PDU 已删 → 不得残留活动插座
+		st, body := call("GET", "/api/v1/pdus/"+pduID+"/sockets", nil, adminTok)
+		if st == 200 {
+			if n := len(data(body)["items"].([]any)); n != 0 {
+				t.Fatalf("round %d: %d active sockets survive pdu delete", round, n)
+			}
+		}
+	}
+}
+
+// B01:UpdateSocket vs Connect 并发——只改 label 的编辑与接入串行化后各自生效,
+// 终态 status 必须与连接事实一致(不得出现「已接入仍显示 AVAILABLE」的漂移)。
+func TestSocketUpdateVsConnectRace(t *testing.T) {
+	fx := newFixture(t, "SU")
+	for round := 0; round < 10; round++ {
+		pduID, sockID := setupPDUWithSocket(t, fx, "SU")
+		dev := createDevice(t, fx, "SU-D"+short(), 1)
+		if st, _ := call("POST", "/api/v1/devices/"+dev+"/assign",
+			map[string]any{"rackId": fx.rackID, "startU": round + 1}, adminTok); st != 200 {
+			t.Fatalf("round %d: assign failed", round)
+		}
+		var stUpd, stCon int
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			stUpd, _ = call("PUT", "/api/v1/pdu-sockets/"+sockID,
+				map[string]any{"socketNo": 1, "standard": "CN", "amperageA": 16, "label": "GT改"}, adminTok)
+		}()
+		go func() {
+			defer wg.Done()
+			stCon, _ = call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
+				map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok)
+		}()
+		wg.Wait()
+		if stUpd != 200 || stCon != 200 && stCon != 201 {
+			t.Fatalf("round %d: update=%d connect=%d, both must succeed", round, stUpd, stCon)
+		}
+		if s, _, ok := socketInfo(t, pduID, sockID); !ok || s != "CONNECTED" {
+			t.Fatalf("round %d: connected socket status=%q exists=%v (status drift)", round, s, ok)
+		}
+	}
+}
+
+// B01:Disconnect vs ForceArchive 并发——断开赢则归档因确认数过期 409,
+// 归档赢则断开 404/409;终态无活动连接、无状态漂移。
+func TestDisconnectVsForceArchiveRace(t *testing.T) {
+	fx := newFixture(t, "DF")
+	for round := 0; round < 10; round++ {
+		pduID, sockID := setupPDUWithSocket(t, fx, "DF")
+		pduVer := pduVersionOf(t, fx, pduID)
+		dev := createDevice(t, fx, "DF-D"+short(), 1)
+		if st, _ := call("POST", "/api/v1/devices/"+dev+"/assign",
+			map[string]any{"rackId": fx.rackID, "startU": round + 1}, adminTok); st != 200 {
+			t.Fatalf("round %d: assign failed", round)
+		}
+		st, conn := call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
+			map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok)
+		if st != 200 && st != 201 {
+			t.Fatalf("round %d: connect: %d %v", round, st, conn)
+		}
+		connID := data(conn)["id"].(string)
+		connVer := fmt.Sprintf("%.0f", data(conn)["version"].(float64))
+		var stDis, stArc int
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			stDis, _ = call("DELETE", "/api/v1/pdu-connections/"+connID, map[string]any{"version": connVer}, adminTok)
+		}()
+		go func() {
+			defer wg.Done()
+			stArc, _ = call("POST", "/api/v1/pdus/"+pduID+"/force-archive",
+				map[string]any{"version": fmt.Sprintf("%.0f", pduVer), "reason": "报废", "confirmConnections": 1}, adminTok)
+		}()
+		wg.Wait()
+		disOK, arcOK := stDis == 200, stArc == 200
+		if disOK == arcOK {
+			t.Fatalf("round %d: disconnect=%d archive=%d, exactly one must win", round, stDis, stArc)
+		}
+		// 终态:连接必须已断
+		st, conns := call("GET", "/api/v1/racks/"+fx.rackID+"/pdu-connections", nil, adminTok)
+		if st != 200 {
+			t.Fatalf("round %d: list connections: %d", round, st)
+		}
+		for _, it := range data(conns)["items"].([]any) {
+			if it.(map[string]any)["id"].(string) == connID {
+				t.Fatalf("round %d: connection survives both disconnect and archive", round)
+			}
+		}
+		// 终态:插座状态与事实一致——断开赢 → AVAILABLE;归档赢 → 插座已删
+		if disOK {
+			if s, _, ok := socketInfo(t, pduID, sockID); !ok || s != "AVAILABLE" {
+				t.Fatalf("round %d: after disconnect socket status=%q exists=%v", round, s, ok)
+			}
+		} else {
+			if _, _, ok := socketInfo(t, pduID, sockID); ok {
+				t.Fatalf("round %d: socket survives force-archive", round)
+			}
+		}
+	}
+}
+
+// B02:socket status 收权——body 直写 status 被忽略,状态仅由连接事实维护。
+func TestSocketStatusNotWritable(t *testing.T) {
+	fx := newFixture(t, "SN")
+	pduID, sockID := setupPDUWithSocket(t, fx, "SN")
+	// 创建时直写 status=CONNECTED → 必须 AVAILABLE
+	st, created := call("POST", "/api/v1/pdus/"+pduID+"/sockets",
+		map[string]any{"socketNo": 2, "standard": "CN", "amperageA": 16, "status": "CONNECTED"}, adminTok)
+	if st != 200 && st != 201 {
+		t.Fatalf("create with status: %d %v", st, created)
+	}
+	sock2 := data(created)["id"].(string)
+	if s, _, _ := socketInfo(t, pduID, sock2); s != "AVAILABLE" {
+		t.Fatalf("created socket must ignore client status=CONNECTED, got %q", s)
+	}
+	// 更新时直写 status=CONNECTED → 保留 AVAILABLE
+	if st, body := call("PUT", "/api/v1/pdu-sockets/"+sockID,
+		map[string]any{"socketNo": 1, "standard": "CN", "amperageA": 16, "label": "x", "status": "CONNECTED"}, adminTok); st != 200 {
+		t.Fatalf("update socket: %d %v", st, body)
+	}
+	if s, _, _ := socketInfo(t, pduID, sockID); s != "AVAILABLE" {
+		t.Fatalf("updated socket must ignore client status=CONNECTED, got %q", s)
+	}
+	// 连接存在时直写 status=AVAILABLE → 仍 CONNECTED
+	dev := createDevice(t, fx, "SN-D"+short(), 1)
+	if st, _ := call("POST", "/api/v1/devices/"+dev+"/assign",
+		map[string]any{"rackId": fx.rackID, "startU": 1}, adminTok); st != 200 {
+		t.Fatal("assign failed")
+	}
+	if st, _ := call("POST", "/api/v1/pdu-sockets/"+sockID+"/connection",
+		map[string]any{"deviceId": dev, "redundancyRole": "PRIMARY"}, adminTok); st != 200 && st != 201 {
+		t.Fatal("connect failed")
+	}
+	if st, body := call("PUT", "/api/v1/pdu-sockets/"+sockID,
+		map[string]any{"socketNo": 1, "standard": "CN", "amperageA": 16, "status": "AVAILABLE"}, adminTok); st != 200 {
+		t.Fatalf("update connected socket: %d %v", st, body)
+	}
+	if s, _, _ := socketInfo(t, pduID, sockID); s != "CONNECTED" {
+		t.Fatalf("connected socket must stay CONNECTED despite client status=AVAILABLE, got %q", s)
+	}
+}
+
 // P0-05 复评验收：审批批准 vs 设备编辑并发。互斥——编辑赢则批准 409（锁内版本校验），
 // 批准赢则编辑 409（乐观锁）；绝不出现"批准基于过期设备版本仍执行"。
 func TestApproveVsDeviceEditMatrix(t *testing.T) {

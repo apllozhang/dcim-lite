@@ -68,3 +68,10 @@
 
 - 状态码+错误码口径兼容率 **83.4%**（可比 391），**真实断裂 0**；
 - 关键字段（响应形状）口径 **70.3%**——剩余差异集中在嵌套关联对象的填充深度与个别响应字段命名（如导入 summary 的 `unchanged`/`ignored`），属厂商响应形状的完整复刻工程。
+
+## 复评 P0-N1 批次（2026-09-11）登记
+
+| 编号 | 端点 | 变更 | 性质 |
+|---|---|---|---|
+| C10 | POST/PUT pdu-sockets | **socket `status` 收权**：请求体中的 status 字段被忽略（兼容保留、OpenAPI 标注 deprecated），状态仅由 Connect/Disconnect/ForceArchive 依连接事实维护。厂商允许直写，属**有意偏离**——直写可把有连接的插座改成 AVAILABLE（或反之），是数据漂移源。差分影响：0（golden 套件 socket 用例均不传 status，nightly 门禁不受影响） | INTENTIONAL |
+| — | PDU 聚合全锁协议 | CreateSocket/UpdateSocket/DeleteSocket/Connect/Disconnect 统一「先锁 PDU 行 → 再锁 socket 行 → 锁内校验 → 同事务写入」，与 Delete/ForceArchive 同序无死锁；`UpdateSocketStatus` 零行更新回滚事务。行为兼容（正常路径响应不变），仅消除并发窗口 | 内部加固 |
