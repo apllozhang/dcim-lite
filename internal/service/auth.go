@@ -114,8 +114,9 @@ func (s *AuthService) Logout(tokenString string) error {
 func (s *AuthService) issueToken(user *model.User) (string, error) {
 	now := time.Now()
 	claims := &middleware.Claims{
-		UserID: user.ID.String(),
-		Roles:  user.RoleCodes(),
+		UserID:         user.ID.String(),
+		Roles:          user.RoleCodes(),
+		SessionVersion: user.SessionVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        uuid.NewString(), // jti：登出/改密吊销的锚点
 			Subject:   user.ID.String(),

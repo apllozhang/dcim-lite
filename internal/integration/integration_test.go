@@ -1186,3 +1186,78 @@ func TestAuthMatrixAllRoutes(t *testing.T) {
 		check(t, spec, stance{"管理员", tok}, func(st int) bool { return st != 401 && st != 403 && st < 500 }, "must allow system_admin")
 	}
 }
+
+// 复评 §10 验收（P1-11）：用户持有两个 token 时被重置密码，两个旧 token 均立即
+// 失效，新密码可正常登录。此前仅更新 password hash，重置密码吊销不了任何旧 token。
+func TestPasswordResetRevokesAllTokens(t *testing.T) {
+	const pwd1, pwd2 = "SvReset#2026a", "SvReset#2026b"
+	name := "svr-" + short()
+	st, c := call("POST", "/api/v1/admin/users", map[string]any{
+		"username": name, "displayName": name, "password": pwd1,
+		"roleCodes": []string{"user"}, "enabled": true}, adminTok)
+	if st != 200 && st != 201 {
+		t.Fatalf("create user: %d %v", st, c)
+	}
+	tok1 := mustLogin(name, pwd1)
+	tok2 := mustLogin(name, pwd1)
+	for _, tok := range []string{tok1, tok2} {
+		if st, _ := call("GET", "/api/v1/auth/me", nil, tok); st != 200 {
+			t.Fatalf("pre-reset token must be valid, got %d", st)
+		}
+	}
+
+	id, ver := userVersionByName(t, adminTok, name)
+	if st, body := call("POST", "/api/v1/admin/users/"+id+"/reset-password?version="+ver,
+		map[string]any{"password": pwd2}, adminTok); st != 200 {
+		t.Fatalf("reset password: %d %v", st, body)
+	}
+
+	for _, tok := range []string{tok1, tok2} {
+		if st, _ := call("GET", "/api/v1/auth/me", nil, tok); st != 401 {
+			t.Fatalf("old token must be revoked immediately after password reset, got %d", st)
+		}
+	}
+	tok3 := mustLogin(name, pwd2)
+	if st, _ := call("GET", "/api/v1/auth/me", nil, tok3); st != 200 {
+		t.Fatalf("new login after reset must work, got %d", st)
+	}
+}
+
+// 复评 P1-11 配套：停用（启用→停用）同样递增会话版本——否则重新启用后旧 token 复活。
+func TestDisableUserRevokesTokens(t *testing.T) {
+	const pwd = "SvDis#2026aa"
+	name := "svd-" + short()
+	st, c := call("POST", "/api/v1/admin/users", map[string]any{
+		"username": name, "displayName": name, "password": pwd,
+		"roleCodes": []string{"user"}, "enabled": true}, adminTok)
+	if st != 200 && st != 201 {
+		t.Fatalf("create user: %d %v", st, c)
+	}
+	tok1 := mustLogin(name, pwd)
+	if st, _ := call("GET", "/api/v1/auth/me", nil, tok1); st != 200 {
+		t.Fatal("pre-disable token must be valid")
+	}
+
+	id, ver := userVersionByName(t, adminTok, name)
+	if st, body := call("PUT", "/api/v1/admin/users/"+id+"?version="+ver,
+		map[string]any{"authSource": "local", "enabled": false, "roleCodes": []string{"user"}}, adminTok); st != 200 {
+		t.Fatalf("disable user: %d %v", st, body)
+	}
+	if st, _ := call("GET", "/api/v1/auth/me", nil, tok1); st != 401 {
+		t.Fatalf("disabled user token must be rejected, got %d", st)
+	}
+
+	// 重新启用：旧 token 不得复活（session_version 已在停用时递增）
+	id, ver = userVersionByName(t, adminTok, name)
+	if st, body := call("PUT", "/api/v1/admin/users/"+id+"?version="+ver,
+		map[string]any{"authSource": "local", "enabled": true, "roleCodes": []string{"user"}}, adminTok); st != 200 {
+		t.Fatalf("re-enable user: %d %v", st, body)
+	}
+	if st, _ := call("GET", "/api/v1/auth/me", nil, tok1); st != 401 {
+		t.Fatalf("old token must NOT revive after re-enable, got %d", st)
+	}
+	tok2 := mustLogin(name, pwd)
+	if st, _ := call("GET", "/api/v1/auth/me", nil, tok2); st != 200 {
+		t.Fatalf("fresh login after re-enable must work, got %d", st)
+	}
+}
