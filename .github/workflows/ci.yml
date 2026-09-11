@@ -187,16 +187,18 @@ jobs:
       - name: start real legacy static site (P0-R1:回退演练必须加载真旧页面)
         working-directory: .
         run: |
-          mkdir -p /tmp/legacy-site
-          cp -r frontend/ale/. /tmp/legacy-site/
+          # vite 代理保留 /legacy 前缀:文件必须布在 legacy/ 子目录下,
+          # 使 /legacy/ → legacy/index.html、/legacy/assets/x → legacy/assets/x
+          mkdir -p /tmp/legacy-site/legacy
+          cp -r frontend/ale/. /tmp/legacy-site/legacy/
           # 旧 index.html 用绝对路径 /assets/...,改写到 /legacy/assets/ 才能经 preview 代理命中旧站点
-          sed -i 's|/assets/|/legacy/assets/|g' /tmp/legacy-site/index.html
+          sed -i 's|/assets/|/legacy/assets/|g' /tmp/legacy-site/legacy/index.html
           docker run -d --name legacy-site -v /tmp/legacy-site:/usr/share/nginx/html:ro -p 18081:80 nginx:alpine
           for i in $(seq 1 20); do
-            curl -sf -o /dev/null http://127.0.0.1:18081/index.html && break
+            curl -sf -o /dev/null http://127.0.0.1:18081/legacy/index.html && break
             sleep 1
           done
-          curl -sf -o /dev/null http://127.0.0.1:18081/index.html
+          curl -sf -o /dev/null http://127.0.0.1:18081/legacy/index.html
       - name: Playwright e2e (real backend, real legacy site)
         env:
           ALE_API_PROXY: http://127.0.0.1:18080
