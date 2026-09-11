@@ -17,4 +17,5 @@ backups/
 # and compiled application bundles that are not Apache/MIT licensed.
 _*.py
 _regress-shots/
-"__pycache__/"  
+__pycache__/
+*.pyc
