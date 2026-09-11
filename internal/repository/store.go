@@ -130,18 +130,24 @@ func (s *UserStore) CreateUser(u *model.User) error {
 	return s.db.Create(u).Error
 }
 
-func (s *UserStore) UpdateUser(id uuid.UUID, version uint, username, displayName, email, authSource string, enabled bool, roles []model.Role) error {
+// UpdateUser 更新用户；bumpSession 在停用（启用→停用）时为真，递增会话版本
+// 吊销该用户全部已签发 token（否则重新启用后旧 token 复活）。
+func (s *UserStore) UpdateUser(id uuid.UUID, version uint, username, displayName, email, authSource string, enabled bool, roles []model.Role, bumpSession bool) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
+		updates := map[string]any{
+			"username":     username,
+			"display_name": displayName,
+			"email":        email,
+			"auth_source":  authSource,
+			"enabled":      enabled,
+			"version":      gorm.Expr("version + 1"),
+		}
+		if bumpSession {
+			updates["session_version"] = gorm.Expr("session_version + 1")
+		}
 		res := tx.Model(&model.User{}).
 			Where("id = ? AND version = ?", id, version).
-			Updates(map[string]any{
-				"username":     username,
-				"display_name": displayName,
-				"email":        email,
-				"auth_source":  authSource,
-				"enabled":      enabled,
-				"version":      gorm.Expr("version + 1"),
-			})
+			Updates(updates)
 		if res.Error != nil {
 			return res.Error
 		}
@@ -163,8 +169,9 @@ func (s *UserStore) SoftDeleteUser(id uuid.UUID, version uint) error {
 	res := s.db.Model(&model.User{}).
 		Where("id = ? AND version = ?", id, version).
 		Updates(map[string]any{
-			"deleted_at": time.Now(),
-			"version":    gorm.Expr("version + 1"),
+			"deleted_at":      time.Now(),
+			"version":         gorm.Expr("version + 1"),
+			"session_version": gorm.Expr("session_version + 1"),
 		})
 	if res.Error != nil {
 		return res.Error
@@ -175,12 +182,15 @@ func (s *UserStore) SoftDeleteUser(id uuid.UUID, version uint) error {
 	return nil
 }
 
+// UpdatePasswordHash 重置密码并递增会话版本：该用户全部已签发 token 立即失效
+// （复评 P1-11：仅更新 hash 不吊销旧 token，重置密码等于没重置）。
 func (s *UserStore) UpdatePasswordHash(id uuid.UUID, version uint, hash string) error {
 	res := s.db.Model(&model.User{}).
 		Where("id = ? AND version = ?", id, version).
 		Updates(map[string]any{
-			"password_hash": hash,
-			"version":       gorm.Expr("version + 1"),
+			"password_hash":   hash,
+			"version":         gorm.Expr("version + 1"),
+			"session_version": gorm.Expr("session_version + 1"),
 		})
 	if res.Error != nil {
 		return res.Error

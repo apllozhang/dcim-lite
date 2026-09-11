@@ -161,7 +161,8 @@ func (s *AdminService) UpdateUser(id uuid.UUID, version uint, in UserAdminInput)
 				return err
 			}
 		}
-		return mapStoreErr(users.UpdateUser(id, version, in.Username, in.DisplayName, strings.TrimSpace(in.Email), in.AuthSource, enabled, roles))
+		// 停用（启用→停用）时递增会话版本：吊销该用户全部旧 token，防止重新启用后复活
+		return mapStoreErr(users.UpdateUser(id, version, in.Username, in.DisplayName, strings.TrimSpace(in.Email), in.AuthSource, enabled, roles, existing.Enabled && !enabled))
 	})
 	if err != nil {
 		return nil, err

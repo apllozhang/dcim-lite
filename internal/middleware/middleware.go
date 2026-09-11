@@ -25,6 +25,9 @@ const (
 type Claims struct {
 	UserID string   `json:"userId"`
 	Roles  []string `json:"roles"`
+	// SessionVersion：签发时用户的会话版本；与库中当前值不等即整体吊销
+	// （密码重置/停用/删除时递增，全端生效）
+	SessionVersion int64 `json:"sv,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -155,6 +158,11 @@ func Auth(secret string, users UserFinder, revoker TokenRevoker) gin.HandlerFunc
 		}
 		user, err := users.FindByID(uid)
 		if err != nil || user == nil || !user.Enabled {
+			response.Fail(c, apperr.Unauthorized().Status, apperr.Unauthorized().Code, apperr.Unauthorized().Message)
+			return
+		}
+		// 会话版本比对：密码重置/停用/删除后旧 token 全部失效（sv 缺失视为 0，旧令牌直接淘汰）
+		if claims.SessionVersion != user.SessionVersion {
 			response.Fail(c, apperr.Unauthorized().Status, apperr.Unauthorized().Code, apperr.Unauthorized().Message)
 			return
 		}
