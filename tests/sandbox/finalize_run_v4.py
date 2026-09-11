@@ -128,7 +128,7 @@ try:
             if method in ("get", "post", "put", "delete", "patch"):
                 ops.append((method.upper(), path))
     gate("openapi-parseable", True)
-    gate("openapi-count-66", len(ops) == 66, f"got {len(ops)}")
+    gate("openapi-count-72", len(ops) == 72, f"got {len(ops)}")
 except Exception as e:
     gate("openapi-parseable", False, str(e)[:80])
     ops = []
@@ -140,7 +140,7 @@ try:
         m, p = key.split(" ", 1)
         req_map[(m, p)] = set(spec.get("required", []))
     gate("requirements-parseable", True)
-    gate("requirements-count-66", len(req_map) == 66, f"got {len(req_map)}")
+    gate("requirements-count-72", len(req_map) == 72, f"got {len(req_map)}")
     # 双向比对
     req_keys = set(req_map.keys())
     openapi_keys = set(ops)
@@ -236,9 +236,9 @@ for method, path in ops:
         "evidence_cases": ";".join(sorted(set(c["caseId"] for c in matched_cases))[:5]),
     })
 
-gate("coverage-reached-66", reached == 66, f"got {reached}/66")
+gate("coverage-reached-72", reached == 72, f"got {reached}/72")
 # ===== P0-1 修复：真门禁 =====
-gate("coverage-behavior-complete", behavior_complete == 66,
+gate("coverage-behavior-complete", behavior_complete == 72,
      f"got {behavior_complete}/66")
 # 保存缺口表
 os.makedirs(os.path.join(FR, "coverage"), exist_ok=True)

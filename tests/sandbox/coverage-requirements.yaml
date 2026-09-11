@@ -50,12 +50,26 @@ operations:
   "GET /api/v1/racks/{id}/u-layout":
     required: [happy_path, auth_boundary]
 
-  "GET /api/v1/racks/{rackId}/pdus":
+  "GET /api/v1/racks/{id}/pdus":
     required: [happy_path, auth_boundary]
-  "POST /api/v1/racks/{rackId}/pdus":
+  "POST /api/v1/racks/{id}/pdus":
     required: [happy_path, validation, conflict, auth_boundary]
-  "GET /api/v1/racks/{rackId}/pdu-connections":
+  "GET /api/v1/racks/{id}/pdu-connections":
     required: [happy_path, auth_boundary]
+
+  # —— 2026-09-11 对齐 OpenAPI 72 操作(复评 P1-N2:PR#22 后 requirements 滞后) ——
+  "GET /api/v1/auth/captcha":
+    required: [happy_path]
+  "GET /api/v1/devices/import-template":
+    required: [happy_path, auth_boundary]
+  "GET /api/v1/pdus/{id}/archive-impact":
+    required: [happy_path, auth_boundary]
+  "GET /api/v1/racks-page":
+    required: [happy_path, auth_boundary]
+  "GET /metrics":
+    required: [happy_path]
+  "POST /api/v1/pdus/{id}/force-archive":
+    required: [happy_path, validation, conflict, auth_boundary]
 
   "GET /api/v1/device-types":
     required: [happy_path, auth_boundary]
