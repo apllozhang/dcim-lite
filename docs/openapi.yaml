@@ -1,15 +1,15 @@
 openapi: 3.0.3
 info:
   title: dcim-lite API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     轻量 DCIM（数据中心台账）系统 API 契约。
     统一响应信封：{"code","message","data","requestId"}；
-    乐观锁：PUT/DELETE 携带 ?version=，冲突返回 409 RESOURCE_VERSION；
+    乐观锁：PUT/DELETE 携带 ?version=（move 类可放 body），冲突返回 409 RESOURCE_VERSION_CONFLICT；
     软删除：deleted_at，唯一索引带 WHERE deleted_at IS NULL。
     行为差异决策见 docs/COMPAT-DECISIONS.md。
-    注意：body schema 按模块逐步补全中，路径与权限矩阵以本文件为准
-    （与 internal/app/routes_test.go 联动，路由漂移会使测试失败）。
+    路径与权限矩阵与 internal/app/routes_test.go 联动（路由漂移会使测试失败）；
+    请求体 schema 全量定义于本文件 components（requestBodies/schemas）。
 servers:
   - url: http://10.20.30.203:19173
     description: 内网部署（nginx 代理）
@@ -19,57 +19,51 @@ security:
 paths:
   /health/live:
     get:
-      summary: 存活探针
+      summary: 存活探针（data.status=alive）
       security: []
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses:
+        "200": { $ref: "#/components/responses/HealthOK" }
   /health/ready:
     get:
       summary: 就绪探针（检查数据库）
       security: []
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/HealthOK" }
         "503": { $ref: "#/components/responses/Fail" }
   /api/v1/auth/captcha:
     get:
-      summary: 获取验证码（SVG，单实例内存，5 分钟有效，一次性）
+      summary: 获取验证码（SVG data-url，单实例内存，5 分钟有效，一次性）
       security: []
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses:
+        "200": { $ref: "#/components/responses/CaptchaOK" }
   /api/v1/auth/login:
     post:
       summary: 登录（需验证码；每 IP 每分钟 10 次；连续失败 5 次锁 15 分钟）
       security: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [username, password, captchaId, captcha]
-              properties:
-                username: { type: string }
-                password: { type: string }
-                captchaId: { type: string }
-                captcha: { type: string, description: 4 位数字 }
+      requestBody: { $ref: "#/components/requestBodies/LoginBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/LoginOK" }
         "400": { $ref: "#/components/responses/Fail" }
         "401": { $ref: "#/components/responses/Fail" }
+        "403": { $ref: "#/components/responses/Fail" }
         "429": { $ref: "#/components/responses/Fail" }
   /api/v1/auth/me:
     get:
       summary: 当前用户信息
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/UserOK" }
         "401": { $ref: "#/components/responses/Fail" }
   /api/v1/auth/logout:
     post:
       summary: 登出（吊销当前 token，立即失效）
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses: { $ref: "#/components/responses/OK" }
 
   # ── 只读查询（登录即可） ─────────────────────────────
   /api/v1/resource-tree:
     get:
       summary: 数据中心-机房-机柜资源树
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses:
+        "200": { $ref: "#/components/responses/TreeOK" }
   /api/v1/racks-page:
     get:
       summary: 机柜分页列表
@@ -82,15 +76,18 @@ paths:
         - { name: dataCenterId, in: query, schema: { type: string, format: uuid } }
         - { name: sortBy, in: query, schema: { type: string, enum: [code, name, status, uHeight, createdAt] } }
         - { name: sortDir, in: query, schema: { type: string, enum: [asc, desc] } }
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses:
+        "200": { $ref: "#/components/responses/RackListOK" }
   /api/v1/device-types:
     get:
       summary: 设备类型列表
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses:
+        "200": { $ref: "#/components/responses/DeviceTypeListOK" }
     post:
       summary: 创建设备类型
+      requestBody: { $ref: "#/components/requestBodies/DeviceTypeBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/DeviceTypeOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/devices:
     get:
@@ -104,11 +101,13 @@ paths:
         - { name: lifecycleStatus, in: query, schema: { type: string } }
         - { name: sortBy, in: query, schema: { type: string } }
         - { name: sortDir, in: query, schema: { type: string } }
-      responses: { "200": { $ref: "#/components/responses/OK" } }
-    post:
-      summary: 创建设备（编码缺省自动生成）
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/DeviceListOK" }
+    post:
+      summary: 创建设备（编码缺省自动生成；heightU 必须 >=1）
+      requestBody: { $ref: "#/components/requestBodies/DeviceBody" }
+      responses:
+        "200": { $ref: "#/components/responses/DeviceOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/devices/import-template:
     get:
@@ -121,16 +120,17 @@ paths:
               schema: { type: string, format: binary }
   /api/v1/devices/{id}:
     get:
-      summary: 设备详情
+      summary: 设备详情（含 currentPosition）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/DeviceOK" }
         "404": { $ref: "#/components/responses/Fail" }
     put:
       summary: 更新设备（在位禁改高度；生命周期不可直改）
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      requestBody: { $ref: "#/components/requestBodies/DeviceBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/DeviceOK" }
         "409": { $ref: "#/components/responses/Fail" }
     delete:
       summary: 删除设备（在位时 409，先下架）
@@ -142,60 +142,72 @@ paths:
     get:
       summary: 设备位置履历
       parameters: [{ $ref: "#/components/parameters/PathID" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses:
+        "200": { $ref: "#/components/responses/HistoryListOK" }
   /api/v1/racks/{id}/u-layout:
     get:
-      summary: 机柜 U 位布局（含设备摘要）
+      summary: 机柜 U 位布局（positions + free 空闲段 + 设备摘要）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses:
+        "200": { $ref: "#/components/responses/ULayoutOK" }
   /api/v1/rack-templates:
     get:
       summary: 机柜模板列表（含版本）
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses:
+        "200": { $ref: "#/components/responses/TemplateListOK" }
     post:
       summary: 创建机柜模板（含首版本）
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      requestBody: { $ref: "#/components/requestBodies/TemplateCreateBody" }
+      responses:
+        "200": { $ref: "#/components/responses/TemplateOK" }
   /api/v1/racks/{id}/pdus:
     get:
       summary: 机柜下 PDU 列表
       parameters: [{ $ref: "#/components/parameters/PathID" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses:
+        "200": { $ref: "#/components/responses/PDUListOK" }
     post:
       summary: 创建 PDU
       parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/PDUBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/PDUOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/pdus/{id}/sockets:
     get:
       summary: PDU 插座列表
       parameters: [{ $ref: "#/components/parameters/PathID" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
-    post:
-      summary: 创建插座（编号唯一）
-      parameters: [{ $ref: "#/components/parameters/PathID" }]
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/SocketListOK" }
+    post:
+      summary: 创建插座（编号唯一，制式 CN/EU）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/SocketBody" }
+      responses:
+        "200": { $ref: "#/components/responses/SocketOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/racks/{id}/pdu-connections:
     get:
       summary: 机柜 PDU 连接列表
       parameters: [{ $ref: "#/components/parameters/PathID" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses:
+        "200": { $ref: "#/components/responses/ConnectionListOK" }
 
   # ── 资源写（system_admin） ───────────────────────────
   /api/v1/data-centers:
     post:
       summary: 创建数据中心
+      requestBody: { $ref: "#/components/requestBodies/DataCenterBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/DataCenterOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/data-centers/{id}:
     put:
       summary: 更新数据中心
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      requestBody: { $ref: "#/components/requestBodies/DataCenterBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/DataCenterOK" }
         "409": { $ref: "#/components/responses/Fail" }
     delete:
       summary: 删除数据中心（有机房时 409）
@@ -207,20 +219,23 @@ paths:
     post:
       summary: 创建机房（父级停用 409）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/RoomBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/RoomOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/data-centers/{id}/copy:
     post:
       summary: 深拷贝数据中心
       parameters: [{ $ref: "#/components/parameters/PathID" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      requestBody: { $ref: "#/components/requestBodies/CopyMoveBody" }
+      responses: { "200": { $ref: "#/components/responses/DataCenterOK" } }
   /api/v1/rooms/{id}:
     put:
       summary: 更新机房
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      requestBody: { $ref: "#/components/requestBodies/RoomBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/RoomOK" }
         "409": { $ref: "#/components/responses/Fail" }
     delete:
       summary: 删除机房（有机柜时 409）
@@ -232,40 +247,50 @@ paths:
     post:
       summary: 创建机柜（可带模板快照）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/RackBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/RackOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/rooms/{id}/copy:
     post:
       summary: 深拷贝机房
       parameters: [{ $ref: "#/components/parameters/PathID" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      requestBody: { $ref: "#/components/requestBodies/CopyMoveBody" }
+      responses: { "200": { $ref: "#/components/responses/RoomOK" } }
   /api/v1/rooms/{id}/move:
     post:
-      summary: 跨数据中心迁移机房
+      summary: 跨数据中心迁移机房（version 校验先于其他参数）
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      requestBody: { $ref: "#/components/requestBodies/CopyMoveBody" }
+      responses: { "200": { $ref: "#/components/responses/RoomOK" } }
   /api/v1/rooms/{id}/rack-diagram-import/validate:
     post:
-      summary: 机柜图导入校验（两阶段第一步，返回 token 与逐行分类）
+      summary: 机柜图导入校验（两阶段第一步，返回 token 与逐行分类；coveredRackIds 必须属于 URL 机房）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      requestBody: { $ref: "#/components/requestBodies/ImportValidateBody" }
+      responses:
+        "200": { $ref: "#/components/responses/ImportValidateOK" }
+        "400": { $ref: "#/components/responses/Fail" }
   /api/v1/rooms/{id}/rack-diagram-import/commit:
     post:
-      summary: 机柜图导入提交（单事务；失败零残留可重试；token 一次性）
+      summary: 机柜图导入提交（单事务；失败零残留可重试；token 一次性且绑定发起人）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/ImportCommitBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/ImportCommitOK" }
         "400": { $ref: "#/components/responses/Fail" }
+        "403": { $ref: "#/components/responses/Fail" }
+        "410": { $ref: "#/components/responses/Fail" }
   /api/v1/racks/{id}:
     put:
       summary: 更新机柜
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      requestBody: { $ref: "#/components/requestBodies/RackBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/RackOK" }
         "409": { $ref: "#/components/responses/Fail" }
     delete:
-      summary: 删除机柜（在位设备或 PDU 存在时 409）
+      summary: 删除机柜（在位设备或 PDU 存在时 409；FOR UPDATE 防并发上架）
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
       responses:
         "200": { $ref: "#/components/responses/OK" }
@@ -274,20 +299,23 @@ paths:
     post:
       summary: 深拷贝机柜
       parameters: [{ $ref: "#/components/parameters/PathID" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      requestBody: { $ref: "#/components/requestBodies/CopyMoveBody" }
+      responses: { "200": { $ref: "#/components/responses/RackOK" } }
   /api/v1/racks/{id}/move:
     post:
-      summary: 跨机房迁移机柜
+      summary: 跨机房迁移机柜（version 校验先于其他参数）
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      requestBody: { $ref: "#/components/requestBodies/CopyMoveBody" }
+      responses: { "200": { $ref: "#/components/responses/RackOK" } }
 
   # ── 设备类型与设备写（system_admin） ──────────────────
   /api/v1/device-types/{id}:
     put:
       summary: 更新设备类型
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      requestBody: { $ref: "#/components/requestBodies/DeviceTypeBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/DeviceTypeOK" }
         "409": { $ref: "#/components/responses/Fail" }
     delete:
       summary: 删除设备类型（被引用时 409）
@@ -297,33 +325,37 @@ paths:
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/devices/{id}/assign:
     post:
-      summary: 上架（策略开启时生成 PENDING 审批单）
+      summary: 上架（策略开启时生成 PENDING 审批单；响应形状厂商式 {executed,device,approval}）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/AssignBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/AssignOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/devices/{id}/move:
     post:
-      summary: 移位（策略开启时生成 PENDING 审批单）
+      summary: 移位（策略开启时生成 PENDING 审批单；rackId/targetRackId 均可）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/AssignBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/AssignOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/devices/{id}/decommission:
     post:
       summary: 下架退役（位置+生命周期+履历单事务）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/DecommissionBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/DeviceOK" }
         "409": { $ref: "#/components/responses/Fail" }
 
   # ── 模板与 PDU 写（system_admin） ─────────────────────
   /api/v1/rack-templates/{id}:
     put:
-      summary: 更新模板元信息（系统内置禁改/禁删 409）
+      summary: 更新模板元信息（系统内置禁改/禁删 409 SYSTEM_TEMPLATE_PROTECTED）
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      requestBody: { $ref: "#/components/requestBodies/TemplateUpdateBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/TemplateOK" }
         "409": { $ref: "#/components/responses/Fail" }
     delete:
       summary: 删除模板
@@ -333,18 +365,22 @@ paths:
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/rack-templates/{id}/versions:
     post:
-      summary: 追加模板版本（revision 递增）
-      parameters: [{ $ref: "#/components/parameters/PathID" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      summary: 追加模板版本（revision 递增；stale version 409）
+      parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      requestBody: { $ref: "#/components/requestBodies/TemplateVersionBody" }
+      responses:
+        "200": { $ref: "#/components/responses/TemplateOK" }
+        "409": { $ref: "#/components/responses/Fail" }
   /api/v1/pdus/{id}:
     put:
       summary: 更新 PDU
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      requestBody: { $ref: "#/components/requestBodies/PDUBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/PDUOK" }
         "409": { $ref: "#/components/responses/Fail" }
     delete:
-      summary: 删除 PDU（有插座时 409）
+      summary: 删除 PDU（有活动连接 409 PDU_IN_USE；无连接级联软删插座）
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
       responses:
         "200": { $ref: "#/components/responses/OK" }
@@ -353,8 +389,9 @@ paths:
     put:
       summary: 更新插座
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      requestBody: { $ref: "#/components/requestBodies/SocketBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/SocketOK" }
         "409": { $ref: "#/components/responses/Fail" }
     delete:
       summary: 删除插座（已连接时 409）
@@ -366,24 +403,27 @@ paths:
     post:
       summary: 接电（插座占用/同角色已连/跨机柜均 409；连接与插座状态同事务）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/ConnectionBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/ConnectionOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/pdus/{id}/archive-impact:
     get:
-      summary: 强制归档影响清单（管理员；先展示后确认）
-      parameters: [{ $ref: "#/components/parameters/PathID" }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
-  /api/v1/pdus/{id}/force-archive:
-    post:
-      summary: 管理员强制归档 PDU（须回报影响清单连接数 + 填写原因，断开连接并级联下线插座）
+      summary: 强制归档影响清单（先展示后确认）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/PDUImpactOK" }
+  /api/v1/pdus/{id}/force-archive:
+    post:
+      summary: 管理员强制归档 PDU（confirmConnections 必须等于锁内实况，reason 必填；审计与归档同事务）
+      parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/ForceArchiveBody" }
+      responses:
+        "200": { $ref: "#/components/responses/PDUImpactOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/pdu-connections/{id}:
     delete:
-      summary: 断开连接（连接删除与插座释放同事务）
+      summary: 断开连接（version 可在 query 或 body；连接删除与插座释放同事务）
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
       responses:
         "200": { $ref: "#/components/responses/OK" }
@@ -393,76 +433,85 @@ paths:
   /api/v1/admin/roles:
     get:
       summary: 角色列表
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses: { "200": { $ref: "#/components/responses/RoleListOK" } }
   /api/v1/admin/users:
     get:
       summary: 用户列表
       parameters:
         - { name: search, in: query, schema: { type: string } }
         - { name: authSource, in: query, schema: { type: string } }
-      responses: { "200": { $ref: "#/components/responses/OK" } }
-    post:
-      summary: 创建用户
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/UserListOK" }
+    post:
+      summary: 创建用户（本地用户密码必填 >=8 位）
+      requestBody: { $ref: "#/components/requestBodies/UserCreateBody" }
+      responses:
+        "200": { $ref: "#/components/responses/UserOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/admin/users/{id}:
     put:
-      summary: 更新用户（最后管理员保护 409 LAST_ADMIN）
+      summary: 更新用户（最后管理员保护 409；启用→停用递增会话版本吊销全部旧 token）
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      requestBody: { $ref: "#/components/requestBodies/UserUpdateBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/UserOK" }
         "409": { $ref: "#/components/responses/Fail" }
     delete:
-      summary: 删除用户（最后管理员保护）
+      summary: 删除用户（最后管理员保护；软删并递增会话版本）
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
       responses:
         "200": { $ref: "#/components/responses/OK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/admin/users/{id}/reset-password:
     post:
-      summary: 重置密码
+      summary: 重置密码（>=8 位；递增会话版本，该用户全部已签发 token 立即失效）
       parameters: [{ $ref: "#/components/parameters/PathID" }, { $ref: "#/components/parameters/Version" }]
+      requestBody: { $ref: "#/components/requestBodies/ResetPasswordBody" }
       responses:
         "200": { $ref: "#/components/responses/OK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/admin/approval-policy:
     get:
       summary: 审批策略
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      responses: { "200": { $ref: "#/components/responses/PolicyOK" } }
     put:
       summary: 更新审批策略
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      requestBody: { $ref: "#/components/requestBodies/PolicyBody" }
+      responses: { "200": { $ref: "#/components/responses/PolicyOK" } }
   /api/v1/admin/approvals:
     get:
-      summary: 审批单列表
-      parameters: [{ name: status, in: query, schema: { type: string } }]
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      summary: 审批单列表（含设备详情）
+      parameters: [{ name: status, in: query, schema: { type: string, enum: [PENDING, APPROVED, REJECTED] } }]
+      responses: { "200": { $ref: "#/components/responses/ApprovalListOK" } }
   /api/v1/admin/approvals/{id}/approve:
     post:
-      summary: 批准（条件占单+设备变更单事务；并发恰一次生效）
+      summary: 批准（条件占单+锁设备行+设备变更单事务；version 过期/设备被改 → RESOURCE_VERSION_CONFLICT）
       parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/ApproveBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/DeviceOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/admin/approvals/{id}/reject:
     post:
       summary: 拒绝
       parameters: [{ $ref: "#/components/parameters/PathID" }]
+      requestBody: { $ref: "#/components/requestBodies/ApproveBody" }
       responses:
-        "200": { $ref: "#/components/responses/OK" }
+        "200": { $ref: "#/components/responses/ApprovalOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/admin/ldap:
     get:
-      summary: LDAP 配置
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      summary: LDAP 配置（bindPassword 不回显）
+      responses: { "200": { $ref: "#/components/responses/LDAPOK" } }
     put:
       summary: 更新 LDAP 配置
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      requestBody: { $ref: "#/components/requestBodies/LDAPBody" }
+      responses: { "200": { $ref: "#/components/responses/LDAPOK" } }
   /api/v1/admin/ldap/test:
     post:
       summary: LDAP 连通性探测（仅 TCP，非认证验证）
-      responses: { "200": { $ref: "#/components/responses/OK" } }
+      requestBody: { $ref: "#/components/requestBodies/LDAPBody" }
+      responses: { "200": { $ref: "#/components/responses/LDAPTestOK" } }
 
 components:
   securitySchemes:
@@ -470,7 +519,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: 'HS256，默认 2 小时；携带 jti，登出即吊销'
+      description: 'HS256，默认 2 小时；携带 jti（登出吊销单 token）与会话版本 sv（密码重置/停用/删除吊销该用户全部 token）'
   parameters:
     PathID:
       name: id
@@ -485,7 +534,17 @@ components:
       schema: { type: integer, minimum: 1 }
   responses:
     OK:
-      description: 统一成功信封
+      description: 统一成功信封（data 为操作确认）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+    Fail:
+      description: 统一失败信封（业务错误码见 schemas/Envelope.code）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Envelope" }
+    HealthOK:
+      description: 健康信封
       content:
         application/json:
           schema:
@@ -493,12 +552,713 @@ components:
               - $ref: "#/components/schemas/Envelope"
               - type: object
                 properties:
-                  data: { description: 业务数据（按接口而定） }
-    Fail:
-      description: 统一失败信封（业务错误码见 schemas/Envelope.code）
+                  data: { type: object, properties: { status: { type: string, example: alive } } }
+    CaptchaOK:
+      description: 验证码
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/Envelope" }
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Captcha" }
+    LoginOK:
+      description: 登录成功（token + 用户）
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/LoginResult" }
+    UserOK:
+      description: 用户
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+    UserListOK:
+      description: 用户列表
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/UserList" }
+    RoleListOK:
+      description: 角色列表
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: "#/components/schemas/Role" } }
+    TreeOK:
+      description: 资源树
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: "#/components/schemas/TreeDataCenter" } }
+    DataCenterOK:
+      description: 数据中心
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/DataCenter" }
+    RoomOK:
+      description: 机房
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Room" }
+    RackOK:
+      description: 机柜
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Rack" }
+    RackListOK:
+      description: 机柜分页
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/RackList" }
+    DeviceTypeOK:
+      description: 设备类型
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/DeviceType" }
+    DeviceTypeListOK:
+      description: 设备类型列表
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: "#/components/schemas/DeviceType" } }
+    DeviceOK:
+      description: 设备
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Device" }
+    DeviceListOK:
+      description: 设备分页
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/DeviceList" }
+    HistoryListOK:
+      description: 履历列表
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: "#/components/schemas/DevicePositionHistory" } }
+    ULayoutOK:
+      description: U 位布局
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ULayout" }
+    AssignOK:
+      description: 位置变更（直接执行返回 device；走审批返回 {executed:false, approval}）
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      executed: { type: boolean }
+                      device: { $ref: "#/components/schemas/Device" }
+                      approval: { $ref: "#/components/schemas/ApprovalRecord" }
+    TemplateOK:
+      description: 机柜模板
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/RackTemplate" }
+    TemplateListOK:
+      description: 模板列表
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: "#/components/schemas/RackTemplate" } }
+    PDUOK:
+      description: PDU
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PDU" }
+    PDUListOK:
+      description: PDU 列表
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: "#/components/schemas/PDU" } }
+    PDUImpactOK:
+      description: 强制归档影响清单
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PDUImpactResult" }
+    SocketOK:
+      description: 插座
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PDUSocket" }
+    SocketListOK:
+      description: 插座列表
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: "#/components/schemas/PDUSocket" } }
+    ConnectionOK:
+      description: 连接
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PDUConnection" }
+    ConnectionListOK:
+      description: 连接列表
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: "#/components/schemas/PDUConnection" } }
+    ImportValidateOK:
+      description: 导入校验结果（token + 逐行分类 + 汇总）
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ImportValidateResult" }
+    ImportCommitOK:
+      description: 导入提交结果
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ImportCommitResult" }
+    PolicyOK:
+      description: 审批策略
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/OperationPolicy" }
+    ApprovalOK:
+      description: 审批单
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ApprovalRecord" }
+    ApprovalListOK:
+      description: 审批单列表
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: "#/components/schemas/ApprovalRecord" } }
+    LDAPOK:
+      description: LDAP 配置
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/LDAPConfig" }
+    LDAPTestOK:
+      description: LDAP 探测结果
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { $ref: "#/components/schemas/LDAPTestResult" }
+  requestBodies:
+    LoginBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [username, password, captchaId, captcha]
+            properties:
+              username: { type: string }
+              password: { type: string }
+              captchaId: { type: string }
+              captcha: { type: string, description: 4 位数字 }
+    DataCenterBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, name]
+            properties:
+              code: { type: string, maxLength: 50 }
+              name: { type: string, maxLength: 150 }
+              address: { type: string }
+              longitude: { type: number }
+              latitude: { type: number }
+              status: { type: string, enum: [OPERATING, PLANNING, DISABLED, ARCHIVED] }
+              manager: { type: string }
+              contact: { type: string }
+              serviceProvider: { type: string }
+              remarks: { type: string }
+              sortOrder: { type: integer }
+    RoomBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, name]
+            properties:
+              code: { type: string, maxLength: 50 }
+              name: { type: string, maxLength: 150 }
+              building: { type: string }
+              floor: { type: string }
+              roomNumber: { type: string }
+              areaSquareMeters: { type: number }
+              clearHeightMeters: { type: number }
+              purpose: { type: string }
+              status: { type: string }
+              environmentLevel: { type: string }
+              maxLoadKg: { type: number }
+              coolingCapacityKw: { type: number }
+              designPowerKw: { type: number }
+              availablePowerKw: { type: number }
+              usedPowerKw: { type: number }
+              redundancyPolicy: { type: string }
+              manager: { type: string }
+              contact: { type: string }
+              openHours: { type: string }
+              accessNotes: { type: string }
+              floorPlanEnabled: { type: boolean }
+              floorPlanFormat: { type: string }
+              racksPerRow: { type: integer }
+              remarks: { type: string }
+              sortOrder: { type: integer }
+    RackBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, name]
+            properties:
+              code: { type: string, maxLength: 50 }
+              name: { type: string, maxLength: 150 }
+              templateId: { type: string, format: uuid }
+              type: { type: string }
+              manufacturer: { type: string }
+              modelNumber: { type: string }
+              serialNumber: { type: string }
+              assetNumber: { type: string }
+              uHeight: { type: integer, minimum: 1 }
+              widthMm: { type: integer }
+              depthMm: { type: integer }
+              heightMm: { type: integer }
+              loadCapacityKg: { type: number }
+              zone: { type: string }
+              rackRow: { type: string }
+              rackColumn: { type: string }
+              aisle: { type: string }
+              xCoordinate: { type: number }
+              yCoordinate: { type: number }
+              rotation: { type: integer }
+              status: { type: string }
+              manager: { type: string }
+              department: { type: string }
+              purpose: { type: string }
+              dualPower: { type: boolean }
+              inputCircuits: { type: integer }
+              ratedVoltage: { type: number }
+              ratedCurrent: { type: number }
+              ratedPowerKw: { type: number }
+              peakPowerKw: { type: number }
+              pduCount: { type: integer }
+              remarks: { type: string }
+              sortOrder: { type: integer }
+    DeviceTypeBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, name, category]
+            properties:
+              code: { type: string, maxLength: 50 }
+              name: { type: string, maxLength: 150 }
+              category: { type: string, enum: [SERVER, NETWORK, STORAGE, SECURITY, POWER_ENVIRONMENT, ACCESSORY] }
+              status: { type: string }
+              defaultHeightU: { type: integer }
+              defaultWeightKg: { type: number }
+              defaultRatedPowerW: { type: number }
+              defaultPeakPowerW: { type: number }
+              defaultDualPower: { type: boolean }
+              description: { type: string }
+              sortOrder: { type: integer }
+    DeviceBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name]
+            properties:
+              typeId: { type: string, format: uuid }
+              code: { type: string }
+              name: { type: string, maxLength: 150 }
+              assetNumber: { type: string }
+              serialNumber: { type: string }
+              manufacturer: { type: string }
+              modelNumber: { type: string }
+              specification: { type: string }
+              firmwareVersion: { type: string }
+              purchaseBatch: { type: string }
+              organization: { type: string }
+              manager: { type: string }
+              contact: { type: string }
+              businessSystem: { type: string }
+              applicationName: { type: string }
+              lifecycleStatus: { type: string }
+              heightU: { type: integer, minimum: 1 }
+              weightKg: { type: number }
+              ratedPowerW: { type: number }
+              peakPowerW: { type: number }
+              inputVoltage: { type: number }
+              dualPowerRequired: { type: boolean }
+              managementIp: { type: string }
+              businessIp: { type: string }
+              macAddress: { type: string }
+              managementProtocol: { type: string }
+              monitoringStatus: { type: string }
+              externalQrCode: { type: string }
+              externalQrCodeUrl: { type: string }
+              tags: { type: string }
+              remarks: { type: string }
+    AssignBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            description: 目标机柜接受 targetRackId 或 rackId（兼容厂商前端）；version 可选（body 乐观锁）
+            properties:
+              targetRackId: { type: string, format: uuid }
+              rackId: { type: string, format: uuid }
+              startU: { type: integer, minimum: 1 }
+              heightU: { type: integer }
+              orientation: { type: string, enum: [NORMAL, REVERSE] }
+              reason: { type: string }
+              version: { type: integer, minimum: 1 }
+    DecommissionBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              reason: { type: string }
+    TemplateCreateBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, name, version]
+            properties:
+              code: { type: string, maxLength: 50 }
+              name: { type: string, maxLength: 150 }
+              description: { type: string }
+              status: { type: string }
+              remarks: { type: string }
+              version: { $ref: "#/components/schemas/TemplateVersionInput" }
+    TemplateUpdateBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name: { type: string, minLength: 1, maxLength: 150 }
+              description: { type: string }
+              status: { type: string }
+              remarks: { type: string }
+    TemplateVersionBody:
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/TemplateVersionInput" }
+    PDUBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, name]
+            properties:
+              code: { type: string, maxLength: 80 }
+              name: { type: string, maxLength: 150 }
+              manufacturer: { type: string }
+              modelNumber: { type: string }
+              serialNumber: { type: string }
+              inputVoltage: { type: number }
+              ratedPowerW: { type: number }
+              ratedCurrentA: { type: number }
+              status: { type: string }
+              remarks: { type: string }
+    SocketBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [socketNo, standard, amperageA]
+            properties:
+              socketNo: { type: integer }
+              standard: { type: string, enum: [CN, EU] }
+              amperageA: { type: integer }
+              label: { type: string }
+              status: { type: string }
+    ConnectionBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [deviceId]
+            properties:
+              deviceId: { type: string, format: uuid }
+              powerW: { type: number }
+              circuit: { type: string }
+              redundancyRole: { type: string, enum: [PRIMARY, STAND_BY] }
+    ForceArchiveBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [reason, confirmConnections]
+            properties:
+              version: { type: integer, minimum: 1 }
+              reason: { type: string, minLength: 1 }
+              confirmConnections: { type: integer, description: 必须等于影响清单中的活动连接数 }
+    UserCreateBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [username, password]
+            properties:
+              username: { type: string, maxLength: 100 }
+              displayName: { type: string }
+              password: { type: string, minLength: 8 }
+              email: { type: string }
+              authSource: { type: string, default: local }
+              roleCodes: { type: array, items: { type: string } }
+              enabled: { type: boolean, default: true }
+    UserUpdateBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            description: 部分更新——空字段保留原值
+            properties:
+              username: { type: string }
+              displayName: { type: string }
+              email: { type: string }
+              authSource: { type: string }
+              roleCodes: { type: array, items: { type: string } }
+              enabled: { type: boolean }
+    ResetPasswordBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [password]
+            properties:
+              password: { type: string, minLength: 8 }
+    PolicyBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              assignApprovalEnabled: { type: boolean }
+              moveApprovalEnabled: { type: boolean }
+              approvalMode: { type: string }
+              defaultApproverRole: { type: string }
+    ApproveBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              version: { type: integer, minimum: 1 }
+              comment: { type: string }
+    LDAPBody:
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/LDAPConfig" }
+    ImportValidateBody:
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ImportValidateInput" }
+    ImportCommitBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [token]
+            properties:
+              token: { type: string }
+              decisions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    itemId: { type: string }
+                    action: { type: string, enum: [UPDATE_EXISTING, CREATE_NEW, DECOMMISSION, IGNORE, SKIP] }
+    CopyMoveBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, name]
+            properties:
+              code: { type: string, maxLength: 50 }
+              name: { type: string, maxLength: 150 }
+              targetDataCenterId: { type: string, format: uuid }
+              targetRoomId: { type: string, format: uuid }
+              version: { type: integer, minimum: 1 }
   schemas:
     Envelope:
       type: object
@@ -506,14 +1266,547 @@ components:
         code:
           type: string
           description: |
-            SUCCESS 或业务错误码：UNAUTHORIZED / FORBIDDEN / NOT_FOUND /
-            INVALID_RESOURCE / INVALID_CREDENTIALS / USER_LOCKED / RATE_LIMITED /
-            CAPTCHA_REQUIRED / CAPTCHA_INVALID / DUPLICATE_CODE / HAS_CHILDREN /
-            PARENT_DISABLED / RESOURCE_VERSION / U_SLOT_CONFLICT / DEVICE_POSITIONED /
-            DEVICE_TYPE_IN_USE / RACK_UNAVAILABLE / SOCKET_CONNECTED / LAST_ADMIN /
-            USER_CONFLICT / APPROVAL_STATE_CONFLICT / RACK_DIAGRAM_IMPORT_DRAFT_EXPIRED /
-            RACK_DIAGRAM_IMPORT_STALE / LDAP_UNAVAILABLE / PDU_IN_USE /
-            IMPACT_CONFIRMATION_REQUIRED / INTERNAL_ERROR
+            SUCCESS 或业务错误码。资源类：RESOURCE_NOT_FOUND / RESOURCE_CODE_DUPLICATE /
+            RESOURCE_VERSION_CONFLICT / RESOURCE_HAS_CHILDREN / PARENT_RESOURCE_DISABLED /
+            INVALID_RESOURCE / INVALID_REQUEST / INTERNAL_ERROR。权限：UNAUTHORIZED / FORBIDDEN。
+            账户：INVALID_CREDENTIALS / USER_DISABLED / USER_LOCKED / USER_CONFLICT /
+            LAST_ADMIN_PROTECTED / INVALID_USER / RATE_LIMITED。验证码：CAPTCHA_REQUIRED /
+            CAPTCHA_INVALID。机柜与 U 位：RACK_UNAVAILABLE / RACK_U_CONFLICT /
+            DEVICE_POSITIONED / DEVICE_TYPE_IN_USE / DEVICE_NOT_POSITIONED。
+            模板：TEMPLATE_DISABLED / SYSTEM_TEMPLATE_PROTECTED。PDU：PDU_SOCKET_CONNECTED /
+            PDU_IN_USE / PDU_DEVICE_RACK_MISMATCH / IMPACT_CONFIRMATION_REQUIRED。
+            审批：APPROVAL_STATE_CONFLICT。导入：RACK_DIAGRAM_IMPORT_DRAFT_EXPIRED /
+            RACK_DIAGRAM_IMPORT_STALE / IMPORT_DRAFT_OWNER_MISMATCH。LDAP：LDAP_UNAVAILABLE。
         message: { type: string }
         data: { nullable: true }
         requestId: { type: string }
+    Captcha:
+      type: object
+      properties:
+        id: { type: string }
+        image: { type: string, description: data:image/svg+xml;base64,... }
+    LoginResult:
+      type: object
+      properties:
+        token: { type: string }
+        user: { $ref: "#/components/schemas/User" }
+    Role:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, example: system_admin }
+        name: { type: string }
+        version: { type: integer }
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        displayName: { type: string }
+        email: { type: string }
+        authSource: { type: string }
+        enabled: { type: boolean }
+        lastLoginAt: { type: string, nullable: true }
+        roles: { type: array, items: { $ref: "#/components/schemas/Role" } }
+        version: { type: integer }
+    UserList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/User" } }
+    DataCenter:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        address: { type: string }
+        longitude: { type: number }
+        latitude: { type: number }
+        status: { type: string }
+        manager: { type: string }
+        contact: { type: string }
+        serviceProvider: { type: string }
+        remarks: { type: string }
+        sortOrder: { type: integer }
+        version: { type: integer }
+        rooms: { type: array, items: { $ref: "#/components/schemas/Room" } }
+    Room:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        dataCenterId: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        building: { type: string }
+        floor: { type: string }
+        roomNumber: { type: string }
+        areaSquareMeters: { type: number, nullable: true }
+        clearHeightMeters: { type: number, nullable: true }
+        purpose: { type: string }
+        status: { type: string }
+        environmentLevel: { type: string }
+        maxLoadKg: { type: number, nullable: true }
+        coolingCapacityKw: { type: number, nullable: true }
+        designPowerKw: { type: number, nullable: true }
+        availablePowerKw: { type: number, nullable: true }
+        usedPowerKw: { type: number, nullable: true }
+        redundancyPolicy: { type: string }
+        manager: { type: string }
+        contact: { type: string }
+        openHours: { type: string }
+        accessNotes: { type: string }
+        floorPlanEnabled: { type: boolean }
+        floorPlanFormat: { type: string }
+        racksPerRow: { type: integer }
+        remarks: { type: string }
+        sortOrder: { type: integer }
+        version: { type: integer }
+        racks: { type: array, items: { $ref: "#/components/schemas/Rack" } }
+    RackTemplateSnapshot:
+      type: object
+      properties:
+        templateId: { type: string, format: uuid }
+        versionId: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        revision: { type: integer }
+        type: { type: string }
+        uHeight: { type: integer }
+        widthMm: { type: integer }
+        depthMm: { type: integer }
+        heightMm: { type: integer }
+        dualPower: { type: boolean }
+        pduCount: { type: integer }
+    Rack:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        templateId: { type: string, format: uuid, nullable: true }
+        templateVersionId: { type: string, format: uuid, nullable: true }
+        templateCode: { type: string }
+        templateName: { type: string }
+        templateRevision: { type: integer }
+        templateSnapshot: { $ref: "#/components/schemas/RackTemplateSnapshot" }
+        dataCenterId: { type: string, format: uuid }
+        roomId: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        type: { type: string }
+        manufacturer: { type: string }
+        modelNumber: { type: string }
+        serialNumber: { type: string }
+        assetNumber: { type: string }
+        uHeight: { type: integer }
+        widthMm: { type: integer }
+        depthMm: { type: integer }
+        heightMm: { type: integer }
+        loadCapacityKg: { type: number, nullable: true }
+        zone: { type: string }
+        rackRow: { type: string }
+        rackColumn: { type: string }
+        aisle: { type: string }
+        xCoordinate: { type: number, nullable: true }
+        yCoordinate: { type: number, nullable: true }
+        rotation: { type: integer }
+        status: { type: string }
+        manager: { type: string }
+        department: { type: string }
+        purpose: { type: string }
+        dualPower: { type: boolean }
+        inputCircuits: { type: integer, nullable: true }
+        ratedVoltage: { type: number, nullable: true }
+        ratedCurrent: { type: number, nullable: true }
+        ratedPowerKw: { type: number, nullable: true }
+        peakPowerKw: { type: number, nullable: true }
+        pduCount: { type: integer, nullable: true }
+        remarks: { type: string }
+        sortOrder: { type: integer }
+        version: { type: integer }
+    RackList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Rack" } }
+        total: { type: integer }
+    TreeDataCenter:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        rooms:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              code: { type: string }
+              name: { type: string }
+              racks: { type: array, items: { $ref: "#/components/schemas/Rack" } }
+    DeviceType:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        category: { type: string }
+        status: { type: string }
+        defaultHeightU: { type: integer }
+        defaultWeightKg: { type: number, nullable: true }
+        defaultRatedPowerW: { type: number, nullable: true }
+        defaultPeakPowerW: { type: number, nullable: true }
+        defaultDualPower: { type: boolean }
+        description: { type: string }
+        sortOrder: { type: integer }
+        version: { type: integer }
+    Device:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        typeId: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/DeviceType" }
+        code: { type: string }
+        name: { type: string }
+        assetNumber: { type: string }
+        serialNumber: { type: string }
+        manufacturer: { type: string }
+        modelNumber: { type: string }
+        specification: { type: string }
+        firmwareVersion: { type: string }
+        purchaseBatch: { type: string }
+        warrantyExpiresAt: { type: string, nullable: true }
+        organization: { type: string }
+        manager: { type: string }
+        contact: { type: string }
+        businessSystem: { type: string }
+        applicationName: { type: string }
+        lifecycleStatus: { type: string, enum: [WAITING_RACK, RUNNING, MAINTENANCE, OFF_RACK, SCRAPPED] }
+        heightU: { type: integer }
+        widthMm: { type: integer, nullable: true }
+        depthMm: { type: integer, nullable: true }
+        heightMm: { type: integer, nullable: true }
+        weightKg: { type: number, nullable: true }
+        ratedPowerW: { type: number, nullable: true }
+        peakPowerW: { type: number, nullable: true }
+        inputVoltage: { type: number, nullable: true }
+        dualPowerRequired: { type: boolean }
+        managementIp: { type: string }
+        businessIp: { type: string }
+        macAddress: { type: string }
+        managementProtocol: { type: string }
+        monitoringStatus: { type: string }
+        externalQrCode: { type: string }
+        externalQrCodeUrl: { type: string }
+        tags: { type: string }
+        remarks: { type: string }
+        version: { type: integer }
+    DeviceList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Device" } }
+        total: { type: integer }
+    PositionSnapshot:
+      type: object
+      properties:
+        rackId: { type: string, format: uuid }
+        roomId: { type: string, format: uuid }
+        dataCenterId: { type: string, format: uuid }
+        startU: { type: integer }
+        heightU: { type: integer }
+        endU: { type: integer }
+        orientation: { type: string }
+    RackDevicePosition:
+      type: object
+      properties:
+        deviceId: { type: string, format: uuid }
+        rackId: { type: string, format: uuid }
+        roomId: { type: string, format: uuid }
+        dataCenterId: { type: string, format: uuid }
+        startU: { type: integer }
+        heightU: { type: integer }
+        endU: { type: integer }
+        orientation: { type: string }
+        installedAt: { type: string }
+        reason: { type: string }
+    DevicePositionHistory:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        deviceId: { type: string, format: uuid }
+        operation: { type: string, enum: [ASSIGN, MOVE, DECOMMISSION] }
+        fromPosition: { $ref: "#/components/schemas/PositionSnapshot" }
+        toPosition: { $ref: "#/components/schemas/PositionSnapshot" }
+        reason: { type: string }
+        actorId: { type: string, format: uuid, nullable: true }
+        requestId: { type: string }
+        createdAt: { type: string }
+    ULayoutPosition:
+      type: object
+      properties:
+        deviceId: { type: string, format: uuid }
+        rackId: { type: string, format: uuid }
+        startU: { type: integer }
+        endU: { type: integer }
+        heightU: { type: integer }
+        orientation: { type: string }
+        installedAt: { type: string }
+        reason: { type: string }
+        device: { $ref: "#/components/schemas/Device" }
+    ULayout:
+      type: object
+      properties:
+        rackId: { type: string, format: uuid }
+        uHeight: { type: integer }
+        rackCode: { type: string }
+        rackName: { type: string }
+        status: { type: string }
+        positions: { type: array, items: { $ref: "#/components/schemas/ULayoutPosition" } }
+        free:
+          type: array
+          description: 连续空闲 U 段（厂商形状）
+          items:
+            type: object
+            properties:
+              startU: { type: integer }
+              endU: { type: integer }
+              heightU: { type: integer }
+    RackTemplate:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        description: { type: string }
+        status: { type: string }
+        isSystem: { type: boolean }
+        currentRevision: { type: integer }
+        remarks: { type: string }
+        versions: { type: array, items: { $ref: "#/components/schemas/RackTemplateVersion" } }
+        version: { type: integer }
+    TemplateVersionInput:
+      type: object
+      properties:
+        type: { type: string, default: STANDARD }
+        manufacturer: { type: string }
+        modelNumber: { type: string }
+        uHeight: { type: integer }
+        widthMm: { type: integer }
+        depthMm: { type: integer }
+        heightMm: { type: integer }
+        loadCapacityKg: { type: number }
+        dualPower: { type: boolean }
+        inputCircuits: { type: integer }
+        ratedVoltage: { type: number }
+        ratedCurrent: { type: number }
+        ratedPowerKw: { type: number }
+        peakPowerKw: { type: number }
+        pduCount: { type: integer }
+        changeNote: { type: string }
+    RackTemplateVersion:
+      type: object
+      properties:
+        templateId: { type: string, format: uuid }
+        revision: { type: integer }
+        type: { type: string }
+        manufacturer: { type: string }
+        modelNumber: { type: string }
+        uHeight: { type: integer }
+        widthMm: { type: integer }
+        depthMm: { type: integer }
+        heightMm: { type: integer }
+        loadCapacityKg: { type: number, nullable: true }
+        dualPower: { type: boolean }
+        inputCircuits: { type: integer, nullable: true }
+        ratedVoltage: { type: number, nullable: true }
+        ratedCurrent: { type: number, nullable: true }
+        ratedPowerKw: { type: number, nullable: true }
+        peakPowerKw: { type: number, nullable: true }
+        pduCount: { type: integer, nullable: true }
+        changeNote: { type: string }
+        createdBy: { type: string, format: uuid, nullable: true }
+    PDU:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        rackId: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        manufacturer: { type: string }
+        modelNumber: { type: string }
+        serialNumber: { type: string }
+        inputVoltage: { type: number, nullable: true }
+        ratedPowerW: { type: number, nullable: true }
+        ratedCurrentA: { type: number, nullable: true }
+        status: { type: string }
+        remarks: { type: string }
+        version: { type: integer }
+    PDUSocket:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        pduId: { type: string, format: uuid }
+        socketNo: { type: integer }
+        standard: { type: string, enum: [CN, EU] }
+        amperageA: { type: integer }
+        label: { type: string }
+        status: { type: string, enum: [AVAILABLE, CONNECTED] }
+        version: { type: integer }
+    PDUConnection:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        socketId: { type: string, format: uuid }
+        deviceId: { type: string, format: uuid }
+        powerW: { type: number, nullable: true }
+        circuit: { type: string }
+        redundancyRole: { type: string, enum: [PRIMARY, STAND_BY] }
+        connectedAt: { type: string }
+        connectedBy: { type: string, format: uuid, nullable: true }
+        version: { type: integer }
+    PDUImpactDevice:
+      type: object
+      properties:
+        deviceId: { type: string, format: uuid }
+        deviceCode: { type: string }
+        deviceName: { type: string }
+        socketNo: { type: integer }
+        redundancyRole: { type: string }
+    PDUImpactResult:
+      type: object
+      properties:
+        pduId: { type: string, format: uuid }
+        pduCode: { type: string }
+        pduName: { type: string }
+        sockets: { type: integer }
+        connections: { type: integer }
+        devices: { type: array, items: { $ref: "#/components/schemas/PDUImpactDevice" } }
+        warning: { type: string }
+    OperationPolicy:
+      type: object
+      properties:
+        assignApprovalEnabled: { type: boolean }
+        moveApprovalEnabled: { type: boolean }
+        approvalMode: { type: string }
+        defaultApproverRole: { type: string }
+        version: { type: integer }
+    ApprovalRecord:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        deviceId: { type: string, format: uuid }
+        operation: { type: string, enum: [ASSIGN, MOVE] }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED] }
+        requestedBy: { type: string, format: uuid, nullable: true }
+        requestedAt: { type: string }
+        requestedDeviceVersion: { type: integer }
+        sourcePosition: { $ref: "#/components/schemas/PositionSnapshot" }
+        targetRackId: { type: string, format: uuid }
+        targetStartU: { type: integer }
+        targetHeightU: { type: integer }
+        targetOrientation: { type: string }
+        reason: { type: string }
+        decidedBy: { type: string, format: uuid, nullable: true }
+        decidedAt: { type: string, nullable: true }
+        decisionComment: { type: string }
+        device: { $ref: "#/components/schemas/Device" }
+        version: { type: integer }
+    LDAPConfig:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        url: { type: string }
+        useTls: { type: boolean }
+        skipTlsVerify: { type: boolean }
+        bindDn: { type: string }
+        baseDn: { type: string }
+        userFilter: { type: string }
+        usernameAttribute: { type: string }
+        displayNameAttribute: { type: string }
+        emailAttribute: { type: string }
+        defaultRole: { type: string }
+        allowLocalFallback: { type: boolean }
+        groupSearchBaseDn: { type: string }
+        groupFilter: { type: string }
+        groupAttribute: { type: string }
+        groupRoleMappings: { type: string }
+    LDAPTestResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        message: { type: string }
+        details: { type: array, items: { type: string } }
+    ImportDeviceRow:
+      type: object
+      properties:
+        clientId: { type: string }
+        rackId: { type: string, format: uuid }
+        rackCode: { type: string }
+        startU: { type: integer }
+        endU: { type: integer }
+        name: { type: string }
+        serialNumber: { type: string }
+        ratedPowerW: { type: number }
+        typeId: { type: string }
+        typeCategory: { type: string }
+        sourceDeviceId: { type: string }
+        sourceDeviceVersion: { type: integer }
+        sourceDeviceCode: { type: string }
+        sourceRackId: { type: string }
+        sourceStartU: { type: integer }
+        sourceEndU: { type: integer }
+    ImportValidateInput:
+      type: object
+      required: [coveredRackIds, devices]
+      properties:
+        formatVersion: { type: string }
+        dataCenterId: { type: string, format: uuid, description: 必须与 URL 机房的真实父级一致 }
+        roomId: { type: string, format: uuid, description: 必须与 URL 机房一致 }
+        exportedAt: { type: string }
+        coveredRackIds:
+          type: array
+          description: 只能包含 URL 指定机房内的机柜
+          items: { type: string, format: uuid }
+        devices:
+          type: array
+          description: rackId 必须属于 coveredRackIds 集合
+          items: { $ref: "#/components/schemas/ImportDeviceRow" }
+        defaultTypeId: { type: string, format: uuid }
+    ImportItem:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [UNCHANGED, CREATE_NEW, UPDATE_EXISTING, MOVE_EXISTING, REMOVE_MISSING, NEEDS_DECISION, ERROR] }
+        requiresDecision: { type: boolean }
+        clientId: { type: string }
+        rackId: { type: string }
+        rackCode: { type: string }
+        startU: { type: integer }
+        endU: { type: integer }
+        name: { type: string }
+        sourceDeviceId: { type: string }
+        sourceDeviceCode: { type: string }
+        message: { type: string }
+        allowedActions: { type: array, items: { type: string } }
+    ImportSummary:
+      type: object
+      properties:
+        errors: { type: integer }
+        create: { type: integer }
+        update: { type: integer }
+        move: { type: integer }
+        removals: { type: integer }
+        decisions: { type: integer }
+        unchanged: { type: integer }
+    ImportValidateResult:
+      type: object
+      properties:
+        token: { type: string }
+        items: { type: array, items: { $ref: "#/components/schemas/ImportItem" } }
+        summary: { $ref: "#/components/schemas/ImportSummary" }
+    ImportCommitResult:
+      type: object
+      properties:
+        created: { type: integer }
+        updated: { type: integer }
+        moved: { type: integer }
+        decommissioned: { type: integer }
+        ignored: { type: integer }
