@@ -66,4 +66,20 @@ describe("session store", () => {
     await s.whoami();
     expect(s.user).toBeNull();
   });
+
+  it("whoami 401 clears store token(e2e 实测守卫回弹根因)", async () => {
+    setActivePinia(createPinia());
+    useAdapter(async (config) => {
+      const { AxiosError } = await import("axios");
+      throw new AxiosError("unauth", undefined, config, undefined, {
+        status: 401,
+        data: { code: "UNAUTHORIZED", message: "expired" },
+      } as AxiosResponse);
+    });
+    const s = useSessionStore();
+    s.token = "stale-token";
+    await s.whoami();
+    expect(s.token).toBe("");
+    expect(s.isLoggedIn).toBe(false);
+  });
 });

@@ -4,7 +4,7 @@
  */
 import { defineStore } from "pinia";
 import type { components } from "@/api/generated/schema";
-import { getData, sendData, setToken, getToken } from "@/api/client";
+import { ApiError, getData, sendData, setToken, getToken } from "@/api/client";
 import { reportError } from "@/api/errors";
 
 type User = components["schemas"]["User"];
@@ -49,7 +49,11 @@ export const useSessionStore = defineStore("session", {
       try {
         this.user = await getData("/api/v1/auth/me");
       } catch (e) {
-        // 会话失效:401 拦截器已清 token;此处上报并保持未登录态
+        // 会话失效:401 拦截器清了 localStorage,这里同步清 store 副本,
+        // 否则路由守卫仍按"已登录"放行(P1-R06 e2e 实测踩中)
+        if (e instanceof ApiError && e.status === 401) {
+          this.token = "";
+        }
         reportError({
           message: `whoami failed: ${e instanceof Error ? e.message : String(e)}`,
           role: "anonymous",
