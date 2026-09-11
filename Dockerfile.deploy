@@ -1,5 +1,5 @@
 # 多阶段构建：干净克隆即可复现镜像，不再依赖手工 bin/cabinet-server-linux
-FROM golang:1.24-alpine AS build
+FROM golang:1.25-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
