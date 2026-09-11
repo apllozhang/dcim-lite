@@ -133,14 +133,10 @@ test("P1-D dual-run: 新旧 UI 在同一种子数据上渲染等价(树+设备�
   );
   await page.screenshot({ path: "test-results/dualrun-old-devices.png", fullPage: true });
 
-  // 旧 UI:资源层级页
+  // 旧 UI:资源层级页(结构非 el-tree,按文本断言种子资源可见)
   await page.goto("http://localhost:19501/data-centers");
-  await page.waitForSelector(".el-tree-node__content", { timeout: 20000 });
-  await page.waitForTimeout(1500);
-  const oldTree = await page.$$eval(".el-tree-node__content", (nodes) =>
-    nodes.map((n) => n.textContent?.replace(/\s+/g, " ").trim() ?? ""),
-  );
-  await page.screenshot({ path: "test-results/dualrun-old-tree.png", fullPage: true });
+  await page.waitForTimeout(2500);
+  const oldBody = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
 
   // ── 差分断言:同一数据在新旧 UI 的结构化展示必须等价(集合级,顺序不敏感) ──
   const coreOf = (row: string) => row; // 行文本已含编码/名称/状态等核心字段
@@ -167,10 +163,7 @@ test("P1-D dual-run: 新旧 UI 在同一种子数据上渲染等价(树+设备�
       newTree.some((t) => t.includes(label)),
       `新树含 ${label}`,
     ).toBe(true);
-    expect(
-      oldTree.some((t) => t.includes(label)),
-      `旧树含 ${label}`,
-    ).toBe(true);
+    expect(oldBody.includes(label), `旧资源层级页含 ${label}`).toBe(true);
   }
 
   // API 双向:新旧两侧都真实调用了设备列表与资源树接口且成功

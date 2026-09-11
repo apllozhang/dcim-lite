@@ -97,8 +97,8 @@ test("legacy flag redirects module to legacy origin(新→旧→新回退演练,
   await page.evaluate(() =>
     localStorage.setItem("cabinet_access_token", localStorage.getItem("ale.token") ?? ""),
   );
-
-  // 模块切到 legacy → 整页重定向到旧源(HTML5 路径)
+  // 回到新源再设 flag(localStorage 按 origin 隔离)
+  await page.goto("/");
   await page.evaluate(() => localStorage.setItem("ale.flags", "devices:legacy"));
   await page.goto("/devices");
   await page.waitForURL((u) => u.port === "19501", { timeout: 15000 });
