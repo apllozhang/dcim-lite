@@ -114,18 +114,17 @@ test("P1-D dual-run: 新旧 UI 在同一种子数据上渲染等价(树+设备�
   );
   await page.screenshot({ path: "test-results/dualrun-new-tree.png", fullPage: true });
 
-  // ── 旧 UI:注入会话 → #/devices(行集 + 截图 + pageerror 监听) ──
-  // 注意:同文档 hash 变更不触发重载,旧 bundle 每次切路由后需 reload
+  // ── 旧 UI:独立端口源(HTML5 history 模式,根路径路由) ──
+  // 注入会话(旧 UI 独立 origin,localStorage 隔离;等价于用户在旧 UI 登录)
   const oldErrors: string[] = [];
   const oldApiCalls: string[] = [];
   page.on("pageerror", (e) => oldErrors.push(String(e)));
   page.on("request", (r) => {
     if (r.url().includes("/api/v1/")) oldApiCalls.push(r.url().replace(/^https?:\/\/[^/]+/, ""));
   });
-  await page.goto("/legacy/");
+  await page.goto("http://localhost:19501/");
   await page.evaluate((t) => localStorage.setItem("cabinet_access_token", t), adminToken);
-  await page.goto("/legacy/#/devices");
-  await page.reload();
+  await page.goto("http://localhost:19501/devices");
   // 旧 bundle 的表格渲染(Element Plus 同款表格结构);等待任一行出现
   await page.waitForSelector(".el-table__body tr", { timeout: 20000 });
   await page.waitForTimeout(1500); // 旧 UI 二次取数/渲染稳定
@@ -134,9 +133,8 @@ test("P1-D dual-run: 新旧 UI 在同一种子数据上渲染等价(树+设备�
   );
   await page.screenshot({ path: "test-results/dualrun-old-devices.png", fullPage: true });
 
-  // 旧 UI:#/resources 资源树
-  await page.goto("/legacy/#/resources");
-  await page.reload();
+  // 旧 UI:资源层级页
+  await page.goto("http://localhost:19501/data-centers");
   await page.waitForSelector(".el-tree-node__content", { timeout: 20000 });
   await page.waitForTimeout(1500);
   const oldTree = await page.$$eval(".el-tree-node__content", (nodes) =>

@@ -33,8 +33,11 @@ describe("feature flags(P0-R04)", () => {
     expect(getRouteFlag("tree")).toBe("new");
   });
 
-  it("legacyUrlFor targets the legacy base", () => {
-    expect(legacyUrlFor("tree")).toContain("/legacy/");
+  it("legacyUrlFor targets the legacy sibling origin(P1-D:旧 UI 独立端口)", () => {
+    const u = legacyUrlFor("tree");
+    expect(u).toContain("19501");
+    expect(u).toContain("/data-centers");
+    expect(legacyUrlFor("devices")).toContain("/devices");
   });
 });
 

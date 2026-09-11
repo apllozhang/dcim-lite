@@ -20,6 +20,8 @@ services:
     restart: unless-stopped
     ports:
       - "${ALE_APP_PORT:-19500}:80"
+      # 旧 ALE 独立回退源(HTML5 history 必须根路径服务)
+      - "${ALE_LEGACY_PORT:-19501}:19501"
     volumes:
       # 旧 ALE 编译产物(归档证据;只读。退出条件见 docs/第四轮复评 §7)
       - ../frontend/ale:/usr/share/nginx/legacy:ro

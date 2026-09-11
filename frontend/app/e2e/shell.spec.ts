@@ -70,19 +70,20 @@ test("frontend error telemetry reaches admin retrieval(P1-R6)", async ({ page })
   ).toBe(true);
 });
 
-test("legacy flag redirects module to legacy bundle(新→旧→新回退演练,真加载验证)", async ({
+test("legacy flag redirects module to legacy origin(新→旧→新回退演练,真加载验证)", async ({
   page,
 }) => {
   test.skip(!PASS, "E2E_PASSWORD 未提供时跳过");
-  // 网络与异常监听:P0-R1 要求证明旧页面真的加载,而非仅地址变化
+  // P1-D 修订:旧 ALE 为 HTML5 history 模式,回退目标 = 独立端口源(同主机:19501)。
+  // 监听:旧源资源 200、主文档状态、pageerror、API 成功计数
   const pageErrors: string[] = [];
   const badMainDocs: string[] = [];
   let legacyAsset200 = 0;
   let api200 = 0;
   page.on("pageerror", (e) => pageErrors.push(String(e)));
   page.on("response", (r) => {
-    if (r.url().includes("/legacy/assets/") && r.status() === 200) legacyAsset200++;
-    if (r.url().includes("/legacy/") && r.request().resourceType() === "document") {
+    if (r.url().includes(":19501/assets/") && r.status() === 200) legacyAsset200++;
+    if (r.url().includes(":19501") && r.request().resourceType() === "document") {
       if (r.status() !== 200) badMainDocs.push(`${r.status()} ${r.url()}`);
     }
     if (r.url().includes("/api/v1/") && r.status() === 200) api200++;
@@ -91,21 +92,29 @@ test("legacy flag redirects module to legacy bundle(新→旧→新回退演练,
   // 登录(helper 内先解锁调试令牌:P0-R2 治理下预览构建属生产模式)
   await login(page);
 
-  // 模块切到 legacy → 整页重定向到旧 bundle
+  // 旧源注入会话(旧 UI 独立 origin,localStorage 隔离;真实用户在旧 UI 登录,等价会话移交)
+  await page.goto("http://localhost:19501/");
+  await page.evaluate(() =>
+    localStorage.setItem("cabinet_access_token", localStorage.getItem("ale.token") ?? ""),
+  );
+
+  // 模块切到 legacy → 整页重定向到旧源(HTML5 路径)
   await page.evaluate(() => localStorage.setItem("ale.flags", "devices:legacy"));
   await page.goto("/devices");
-  await page.waitForURL((u) => u.pathname.startsWith("/legacy/"), { timeout: 15000 });
+  await page.waitForURL((u) => u.port === "19501", { timeout: 15000 });
 
-  // P0-R1 真加载断言:旧标题、旧 bundle 资源 200、主文档 200、无 JS 异常
+  // 真加载断言:旧标题、旧资源 200、主文档 200、旧导航真实渲染、无 JS 异常
   await expect(page).toHaveTitle(/机柜管理工具/, { timeout: 15000 });
   expect(legacyAsset200, "旧 bundle 静态资源必须有真实 200 加载").toBeGreaterThan(0);
-  expect(badMainDocs, "legacy 主文档不得出现 4xx/5xx").toEqual([]);
-  expect(pageErrors, "legacy 页面不得有未捕获 JS 异常").toEqual([]);
+  expect(badMainDocs, "旧源主文档不得出现 4xx/5xx").toEqual([]);
+  await expect(page.getByText("设备台账", { exact: false }).first()).toBeVisible({
+    timeout: 15000,
+  });
+  expect(pageErrors, "旧页面不得有未捕获 JS 异常").toEqual([]);
 
-  // 新→旧→新:清 flag 后用 URL 参数切回,断言新树真实渲染且 API 成功
-  await page.evaluate(() => localStorage.removeItem("ale.flags"));
+  // 新→旧→新:回到新源,URL 参数切回 devices:new,断言新树真实渲染且 API 成功
   await page.goto("/?ale_flags=devices:new");
-  await page.waitForURL((u) => !u.pathname.startsWith("/legacy/"), { timeout: 15000 });
+  await page.waitForURL((u) => u.port !== "19501", { timeout: 15000 });
   await expect(page).toHaveTitle(/ALE 机柜管理/, { timeout: 15000 });
   await expect(page.locator("[data-test=resource-tree]")).toBeVisible();
   expect(api200, "切回新版后 API 必须真实成功").toBeGreaterThan(0);

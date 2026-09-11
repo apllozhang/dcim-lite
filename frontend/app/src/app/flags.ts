@@ -21,7 +21,11 @@ const URL_PARAM = "ale_flags";
 export const LEGACY_BASE: string =
   (import.meta.env.VITE_ALE_LEGACY_BASE as string | undefined) ??
   (import.meta.env.ALE_LEGACY_BASE as string | undefined) ??
-  "/legacy";
+  // 默认 = 同主机 19501:旧 ALE 为 HTML5 history 模式,必须以独立端口源根路径
+  // 服务(/legacy/ 前缀下无法路由,P1-D 双跑与现场均已验证)
+  (typeof location !== "undefined"
+    ? `${location.protocol}//${location.hostname}:19501`
+    : "http://127.0.0.1:19501");
 
 interface FlagStore {
   [module: string]: RouteFlag;
@@ -102,10 +106,10 @@ export function setRouteFlag(module: string, value: RouteFlag): void {
   );
 }
 
-/** 模块的新前端路径 → 旧 bundle 路径映射(旧 ALE 为 hash 路由) */
+/** 模块的新前端路径 → 旧 bundle 路径(旧 ALE 为 HTML5 history 模式,根路径路由) */
 const LEGACY_PATHS: Record<string, string> = {
-  tree: "/#/resources",
-  devices: "/#/devices",
+  tree: "/data-centers",
+  devices: "/devices",
 };
 
 export function legacyUrlFor(module: string): string {
