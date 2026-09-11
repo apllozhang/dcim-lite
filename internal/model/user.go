@@ -25,8 +25,8 @@ type User struct {
 	LastLoginAt  *time.Time `json:"lastLoginAt"`
 	// SessionVersion 在密码重置/停用/删除时原子递增；JWT 携带签发时的值，
 	// 与库中值不等即整体吊销（全端生效，弥补 jti 黑名单只能吊销单个 token）
-	SessionVersion int64    `gorm:"not null;default:1" json:"-"`
-	Roles          []Role   `gorm:"many2many:user_roles" json:"roles,omitempty"`
+	SessionVersion int64  `gorm:"not null;default:1" json:"-"`
+	Roles          []Role `gorm:"many2many:user_roles" json:"roles,omitempty"`
 }
 
 func (u *User) HasRole(code string) bool {
