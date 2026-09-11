@@ -1,0 +1,20 @@
+# P1-R7:固定后的可审计升级通道(拒绝"固定后永久不更新")
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    # 升级 PR 由人工审查:SHA 变更 + CI 全绿 + (涉及构建/运行镜像时)SBOM 差异
+  - package-ecosystem: "npm"
+    directory: "/frontend/app"
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: "docker"
+    directory: "/tests/diff"
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: "docker"
+    directory: "/deploy"
+    schedule:
+      interval: "monthly"
