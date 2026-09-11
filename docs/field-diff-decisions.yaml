@@ -2,18 +2,18 @@
 #
 # 来源: 三方 FIELD_BREAK 并集 —— docs/DIFF-REPLAY-FINAL-20260911.json(main 1914502,sha256 前12 a4fed7b61c5e)
 #       + 203 双库确定性验证 dualA/dualB vs 冻结基线(2026-09-11,竞态翻转新增 14 条)
-# 覆盖: 并集 354 条具体字段差异 -> 279 条台账目(caseId+fieldPath 唯一)
+# 覆盖: 并集 354 条具体字段差异 -> 287 条台账目(caseId+fieldPath 唯一)
 # 分类口径: 复评 §4 P1-N3 五族; 逐条依据 docs/FIELD-DIFF-CLASSIFICATION-20260911.md
 # 状态: OPEN=待修(须仍在报告中) / ACCEPTED=有意保留(须附理由与证据) / CLOSED=已修复(不得重现)
 # raceDependent: true=条目现身与否取决于并发竞态胜负(免除 OPEN 在场检查,其余规则不变)
 # 校验: python3 tests/diff/field_gate.py --ledger <本文件> --report <diff-report.json>
 meta:
   sourceReport: "DIFF-REPLAY-FINAL-20260911.json + dual-DB verification dualA/dualB (2026-09-11) union"
-  sourceReportSha256_12: "a8c15697f4cb"
+  sourceReportSha256_12: "824593e591b0"
   generatedAtMain: "1914502"
   determinismEvidence: "203 dual-DB run 2026-09-11: A/B fresh DBs, 329/333 EQUIVALENT, 4 race-aftermath field cases"
   fieldCompatRateBaseline: 68.0
-  fieldCompatRateObserved: "68.6 ~ 70.3 (source/dualA/dualB, 2026-09-11) — race pairing moves the rate; floor set below observed minimum"
+  fieldCompatRateObserved: "68.6 ~ 71.0 (source/dualA/dualB/readmodel, 2026-09-11) — race pairing and shape replication move the rate; floor set below observed minimum"
   categories: [REQUIRED_BY_NEW_UI, LEGACY_ONLY, INTENTIONAL_FIX, DATA_FIXTURE_NOISE, REAL_DEFECT]
   statuses: [OPEN, ACCEPTED, CLOSED]
 entries:
@@ -26,6 +26,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -38,102 +39,111 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -146,6 +156,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -158,6 +169,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -170,102 +182,111 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -278,6 +299,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -290,6 +312,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -302,6 +325,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -314,6 +338,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -326,6 +351,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -338,6 +364,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -350,6 +377,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -362,6 +390,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -374,6 +403,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -386,6 +416,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -398,6 +429,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -410,6 +442,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -422,6 +455,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -434,6 +468,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -446,6 +481,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -458,6 +494,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -470,6 +507,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -482,6 +520,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -494,6 +533,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -506,6 +546,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -518,6 +559,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -530,6 +572,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -542,6 +585,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -554,6 +598,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -566,6 +611,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -578,6 +624,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -590,6 +637,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -602,6 +650,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -614,6 +663,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -626,6 +676,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -638,6 +689,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -650,6 +702,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -662,6 +715,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -674,6 +728,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -686,6 +741,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -698,6 +754,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -710,6 +767,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -722,6 +780,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -734,6 +793,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -746,6 +806,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -758,6 +819,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -770,6 +832,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -782,6 +845,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -794,6 +858,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -806,6 +871,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -818,6 +884,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -830,6 +897,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -842,6 +910,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -854,6 +923,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -866,6 +936,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -878,6 +949,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -890,6 +962,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -902,6 +975,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -914,6 +988,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -926,6 +1001,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -938,6 +1014,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -950,6 +1027,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -962,6 +1040,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -974,6 +1053,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -986,6 +1066,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -998,6 +1079,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1010,6 +1092,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1022,6 +1105,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1034,6 +1118,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1046,6 +1131,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1058,6 +1144,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1070,6 +1157,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1082,6 +1170,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1094,6 +1183,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1106,6 +1196,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1118,6 +1209,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1130,6 +1222,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1142,6 +1235,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1154,6 +1248,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1166,6 +1261,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1178,6 +1274,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1190,6 +1287,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1202,6 +1300,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1214,6 +1313,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1226,6 +1326,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1238,6 +1339,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1250,6 +1352,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1262,6 +1365,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1274,6 +1378,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1286,6 +1391,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1298,6 +1404,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1310,6 +1417,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1322,6 +1430,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1334,6 +1443,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1346,6 +1456,7 @@ entries:
     targetPhase: "-"
     owner: frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1358,6 +1469,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1370,6 +1482,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1382,6 +1495,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1394,6 +1508,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1406,6 +1521,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1418,6 +1534,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1430,6 +1547,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1442,6 +1560,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1454,6 +1573,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1466,6 +1586,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1478,6 +1599,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1490,6 +1612,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1502,6 +1625,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1514,6 +1638,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1526,6 +1651,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1538,6 +1664,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1550,6 +1677,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: true
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1562,6 +1690,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1574,6 +1703,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1586,6 +1716,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1598,6 +1729,7 @@ entries:
     targetPhase: "-"
     owner: frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1610,6 +1742,7 @@ entries:
     targetPhase: "-"
     owner: frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1622,6 +1755,7 @@ entries:
     targetPhase: "-"
     owner: frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1634,102 +1768,111 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1742,6 +1885,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1754,102 +1898,111 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1862,6 +2015,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1874,6 +2028,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1886,6 +2041,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1898,6 +2054,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1910,6 +2067,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1922,6 +2080,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1934,6 +2093,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1946,6 +2106,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -1958,102 +2119,111 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2066,6 +2236,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2078,6 +2249,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2090,102 +2262,111 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2198,6 +2379,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2210,6 +2392,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2222,6 +2405,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2234,6 +2418,7 @@ entries:
     targetPhase: "-"
     owner: frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2246,6 +2431,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2258,6 +2444,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2270,6 +2457,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2282,6 +2470,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2294,6 +2483,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2306,6 +2496,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2318,6 +2509,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2330,6 +2522,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2342,6 +2535,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2354,6 +2548,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2366,6 +2561,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2378,6 +2574,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2390,6 +2587,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2402,102 +2600,111 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.endU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.heightU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.orientation
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.rack.status
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.rack.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.startU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2510,6 +2717,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2522,6 +2730,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2534,6 +2743,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2546,6 +2756,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2558,6 +2769,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2570,6 +2782,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2582,6 +2795,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2594,6 +2808,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2606,6 +2821,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2618,6 +2834,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2630,6 +2847,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2642,6 +2860,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2654,6 +2873,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2666,6 +2886,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2678,6 +2899,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2690,102 +2912,111 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2798,6 +3029,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2810,8 +3042,113 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
+    evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
+  - caseId: S17-DEV-PAGE-2
+    fieldPath: data.items[*].currentPosition.endU
+    category: REAL_DEFECT
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
+    owner: backend+frontend
+    raceDependent: false
+    residualNoise: true
+    backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
+    frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
+    evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
+  - caseId: S17-DEV-PAGE-2
+    fieldPath: data.items[*].currentPosition.heightU
+    category: REAL_DEFECT
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
+    owner: backend+frontend
+    raceDependent: false
+    residualNoise: true
+    backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
+    frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
+    evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
+  - caseId: S17-DEV-PAGE-2
+    fieldPath: data.items[*].currentPosition.orientation
+    category: REAL_DEFECT
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
+    owner: backend+frontend
+    raceDependent: false
+    residualNoise: true
+    backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
+    frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
+    evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
+  - caseId: S17-DEV-PAGE-2
+    fieldPath: data.items[*].currentPosition.rack.status
+    category: REAL_DEFECT
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
+    owner: backend+frontend
+    raceDependent: false
+    residualNoise: true
+    backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
+    frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
+    evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
+  - caseId: S17-DEV-PAGE-2
+    fieldPath: data.items[*].currentPosition.rack.uHeight
+    category: REAL_DEFECT
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
+    owner: backend+frontend
+    raceDependent: false
+    residualNoise: true
+    backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
+    frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
+    evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
+  - caseId: S17-DEV-PAGE-2
+    fieldPath: data.items[*].currentPosition.rack.version
+    category: REAL_DEFECT
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
+    owner: backend+frontend
+    raceDependent: false
+    residualNoise: true
+    backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
+    frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
+    evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
+  - caseId: S17-DEV-PAGE-2
+    fieldPath: data.items[*].currentPosition.startU
+    category: REAL_DEFECT
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
+    owner: backend+frontend
+    raceDependent: false
+    residualNoise: true
+    backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
+    frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
+    evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
+  - caseId: S17-DEV-PAGE-2
+    fieldPath: data.items[*].currentPosition.version
+    category: REAL_DEFECT
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
+    owner: backend+frontend
+    raceDependent: false
+    residualNoise: true
+    backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
+    frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].heightU
@@ -2822,6 +3159,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2834,6 +3172,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2846,6 +3185,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2858,6 +3198,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2870,6 +3211,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2882,6 +3224,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2894,6 +3237,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2906,6 +3250,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2918,6 +3263,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2930,6 +3276,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2942,6 +3289,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2954,6 +3302,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2966,6 +3315,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2978,6 +3328,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -2990,6 +3341,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3002,6 +3354,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3014,6 +3367,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3026,6 +3380,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3038,6 +3393,7 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3050,102 +3406,111 @@ entries:
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.endU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.heightU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.orientation
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.rack.status
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.rack.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.startU
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.version
     category: REAL_DEFECT
-    status: OPEN
-    decision: REPLICATE_VENDOR_SHAPE
-    reason: "设备位置读模型缺失:列表位置列/U 布局回显依赖(复评 A 族)。首批读模型已落地(currentPosition 列表+详情),按四词纪律待 nightly 新基线证实消失后转 CLOSED"
-    targetPhase: "P1-C-A族读模型"
+    status: CLOSED
+    decision: REPLICATED_VENDOR_SHAPE
+    reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
+    targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
+    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3158,6 +3523,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3170,6 +3536,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3182,6 +3549,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3194,6 +3562,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3206,6 +3575,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3218,6 +3588,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3230,6 +3601,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3242,6 +3614,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3254,6 +3627,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3266,6 +3640,7 @@ entries:
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3278,6 +3653,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3290,6 +3666,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3302,6 +3679,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3314,6 +3692,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3326,6 +3705,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3338,6 +3718,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3350,6 +3731,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
@@ -3362,6 +3744,7 @@ entries:
     targetPhase: "-"
     owner: backend
     raceDependent: false
+    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"

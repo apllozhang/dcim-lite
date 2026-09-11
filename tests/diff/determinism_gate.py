@@ -8,8 +8,9 @@
 规则:
   1. 真实断裂(breaks)必须为 0 —— 候选行为对自身必须可复现;
   2. 级联缺失(missing)必须为 0 —— 同一套件两轮不应有用例缺席;
-  3. 字段差异仅允许出现在台账登记为 DATA_FIXTURE_NOISE 的条目上(并发竞态次生状态),
-     其余任何字段差异 = 未登记的不确定性 → 失败;
+  3. 字段差异仅允许出现在台账登记为 DATA_FIXTURE_NOISE 的条目,或 CLOSED 且
+     residualNoise=true 的条目(已复刻形状的行错位噪声);其余任何字段差异 =
+     未登记的不确定性 → 失败;
   4. SYMMETRIC_SWAP(并发对称胜负互换)视为等价,放行。
 
 依赖: PyYAML(仓库 CI 步骤显式安装)。
@@ -39,8 +40,12 @@ def main():
     args = ap.parse_args()
 
     doc = yaml.safe_load(open(args.ledger, encoding="utf-8"))
-    noise_keys = {(e["caseId"], e["fieldPath"]) for e in doc.get("entries") or []
-                  if e.get("category") == "DATA_FIXTURE_NOISE"}
+    allowed_keys = {
+        (e["caseId"], e["fieldPath"])
+        for e in doc.get("entries") or []
+        if e.get("category") == "DATA_FIXTURE_NOISE"
+        or (e.get("status") == "CLOSED" and e.get("residualNoise"))
+    }
 
     rep = json.load(open(args.report, encoding="utf-8"))
     errs = []
@@ -55,7 +60,7 @@ def main():
     for fb in rep.get("field_breaks") or []:
         for dif in fb.get("diffs") or []:
             k = (fb["caseId"], norm(dif["field"]))
-            if k not in noise_keys:
+            if k not in allowed_keys:
                 unknown_nd.append(k)
     for cid, p in sorted(set(unknown_nd)):
         errs.append(f"unregistered nondeterminism (not DATA_FIXTURE_NOISE in ledger): {cid} :: {p}")

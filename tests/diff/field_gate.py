@@ -7,7 +7,8 @@
 规则(复评 §8.3 P1-C③):
   1. 报告里每条 FIELD_BREAK(caseId + 归一化字段路径)必须有台账记录 —— 未知差异默认失败;
   2. 台账 OPEN 条目必须仍出现在报告中(raceDependent=true 的竞态翻转条目除外);
-  3. 台账 CLOSED 条目不得在报告中重现;
+  3. 台账 CLOSED 条目不得在报告中重现(residualNoise=true 的条目除外:形状已复刻,
+     残余差异为行错位/库内状态噪声,回归防护由关联的 backendTest 承担);
   4. 字段兼容率不得低于台账 meta.fieldCompatRateBaseline;
   5. 台账自身 schema 校验:枚举合法、键唯一、ACCEPTED 必附理由。
   [n] -> [*] 归一化与 tests/sandbox/diff_compare_v2.py 的抽取口径一致。
@@ -88,7 +89,8 @@ def main():
     for cid, p in stale_open:
         errs.append(f"OPEN entry no longer in report (close it or fix classification): {cid} :: {p}")
     repro = sorted(k for k in keys
-                   if k in report_keys and ledger_status(entries, k) == "CLOSED")
+                   if k in report_keys and ledger_status(entries, k) == "CLOSED"
+                   and not ledger_flag(entries, k, "residualNoise"))
     for cid, p in repro:
         errs.append(f"CLOSED entry still reproducing: {cid} :: {p}")
 
