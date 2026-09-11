@@ -1159,7 +1159,9 @@ components:
               standard: { type: string, enum: [CN, EU] }
               amperageA: { type: integer }
               label: { type: string }
-              status: { type: string }
+              # 兼容保留、服务端忽略（C10）：socket status 仅由连接事实（Connect/
+              # Disconnect/ForceArchive）维护，不接受客户端直写。
+              status: { type: string, deprecated: true }
     ConnectionBody:
       content:
         application/json:

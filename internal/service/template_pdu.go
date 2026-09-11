@@ -253,7 +253,9 @@ type SocketInput struct {
 	Standard  string `json:"standard" binding:"required"`
 	AmperageA int    `json:"amperageA" binding:"required"`
 	Label     string `json:"label"`
-	Status    string `json:"status"`
+	// B02：status 不再接受客户端直写（写入路径忽略该字段），仅由
+	// Connect/Disconnect/ForceArchive 依连接事实维护，防止有连接插座被改 AVAILABLE。
+	Status string `json:"status"`
 }
 
 type ConnectionInput struct {
@@ -503,74 +505,127 @@ func validSocketStandard(v string) bool {
 	return v == "CN" || v == "EU"
 }
 
+// CreateSocket 遵循 PDU 聚合锁协议：事务内先锁 PDU 行（与 Delete/ForceArchive
+// 串行化，杜绝"在已删除 PDU 下新增插座"），锁后校验再创建。
+// B02：status 不接受客户端直写，新插座一律 AVAILABLE（status 仅由连接事实维护）。
 func (s *PDUService) CreateSocket(pduID uuid.UUID, in SocketInput) (*model.PDUSocket, error) {
-	if _, err := s.store.GetPDU(pduID); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperr.NotFound("PDU")
+	var created *model.PDUSocket
+	err := s.store.DB().Transaction(func(tx *gorm.DB) error {
+		store := s.store.WithTx(tx)
+		if _, err := store.GetPDULock(pduID); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("PDU")
+			}
+			return err
 		}
-		return nil, err
-	}
-	if !validSocketStandard(in.Standard) {
-		return nil, apperr.InvalidResource("插座制式必须为 CN 或 EU")
-	}
-	if in.Status == "" {
-		in.Status = model.SocketAvailable
-	}
-	item := &model.PDUSocket{
-		PDUID: pduID, SocketNo: in.SocketNo, Standard: in.Standard,
-		AmperageA: in.AmperageA, Label: in.Label, Status: in.Status,
-	}
-	if err := s.store.CreateSocket(item); err != nil {
-		if repository.IsUniqueViolation(err) {
-			// D2: 旧 500 → 409
-			return nil, apperr.New(409, "RESOURCE_CODE_DUPLICATE", "插座编号已存在")
+		if !validSocketStandard(in.Standard) {
+			return apperr.InvalidResource("插座制式必须为 CN 或 EU")
 		}
-		return nil, err
-	}
-	return item, nil
-}
-
-func (s *PDUService) UpdateSocket(id uuid.UUID, in SocketInput) (*model.PDUSocket, error) {
-	existing, err := s.store.GetSocket(id)
+		item := &model.PDUSocket{
+			PDUID: pduID, SocketNo: in.SocketNo, Standard: in.Standard,
+			AmperageA: in.AmperageA, Label: in.Label, Status: model.SocketAvailable,
+		}
+		if err := store.CreateSocket(item); err != nil {
+			if repository.IsUniqueViolation(err) {
+				// D2: 旧 500 → 409
+				return apperr.New(409, "RESOURCE_CODE_DUPLICATE", "插座编号已存在")
+			}
+			return err
+		}
+		created = item
+		return nil
+	})
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperr.NotFound("插座")
-		}
 		return nil, err
 	}
-	if in.Status == "" {
-		in.Status = existing.Status
-	}
-	if !validSocketStandard(in.Standard) {
-		return nil, apperr.InvalidResource("插座制式必须为 CN 或 EU")
-	}
-	next := *existing
-	next.SocketNo, next.Standard, next.AmperageA = in.SocketNo, in.Standard, in.AmperageA
-	next.Label, next.Status = in.Label, in.Status
-	if err := s.store.UpdateSocket(&next, existing.Version); err != nil {
-		if repository.IsUniqueViolation(err) {
-			return nil, apperr.New(409, "RESOURCE_CODE_DUPLICATE", "插座编号已存在")
-		}
-		return nil, mapStoreErr(err)
-	}
-	return &next, nil
+	return created, nil
 }
 
-func (s *PDUService) DeleteSocket(id uuid.UUID, version uint) error {
-	if _, err := s.store.GetSocket(id); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperr.NotFound("插座")
+// UpdateSocket 遵循 PDU→socket 锁序：锁 PDU 行后再锁 socket 行并锁内重读，
+// 并发编辑不会互相覆盖。B02：body 中的 status 字段被忽略（保留现值），
+// status 仅允许 Connect/Disconnect/ForceArchive 依连接事实修改。
+func (s *PDUService) UpdateSocket(id uuid.UUID, in SocketInput) (*model.PDUSocket, error) {
+	var updated *model.PDUSocket
+	err := s.store.DB().Transaction(func(tx *gorm.DB) error {
+		store := s.store.WithTx(tx)
+		sock, err := store.GetSocket(id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("插座")
+			}
+			return err
 		}
-		return err
+		if _, err := store.GetPDULock(sock.PDUID); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("PDU")
+			}
+			return err
+		}
+		locked, err := store.GetSocketLock(id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("插座")
+			}
+			return err
+		}
+		if !validSocketStandard(in.Standard) {
+			return apperr.InvalidResource("插座制式必须为 CN 或 EU")
+		}
+		next := *locked
+		next.SocketNo, next.Standard, next.AmperageA = in.SocketNo, in.Standard, in.AmperageA
+		next.Label = in.Label
+		// status 保留锁内现值，不从 in.Status 取
+		if err := store.UpdateSocket(&next, locked.Version); err != nil {
+			if repository.IsUniqueViolation(err) {
+				return apperr.New(409, "RESOURCE_CODE_DUPLICATE", "插座编号已存在")
+			}
+			return mapStoreErr(err)
+		}
+		updated = &next
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	if err := s.store.SoftDeleteSocket(id, version); err != nil {
-		if repository.IsBizCode(err, "PDU_SOCKET_CONNECTED") {
+	return updated, nil
+}
+
+// DeleteSocket 遵循 PDU→socket 锁序：锁 PDU 行、锁 socket 行后，在锁内复核
+// 活动连接数再软删——修复复评 P0-N1 的「DeleteSocket 计数为零后 Connect 并发
+// 接入，产生指向已删插座的孤儿连接」竞态窗口。
+func (s *PDUService) DeleteSocket(id uuid.UUID, version uint) error {
+	return s.store.DB().Transaction(func(tx *gorm.DB) error {
+		store := s.store.WithTx(tx)
+		sock, err := store.GetSocket(id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("插座")
+			}
+			return err
+		}
+		if _, err := store.GetPDULock(sock.PDUID); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("PDU")
+			}
+			return err
+		}
+		locked, err := store.GetSocketLock(id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("插座")
+			}
+			return err
+		}
+		conns, err := store.CountActiveConnectionsBySocket(locked.ID)
+		if err != nil {
+			return err
+		}
+		if conns > 0 {
 			// 契约：已连接阻止删除
 			return apperr.New(409, "PDU_SOCKET_CONNECTED", "插座已连接设备，无法删除")
 		}
-		return mapStoreErr(err)
-	}
-	return nil
+		return mapStoreErr(store.SoftDeleteSocket(locked.ID, version))
+	})
 }
 
 func (s *PDUService) ListConnections(rackID uuid.UUID) ([]model.PDUConnection, error) {
@@ -587,15 +642,15 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 	var result *model.PDUConnection
 	err := s.store.DB().Transaction(func(tx *gorm.DB) error {
 		store := s.store.WithTx(tx)
+		// 先无锁读拿 pduID，再按 PDU→socket 固定锁序加锁；锁后必须重读 socket：
+		// 锁前那次读可能与 DeleteSocket/ForceArchive 并发，读到即将失效的快照
+		// （复评 P0-N1 竞态的另一半）。
 		sock, err := store.GetSocket(socketID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return apperr.NotFound("插座")
 			}
 			return err
-		}
-		if sock.Status == model.SocketConnected {
-			return apperr.New(409, "PDU_SOCKET_CONNECTED", "插座已被占用")
 		}
 		// 锁 PDU 行：与 Delete/ForceArchive 串行化——归档/删除的确认与执行
 		// 都发生在锁内，这里的新增连接不可能"逃过"它们的事务内复检
@@ -605,6 +660,16 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 				return apperr.NotFound("PDU")
 			}
 			return err
+		}
+		locked, err := store.GetSocketLock(socketID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("插座")
+			}
+			return err
+		}
+		if locked.Status == model.SocketConnected {
+			return apperr.New(409, "PDU_SOCKET_CONNECTED", "插座已被占用")
 		}
 		dev, err := s.devs.GetDevice(in.DeviceID)
 		if err != nil {
@@ -640,7 +705,7 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 			return apperr.New(409, "PDU_SOCKET_CONNECTED", "该设备此供电角色已连接")
 		}
 		conn := &model.PDUConnection{
-			SocketID: sock.ID, DeviceID: dev.ID, PowerW: in.PowerW,
+			SocketID: locked.ID, DeviceID: dev.ID, PowerW: in.PowerW,
 			Circuit: in.Circuit, RedundancyRole: role,
 			ConnectedAt: time.Now(), ConnectedBy: actor,
 		}
@@ -650,8 +715,12 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 			}
 			return err
 		}
-		// 连接与插座状态同事务：状态更新失败整体回滚，杜绝漂移
-		if err := store.UpdateSocketStatus(sock.ID, model.SocketConnected); err != nil {
+		// 连接与插座状态同事务：状态更新失败整体回滚，杜绝漂移；
+		// 零行更新（插座已被并发路径删除）同样回滚
+		if err := store.UpdateSocketStatus(locked.ID, model.SocketConnected); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("插座")
+			}
 			return err
 		}
 		result = conn
@@ -663,20 +732,50 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 	return result, nil
 }
 
+// Disconnect 遵循 PDU→socket 锁序：事务内拿连接后先定位其 PDU，锁 PDU 行、
+// 锁 socket 行，再断开连接并释放插座——避免与 DeleteSocket/ForceArchive 形成
+// 相反锁序，也杜绝"断开已被归档 PDU 的连接"时把已删插座改回 AVAILABLE。
 func (s *PDUService) Disconnect(id uuid.UUID, version uint) error {
-	conn, err := s.store.GetConnection(id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperr.NotFound("连接")
-		}
-		return err
-	}
 	return s.store.DB().Transaction(func(tx *gorm.DB) error {
 		store := s.store.WithTx(tx)
+		conn, err := store.GetConnection(id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("连接")
+			}
+			return err
+		}
+		sock, err := store.GetSocket(conn.SocketID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// 插座已删（被 ForceArchive 归档）而连接仍在：归档事务会一并断开
+				// 连接，此处按资源不存在处理
+				return apperr.NotFound("连接")
+			}
+			return err
+		}
+		if _, err := store.GetPDULock(sock.PDUID); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("PDU")
+			}
+			return err
+		}
+		if _, err := store.GetSocketLock(conn.SocketID); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("连接")
+			}
+			return err
+		}
 		if err := store.SoftDeleteConnection(id, version); err != nil {
 			return mapStoreErr(err)
 		}
-		// 连接删除与插座释放同事务
-		return store.UpdateSocketStatus(conn.SocketID, model.SocketAvailable)
+		// 连接删除与插座释放同事务；零行更新（插座已被并发删除）回滚整体
+		if err := store.UpdateSocketStatus(conn.SocketID, model.SocketAvailable); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("插座")
+			}
+			return err
+		}
+		return nil
 	})
 }
