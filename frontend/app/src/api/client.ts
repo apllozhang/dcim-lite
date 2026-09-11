@@ -1,8 +1,13 @@
 /**
- * API 客户端:唯一的 HTTP 出口。页面禁止手写请求(ADR §3)。
- * Envelope 契约:{ code, message, data?, requestId? }(docs/openapi.yaml)。
+ * API 客户端:唯一的 HTTP 出口(ADR §3)。页面禁止手写请求。
+ *
+ * 契约约束(第三轮复评 P0-R03):
+ * - 路径参数被 `keyof paths` 约束,写错路径无法通过编译;
+ * - 响应类型从生成的 schema 派生,业务代码不得自行声明 T;
+ * - Envelope.data 可选:getData 强制非空(缺失抛错),sendData 显式返回 D|undefined。
  */
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError, type AxiosInstance } from "axios";
+import type { paths } from "./generated/schema";
 
 export interface Envelope<T = unknown> {
   code: string;
@@ -23,6 +28,11 @@ export class ApiError extends Error {
   }
 }
 
+/** GET /health/ready 探活 */
+export interface ReadyInfo {
+  status?: string;
+}
+
 const TOKEN_KEY = "ale.token";
 
 export function getToken(): string {
@@ -34,10 +44,14 @@ export function setToken(token: string): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-export const http = axios.create({
-  baseURL: "/",
-  timeout: 20000,
-});
+type UnauthorizedHandler = () => void;
+let onUnauthorized: UnauthorizedHandler = () => {};
+/** 注册全局 401 处理(main.ts 里接路由跳转;P1-R06) */
+export function setUnauthorizedHandler(fn: UnauthorizedHandler): void {
+  onUnauthorized = fn;
+}
+
+export const http: AxiosInstance = axios.create({ baseURL: "/", timeout: 20000 });
 
 http.interceptors.request.use((cfg) => {
   const token = getToken();
@@ -50,6 +64,16 @@ http.interceptors.response.use(
   (err: AxiosError<Envelope>) => {
     const body = err.response?.data;
     const status = err.response?.status ?? 0;
+    const url = err.config?.url ?? "";
+    // 全局 401 收口:除登录本身外,任何 401 清 token 并交由注册的 handler 跳转
+    if (status === 401 && !url.includes("/auth/login")) {
+      setToken("");
+      try {
+        onUnauthorized();
+      } catch {
+        /* handler 异常不掩盖原始错误 */
+      }
+    }
     throw new ApiError(
       status,
       body?.code ?? (status === 0 ? "NETWORK_ERROR" : "HTTP_" + status),
@@ -59,19 +83,54 @@ http.interceptors.response.use(
   },
 );
 
-/** GET 并解开 Envelope.data */
-export async function getData<T>(path: string, params?: Record<string, unknown>): Promise<T> {
-  const resp = await http.get<Envelope<T>>(path, { params });
-  return resp.data.data as T;
+/** 从生成类型提取 GET 响应的 data 部分 */
+type GetData<P extends keyof paths> = paths[P] extends {
+  get: { responses: { 200: { content: { "application/json": infer R } } } };
+}
+  ? R extends { data?: infer D }
+    ? D
+    : never
+  : never;
+
+/** 从生成类型提取 POST 响应的 data 部分 */
+type PostData<P extends keyof paths> = paths[P] extends {
+  post: { responses: { 200: { content: { "application/json": infer R } } } };
+}
+  ? R extends { data?: infer D }
+    ? D
+    : never
+  : never;
+
+/** GET 并解开 Envelope.data;data 缺失/为空视为契约违例(收紧 P1-R06) */
+export async function getData<P extends keyof paths>(
+  path: P,
+  params?: Record<string, unknown>,
+): Promise<NonNullable<GetData<P>>> {
+  const resp = await http.get<Envelope<GetData<P>>>(path, { params });
+  const data = resp.data?.data;
+  if (data === undefined || data === null) {
+    throw new ApiError(resp.status, "EMPTY_DATA", `响应缺少 data:GET ${String(path)}`);
+  }
+  return data as NonNullable<GetData<P>>;
 }
 
-/** 写操作(POST/PUT/DELETE):成功返回 data,失败抛 ApiError */
-export async function sendData<T>(
+/** 写操作(POST/PUT/DELETE):data 可缺(如 logout),显式返回 D|undefined */
+export async function sendData<P extends keyof paths>(
   method: "post" | "put" | "delete",
-  path: string,
+  path: P,
   body?: unknown,
   params?: Record<string, unknown>,
-): Promise<T> {
-  const resp = await http.request<Envelope<T>>({ method, url: path, data: body, params });
-  return resp.data.data as T;
+): Promise<PostData<P> | undefined> {
+  const resp = await http.request<Envelope<PostData<P>>>({ method, url: path, data: body, params });
+  return resp.data?.data;
+}
+
+/** 后端探活(P0-B:补全 /health/ready 交付声明) */
+export async function fetchReady(): Promise<boolean> {
+  try {
+    const resp = await http.get<ReadyInfo>("/health/ready", { timeout: 5000 });
+    return resp.status === 200;
+  } catch {
+    return false;
+  }
 }

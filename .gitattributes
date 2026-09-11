@@ -1,0 +1,18 @@
+# 统一 LF(第三轮复评 P1-R08:Windows/Linux 干净 clone 行为一致)
+* text=auto eol=lf
+*.go text eol=lf
+*.py text eol=lf
+*.ts text eol=lf
+*.vue text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.sql text eol=lf
+*.sh text eol=lf
+*.png binary
+*.jpg binary
+*.woff binary
+*.woff2 binary
