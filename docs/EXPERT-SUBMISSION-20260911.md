@@ -112,7 +112,7 @@ pytest 套件（隔离/幂等/非零退出）承担，并已在 203 线上栈两
 | T01(P1-N1 pytest 清理) | **已关闭**(PR #26/#27,main `7ce8a57`) | 重写清理协议 + `test_teardown_selfcheck.py` 故意失败自测;203 实测 flows 4/4 + selfcheck 双绿 |
 | T02(P1-N2 Python 自测入 CI) | **已关闭**(PR #26) | 三工具更名 selfcheck_*.py + UTF-8 输出;quality job 逐个执行 + pytest 零收集断言;**自测入库前即抓到真实漂移**:coverage-requirements 66 vs OpenAPI 72(PR #22 后),已对齐 |
 | C01(P1-N3 字段差异分类) | **已关闭** | `FIELD-DIFF-CLASSIFICATION-20260911.md`:53 项 = 数据值噪声 ~12 + 形状差异 ~41,复刻项全部划入前端替代范围 |
-| D01(P1-N4 移位与供电连接规则) | **已关闭**(PR #30,main `67af2e2`) | 业务确认方案 A:有活动供电连接禁止移位,`POST /devices/{id}/move` → 409 `DEVICE_POWERED`(设备行锁内检查,与 Connect/Disconnect 串行化);`TestMoveWithActiveConnectionBlocked` 验收(接电禁移→断开可移→复接再禁);golden 套件无带电移位用例,nightly 零影响;decommission 同族问题已在 COMPAT-DECISIONS 登记为待业务明确的关联项 |
+| D01(P1-N4 移位与供电连接规则) | **重新打开→已关闭**(PR #30 首次实现,第三轮复评 P0-R01 指出 Connect×Move 竞态逃逸;本轮修正后关闭) | 业务确认方案 A:带电禁移 409 `DEVICE_POWERED`。**更正原结论**:首次实现的"与 Connect 串行化无竞态窗口"为错误结论(Connect 设备读取逃逸事务),已按统一锁序 device→rack/PDU→socket 重写 Connect、Decommission 补带电阻断,新增 3 个并发矩阵测试(Move×Connect/Decommission×Connect/Decommission×Disconnect,SQL 终态不变量断言);顺序验收 TestMoveWithActiveConnectionBlocked 保留 |
 
 **补充证据（2026-09-11 晚）**:
 - **前端 Phase 0 已交付**(PR #29,main `338dd6e`):`docs/frontend/` 四件套(ADR/行为地图/视觉 tokens/legacy-ale 冻结 manifest)+ `frontend/app` 可构建骨架(Vue3+TS+Vite+Element Plus+openapi-typescript 类型生成),登录页/应用壳/资源树+设备列表只读切片;**CI 新增 frontend job**:OpenAPI 契约漂移检测(gen:api 后 diff 必须为空)+lint+vitest+vue-tsc build。

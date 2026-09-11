@@ -642,9 +642,7 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 	var result *model.PDUConnection
 	err := s.store.DB().Transaction(func(tx *gorm.DB) error {
 		store := s.store.WithTx(tx)
-		// 先无锁读拿 pduID，再按 PDU→socket 固定锁序加锁；锁后必须重读 socket：
-		// 锁前那次读可能与 DeleteSocket/ForceArchive 并发，读到即将失效的快照
-		// （复评 P0-N1 竞态的另一半）。
+		// 无锁定位：仅拿 socket→PDU 关系做快速 404；所有决定性校验都在锁内复检
 		sock, err := store.GetSocket(socketID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -652,8 +650,18 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 			}
 			return err
 		}
-		// 锁 PDU 行：与 Delete/ForceArchive 串行化——归档/删除的确认与执行
-		// 都发生在锁内，这里的新增连接不可能"逃过"它们的事务内复检
+		// ── 跨聚合统一锁序：device → rack/PDU → socket（第三轮复评 P0-R01）──
+		// 与 Move/Decommission 的「先设备行」同向，杜绝反向锁序死锁；
+		// 设备读取必须绑定本事务并加行锁：否则 Move 可在「同柜校验之后、连接
+		// 提交之前」把设备移走，留下指向异柜 PDU 的活动连接。
+		devs := s.devs.WithTx(tx)
+		dev, err := devs.GetDeviceLock(in.DeviceID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperr.NotFound("设备")
+			}
+			return err
+		}
 		pdu, err := store.GetPDULock(sock.PDUID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -671,14 +679,8 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 		if locked.Status == model.SocketConnected {
 			return apperr.New(409, "PDU_SOCKET_CONNECTED", "插座已被占用")
 		}
-		dev, err := s.devs.GetDevice(in.DeviceID)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return apperr.NotFound("设备")
-			}
-			return err
-		}
-		pos, err := s.devs.GetActivePosition(dev.ID)
+		// 锁内复检设备位置：dev 行已被本事务锁定，读取即最新且不会被 Move 窜改
+		pos, err := devs.GetActivePosition(dev.ID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return apperr.New(409, "DEVICE_NOT_POSITIONED", "设备未上架，无法接电")
@@ -732,9 +734,6 @@ func (s *PDUService) Connect(socketID uuid.UUID, in ConnectionInput, actor *uuid
 	return result, nil
 }
 
-// Disconnect 遵循 PDU→socket 锁序：事务内拿连接后先定位其 PDU，锁 PDU 行、
-// 锁 socket 行，再断开连接并释放插座——避免与 DeleteSocket/ForceArchive 形成
-// 相反锁序，也杜绝"断开已被归档 PDU 的连接"时把已删插座改回 AVAILABLE。
 func (s *PDUService) Disconnect(id uuid.UUID, version uint) error {
 	return s.store.DB().Transaction(func(tx *gorm.DB) error {
 		store := s.store.WithTx(tx)

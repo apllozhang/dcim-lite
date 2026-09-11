@@ -592,6 +592,18 @@ func (s *DeviceService) decommissionInTx(id uuid.UUID, in DecommissionInput, act
 	if dev.LifecycleStatus == model.DeviceScrapped || dev.LifecycleStatus == model.DeviceOffRack {
 		return nil, apperr.New(409, "INVALID_RESOURCE", "设备已下架或已报废")
 	}
+	// D01 同族裁定（第三轮复评 §4.3）：带电设备禁止下架——下架会移除 active
+	// position 却保留 connection，产生业务上的悬空连接。设备行锁内检查，与
+	// Connect 串行化无窗口。强制下架出口（decommission-impact + force 两阶段）
+	// 按复评裁定留待未来需求，当前不自动断电。
+	conns, err := s.devices.CountActiveConnectionsByDevice(id)
+	if err != nil {
+		return nil, err
+	}
+	if conns > 0 {
+		return nil, apperr.New(409, "DEVICE_POWERED",
+			"设备存在活动供电连接，请先断开连接后再下架")
+	}
 	var fromSnap *model.PositionSnapshot
 	if old, err := s.devices.RemoveFromRack(id); err == nil {
 		fromSnap = &model.PositionSnapshot{
