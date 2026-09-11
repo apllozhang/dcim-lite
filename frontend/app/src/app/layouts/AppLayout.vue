@@ -1,17 +1,30 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSessionStore } from "@/features/auth/session";
+import { getRouteFlag, setRouteFlag, legacyUrlFor, type RouteFlag } from "@/app/flags";
 
 const session = useSessionStore();
 const route = useRoute();
 const router = useRouter();
 
 const menu = computed(() => [
-  { path: "/", label: "资源树", auth: true },
-  { path: "/devices", label: "设备列表", auth: true },
-  { path: "/admin", label: "系统管理", auth: session.isAdmin },
+  { path: "/", label: "资源树", module: "tree", auth: true },
+  { path: "/devices", label: "设备列表", module: "devices", auth: true },
+  { path: "/admin", label: "系统管理", module: "admin", auth: session.isAdmin },
 ]);
+
+const currentModule = computed(() => (route.meta.flagModule as string | undefined) ?? "tree");
+/** 当前模块的界面版本(localStorage 持久;旧 bundle 侧用 ?ale_flags=xxx:new 切回) */
+const uiVersion = ref<RouteFlag>(getRouteFlag(currentModule.value));
+
+function switchUi(value: RouteFlag) {
+  setRouteFlag(currentModule.value, value);
+  if (value === "legacy") {
+    // 整页跳出至旧 bundle(SPA 无法渲染旧路由)
+    window.location.href = legacyUrlFor(currentModule.value);
+  }
+}
 
 async function doLogout() {
   await session.logout();
@@ -23,17 +36,29 @@ async function doLogout() {
   <el-container class="layout">
     <el-header class="header">
       <span class="brand"> <span class="brand-mark">ALE</span> 机柜管理 </span>
-      <el-dropdown v-if="session.user">
-        <span class="user" data-test="user-menu">
-          {{ session.user.displayName || session.user.username }}
-          ({{ session.isAdmin ? "管理员" : "用户" }})
-        </span>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item data-test="logout" @click="doLogout"> 退出登录 </el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
+      <div class="header-right">
+        <el-select
+          :model-value="uiVersion"
+          size="small"
+          class="ui-switch"
+          data-test="ui-version-switch"
+          @change="switchUi"
+        >
+          <el-option label="新版界面" value="new" />
+          <el-option label="旧版界面" value="legacy" />
+        </el-select>
+        <el-dropdown v-if="session.user">
+          <span class="user" data-test="user-menu">
+            {{ session.user.displayName || session.user.username }}
+            ({{ session.isAdmin ? "管理员" : "用户" }})
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item data-test="logout" @click="doLogout">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
     </el-header>
     <el-container>
       <el-aside :width="'220px'" class="sidebar">
@@ -72,6 +97,14 @@ async function doLogout() {
   letter-spacing: 1px;
   margin-right: var(--ale-space-2);
   border-bottom: 2px solid var(--ale-primary-light);
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--ale-space-3);
+}
+.ui-switch {
+  width: 120px;
 }
 .user {
   color: var(--ale-purple-100);

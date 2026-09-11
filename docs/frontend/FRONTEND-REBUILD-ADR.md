@@ -52,7 +52,11 @@ frontend/
 
 ## 5. 替换策略:绞杀者模式 + 路由级 feature flag
 
-- 新页面按模块逐个上线,通过运行时 flag(`window.__ALE_ROUTE_OVERRIDES__` / 环境注入)在旧 ALE 与新页面之间切换,可单独回退;
+- 新页面按模块逐个上线,通过运行时 flag 在旧 ALE 与新页面之间切换,可单独回退;
+- **实现状态(P0-B,`src/app/flags.ts`)**:取值优先级 URL 参数 `?ale_flags=module:legacy`
+  > localStorage(`ale.flags`,用户级持久)> `window.__ALE_ROUTE_OVERRIDES__`(部署注入)> 默认 `new`;
+  路由守卫在模块 flag=legacy 时整页跳转 `/legacy/<module 路径>`(dev server/nginx 反代旧 bundle,
+  oracle 独立端口不受影响);应用壳提供模块级新旧切换下拉;`新→旧→新`回退由 e2e 用例固化;
 - 旧 ALE bundle 保持原样运行,作为行为/视觉 oracle,直至 Phase 4 退出;
 - 每个模块的完成定义遵循复评 §8(生成类型、三态权限、完整状态、409 冲突提示、防重复提交、单测+E2E、可单独回退、不依赖旧 bundle 运行时)。
 
@@ -66,7 +70,7 @@ frontend/
 
 | 阶段 | 内容 | 出口标准 |
 |---|---|---|
-| Phase 0(本 ADR + 骨架) | 文档四件套、可构建骨架、类型生成、应用壳连 /auth/me 与 /health/ready | 干净 clone 可 lint/test/build;CI 全绿 |
+| Phase 0(本 ADR + 骨架) | 文档四件套、可构建骨架、类型生成、应用壳连 /auth/me 与 /health/ready | 干净 clone 可 lint/test/build;CI 全绿。**ready 声明已兑现(P0-B)**:启动时 `fetchReady()` 探活 `/health/ready`,不可达经 ErrorReporter 上报 |
 | Phase 1 | 登录、布局、资源树、设备列表只读切片;新旧双跑 | 双跑通过,可 flag 回退 |
 | Gate G1 | 复评 §7 六条件(含 D01 业务确认) | 通过后方可进入写操作预发布 |
 | Phase 2/3/4 | 低风险写 → 高风险状态机 → 旧核心退出 | 复评 §7 各条 |

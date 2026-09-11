@@ -27,7 +27,8 @@ jobs:
       - name: go vet
         run: go vet ./... && go vet -tags integration ./internal/integration/
       - name: unit tests (race detector)
-        run: go test -race ./... -count=1
+        # 显式路径:frontend/app/node_modules 安装后不进入 Go 包匹配范围
+        run: go test -race ./cmd/... ./internal/... -count=1
       - name: route inventory contract
         run: go test ./internal/app/ -run TestRouteInventory -v -count=1
       - name: build
@@ -108,6 +109,19 @@ jobs:
     defaults:
       run:
         working-directory: frontend/app
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: it
+          POSTGRES_PASSWORD: it
+          POSTGRES_DB: it
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U it"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -115,6 +129,19 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/app/package-lock.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+      - name: go module download (retry against flaky proxy)
+        working-directory: .
+        run: |
+          ok=0
+          for i in 1 2 3; do
+            if go mod download all; then ok=1; break; fi
+            echo "retry $i failed, waiting..."; sleep 10
+          done
+          [ "$ok" = "1" ] || exit 1
       - name: install dependencies
         run: npm ci
       - name: OpenAPI typegen + contract drift check
@@ -128,3 +155,33 @@ jobs:
         run: npm test
       - name: build (vue-tsc + vite)
         run: npm run build
+      - name: build backend binary (for e2e)
+        working-directory: .
+        run: go build -o /tmp/cabinet-server ./cmd/server
+      - name: start backend for e2e (real PG + real binary)
+        working-directory: .
+        env:
+          DATABASE_URL: postgres://it:it@localhost:5432/it?sslmode=disable
+          HTTP_ADDR: ":18080"
+          JWT_SECRET: e2e-test-secret-that-is-at-least-32-bytes-long!!
+          ADMIN_USERNAME: admin
+          ADMIN_PASSWORD: E2E#Passw0rd!
+          MIGRATIONS_DIR: ${{ github.workspace }}/migrations
+          LOGIN_RATE_LIMIT_PER_MIN: "200"
+        run: |
+          nohup /tmp/cabinet-server > /tmp/backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:18080/health/ready && break
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:18080/health/ready || (cat /tmp/backend.log && exit 1)
+      - name: Playwright e2e (real backend, P1-R07)
+        env:
+          ALE_API_PROXY: http://127.0.0.1:18080
+          ALE_LEGACY_PROXY: http://127.0.0.1:18080
+          E2E_USERNAME: admin
+          E2E_PASSWORD: E2E#Passw0rd!
+          APP_RELEASE: ci-${{ github.sha }}
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test

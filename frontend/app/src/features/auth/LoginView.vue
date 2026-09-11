@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { useSessionStore } from "@/features/auth/session";
 import { ApiError } from "@/api/client";
+import { reportError } from "@/api/errors";
 
 const router = useRouter();
 const session = useSessionStore();
@@ -14,12 +15,23 @@ const captchaCode = ref("");
 const captchaImg = ref("");
 const captchaId = ref("");
 const loading = ref(false);
+const captchaError = ref(false);
 
 async function refreshCaptcha() {
-  const cap = await session.captcha();
-  captchaId.value = cap.id;
-  captchaImg.value = cap.image;
-  captchaCode.value = "";
+  captchaError.value = false;
+  try {
+    const cap = await session.captcha();
+    captchaId.value = cap.id ?? "";
+    captchaImg.value = cap.image ?? "";
+    captchaCode.value = "";
+  } catch (e) {
+    // 初始加载失败:显式错误态 + 重试(P1-R06),不再让异常静默逃逸
+    captchaError.value = true;
+    reportError({
+      message: `captcha load failed: ${e instanceof Error ? e.message : String(e)}`,
+      role: "anonymous",
+    });
+  }
 }
 
 onMounted(refreshCaptcha);
@@ -70,7 +82,19 @@ async function submit() {
           />
         </el-form-item>
         <el-form-item label="验证码">
-          <div class="captcha-row">
+          <div v-if="captchaError" class="captcha-error" data-test="captcha-error">
+            <span>验证码加载失败</span>
+            <el-button
+              size="small"
+              type="primary"
+              plain
+              data-test="captcha-retry"
+              @click="refreshCaptcha"
+            >
+              重试
+            </el-button>
+          </div>
+          <div v-else class="captcha-row">
             <el-input v-model="captchaCode" placeholder="验证码" data-test="captcha-input" />
             <img
               v-if="captchaImg"
@@ -78,6 +102,7 @@ async function submit() {
               alt="验证码"
               class="captcha-img"
               title="点击刷新"
+              data-test="captcha-img"
               @click="refreshCaptcha"
             />
           </div>
@@ -121,6 +146,12 @@ async function submit() {
   display: flex;
   gap: var(--ale-space-2);
   width: 100%;
+}
+.captcha-error {
+  display: flex;
+  align-items: center;
+  gap: var(--ale-space-2);
+  color: var(--ale-ink-700);
 }
 .captcha-img {
   height: 32px;

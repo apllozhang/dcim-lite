@@ -1,14 +1,50 @@
-/** 资源树与设备列表的只读查询(Phase 1 切片:无任何写操作)。 */
+/**
+ * 资源树与设备列表的只读查询(Phase 1 切片:无写操作)。
+ * 类型从生成 schema 派生;el-tree 数据规整在此层完成(组件不做数据变换)。
+ */
+import type { components } from "@/api/generated/schema";
 import { getData } from "@/api/client";
-import type { DataCenterNode, DeviceRow } from "@/entities/resource";
 
-export async function fetchResourceTree(): Promise<DataCenterNode[]> {
-  const data = await getData<{ items: DataCenterNode[] }>("/api/v1/resource-tree");
-  return data.items ?? [];
+export type TreeDataCenter = components["schemas"]["TreeDataCenter"];
+export type Device = components["schemas"]["Device"];
+
+/** el-tree 节点:两级子字段(rooms/racks)规整为统一 children */
+export interface TreeNode {
+  id: string;
+  label: string;
+  code: string;
+  kind: "dc" | "room" | "rack";
+  children?: TreeNode[];
+}
+
+export function toTreeNodes(tree: TreeDataCenter[]): TreeNode[] {
+  return tree.map((dc) => ({
+    id: dc.id ?? "",
+    label: dc.name ?? dc.code ?? "",
+    code: dc.code ?? "",
+    kind: "dc" as const,
+    children: (dc.rooms ?? []).map((room) => ({
+      id: room.id ?? "",
+      label: room.name ?? room.code ?? "",
+      code: room.code ?? "",
+      kind: "room" as const,
+      children: (room.racks ?? []).map((rack) => ({
+        id: rack.id ?? "",
+        label: rack.name ?? rack.code ?? "",
+        code: rack.code ?? "",
+        kind: "rack" as const,
+      })),
+    })),
+  }));
+}
+
+export async function fetchResourceTree(): Promise<TreeNode[]> {
+  const data = await getData("/api/v1/resource-tree");
+  return toTreeNodes((data.items ?? []) as TreeDataCenter[]);
 }
 
 export interface DevicePage {
-  items: DeviceRow[];
+  items: Device[];
   total: number;
 }
 
@@ -17,5 +53,6 @@ export async function fetchDevices(params: {
   pageSize?: number;
   search?: string;
 }): Promise<DevicePage> {
-  return getData<DevicePage>("/api/v1/devices", params);
+  const data = await getData("/api/v1/devices", params as Record<string, unknown>);
+  return { items: data.items ?? [], total: data.total ?? 0 };
 }

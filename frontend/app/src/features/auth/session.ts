@@ -1,53 +1,71 @@
 /**
  * 会话 store:登录/登出/当前用户。
- * 对应契约:GET /auth/captcha、POST /auth/login、GET /auth/me、POST /auth/logout。
+ * 类型全部从 OpenAPI 生成 schema 派生(P0-R03);端点路径受 keyof paths 约束。
  */
 import { defineStore } from "pinia";
+import type { components } from "@/api/generated/schema";
 import { getData, sendData, setToken, getToken } from "@/api/client";
+import { reportError } from "@/api/errors";
 
-export interface SessionUser {
-  id: string;
-  username: string;
-  displayName: string;
-  roles: { code: string }[];
-}
-
-export interface Captcha {
-  id: string;
-  image: string; // data:image/svg+xml;base64,...
-}
+type User = components["schemas"]["User"];
+type Captcha = components["schemas"]["Captcha"];
+type LoginResult = components["schemas"]["LoginResult"];
 
 export const useSessionStore = defineStore("session", {
   state: () => ({
-    user: null as SessionUser | null,
+    user: null as User | null,
     token: getToken(),
   }),
   getters: {
     isLoggedIn: (s) => !!s.token,
-    isAdmin: (s) => !!s.user?.roles.some((r) => r.code === "system_admin"),
+    isAdmin: (s) => !!s.user?.roles?.some((r) => r.code === "system_admin"),
+    /** 匿名化角色标签(错误上报用,不含用户名) */
+    roleLabel: (s): string =>
+      s.user?.roles?.some((r) => r.code === "system_admin")
+        ? "system_admin"
+        : s.user
+          ? "user"
+          : "anonymous",
   },
   actions: {
     async captcha(): Promise<Captcha> {
-      return getData<Captcha>("/api/v1/auth/captcha");
+      return getData("/api/v1/auth/captcha");
     },
     async login(username: string, password: string, captchaId: string, captcha: string) {
-      const data = await sendData<{ token: string }>("post", "/api/v1/auth/login", {
+      const data = await sendData("post", "/api/v1/auth/login", {
         username,
         password,
         captchaId,
         captcha,
-      });
-      this.token = data.token;
-      setToken(data.token);
+      } as never);
+      const result = data as LoginResult | undefined;
+      if (!result?.token) throw new Error("登录响应缺少 token");
+      this.token = result.token;
+      setToken(result.token);
       await this.whoami();
     },
     async whoami() {
       if (!this.token) return;
-      this.user = await getData<SessionUser>("/api/v1/auth/me");
+      try {
+        this.user = await getData("/api/v1/auth/me");
+      } catch (e) {
+        // 会话失效:401 拦截器已清 token;此处上报并保持未登录态
+        reportError({
+          message: `whoami failed: ${e instanceof Error ? e.message : String(e)}`,
+          role: "anonymous",
+        });
+        this.user = null;
+      }
     },
     async logout() {
       try {
         await sendData("post", "/api/v1/auth/logout");
+      } catch (e) {
+        // 登出接口失败(网络/后端 5xx)不阻断本地会话清理
+        reportError({
+          message: `logout api failed: ${e instanceof Error ? e.message : String(e)}`,
+          role: this.roleLabel,
+        });
       } finally {
         this.token = "";
         this.user = null;
