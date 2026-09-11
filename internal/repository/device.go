@@ -259,6 +259,15 @@ func (s *DeviceStore) GetActivePosition(deviceID uuid.UUID) (*model.RackDevicePo
 	return &p, nil
 }
 
+// CountActiveConnectionsByDevice 统计设备的活动供电连接数（D01 方案 A：
+// 有活动连接禁止移位）。GORM 软删模型自动排除已断开连接。
+func (s *DeviceStore) CountActiveConnectionsByDevice(deviceID uuid.UUID) (int64, error) {
+	var n int64
+	err := s.db.Model(&model.PDUConnection{}).
+		Where("device_id = ?", deviceID).Count(&n).Error
+	return n, err
+}
+
 func (s *DeviceStore) ListOccupancies(rackID uuid.UUID) ([]model.RackUOccupancy, error) {
 	var items []model.RackUOccupancy
 	err := s.db.Where("rack_id = ? AND deleted_at IS NULL", rackID).Order("start_u asc").Find(&items).Error
