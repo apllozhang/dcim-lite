@@ -1,0 +1,85 @@
+# 差分回放防漂移门禁：每日用仓库内冻结的厂商基线（tests/diff/baseline），
+# 对当前 main 构建的候选做全量 golden 套件回放（tests/sandbox/gt_final_v3.py）。
+# 任何行为漂移都会在 diff-report.json 里产生真实断裂（breaks 非空）→ 本 job 失败。
+name: diff-replay
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # 每日 UTC 03:00
+  workflow_dispatch:
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: build candidate image (main)
+        run: docker build -t diff-rebuild:ci .
+
+      - name: start isolated stack
+        working-directory: tests/diff
+        run: docker compose -f docker-compose.ci.yml up -d
+
+      - name: wait for candidate
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/health/live || true)
+            [ "$code" = "200" ] && echo "candidate alive" && exit 0
+            sleep 2
+          done
+          echo "candidate did not come up" >&2
+          docker compose -f tests/diff/docker-compose.ci.yml logs backend
+          exit 1
+
+      - name: replay golden suite against candidate
+        working-directory: tests/sandbox
+        env:
+          GT_CAPTCHA: auto
+        run: |
+          python3 gt_final_v3.py \
+            --env-file ../diff/ci.env \
+            --run-id "ci-$GITHUB_RUN_ID" \
+            --pg none \
+            --out "$GITHUB_WORKSPACE/out" \
+            --api http://127.0.0.1:18080
+
+      - name: compare against frozen vendor baseline
+        working-directory: tests/sandbox
+        run: |
+          python3 diff_compare_v2.py \
+            ../diff/baseline \
+            "$GITHUB_WORKSPACE/out/final-regression" \
+            "$GITHUB_WORKSPACE/diff-report.md"
+
+      - name: gate (zero real breaks + compat floor)
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open("diff-report.json"))
+          breaks = d.get("breaks", [])
+          rate = d.get("compat_rate_status_code")
+          print(f"compat_rate_status_code={rate}%  real_breaks={len(breaks)}")
+          if breaks:
+              for x in breaks:
+                  print("  BREAK:", x["caseId"], "|", x["why"])
+          if breaks:
+              sys.exit("diff drift detected: real breaks against frozen vendor baseline")
+          if rate is None or rate < 80.0:
+              sys.exit(f"compat rate {rate}% below gate (80%)")
+          print("diff-replay gate: PASS")
+          PY
+
+      - name: upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diff-report
+          path: |
+            diff-report.md
+            diff-report.json
