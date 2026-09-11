@@ -18,6 +18,7 @@ func RouteInventory() []RouteSpec {
 		{Method: "GET", Path: "/metrics", Auth: "public"},
 		{Method: "POST", Path: "/api/v1/auth/login", Auth: "public"},
 		{Method: "GET", Path: "/api/v1/auth/captcha", Auth: "public"},
+		{Method: "POST", Path: "/api/v1/telemetry/frontend-errors", Auth: "public"},
 		// 登录即可（只读 + 登出）
 		{Method: "GET", Path: "/api/v1/auth/me", Auth: "user"},
 		{Method: "POST", Path: "/api/v1/auth/logout", Auth: "user"},
@@ -90,5 +91,6 @@ func RouteInventory() []RouteSpec {
 		{Method: "GET", Path: "/api/v1/admin/ldap", Auth: "admin"},
 		{Method: "PUT", Path: "/api/v1/admin/ldap", Auth: "admin"},
 		{Method: "POST", Path: "/api/v1/admin/ldap/test", Auth: "admin"},
+		{Method: "GET", Path: "/api/v1/admin/telemetry/frontend-errors", Auth: "admin"},
 	}
 }

@@ -524,6 +524,41 @@ paths:
       requestBody: { $ref: "#/components/requestBodies/LDAPBody" }
       responses: { "200": { $ref: "#/components/responses/LDAPTestOK" } }
 
+  /api/v1/telemetry/frontend-errors:
+    post:
+      summary: 前端错误遥测上报（P1-R6；匿名可上报，每 IP 限流；字段白名单，其余字段丢弃）
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FrontendErrorReport" }
+      responses: { "200": { $ref: "#/components/responses/OK" } }
+
+  /api/v1/admin/telemetry/frontend-errors:
+    get:
+      summary: 前端错误事件检索（最新优先，环形缓冲上限 500）
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+      responses:
+        "200":
+          description: 事件列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: string }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: "#/components/schemas/FrontendError" }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1545,6 +1580,28 @@ components:
         uHeight: { type: integer }
         status: { type: string }
         version: { type: integer }
+    FrontendErrorReport:
+      type: object
+      required: [message]
+      properties:
+        release: { type: string }
+        route: { type: string }
+        message: { type: string, maxLength: 500 }
+        apiStatus: { type: integer }
+        apiCode: { type: string }
+        requestId: { type: string }
+        role: { type: string, enum: [anonymous, user, system_admin] }
+    FrontendError:
+      type: object
+      properties:
+        receivedAt: { type: string }
+        release: { type: string }
+        route: { type: string }
+        message: { type: string }
+        apiStatus: { type: integer }
+        apiCode: { type: string }
+        requestId: { type: string }
+        role: { type: string }
     DeviceList:
       type: object
       properties:

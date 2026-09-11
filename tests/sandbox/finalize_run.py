@@ -84,7 +84,7 @@ try:
             if method in ("get", "post", "put", "delete", "patch"):
                 ops.append((method.upper(), path))
     gate("openapi-parseable", True)
-    gate("openapi-count", len(ops) == 66, f"got {len(ops)}")
+    gate("openapi-count", len(ops) == 74, f"got {len(ops)}")  # P1-R6: +telemetry x2
 except ImportError:
     ops = []
     gate("openapi-parseable", False, "yaml module not available")
@@ -201,7 +201,7 @@ for method, path in ops:
         "evidence_cases": ";".join(sorted(set(c["caseId"] for c in matched if c["kind"] == "TEST"))[:5]),
     })
 
-gate("coverage-reached-66", reached == 66, f"got {reached}/66")
+gate("coverage-reached-74", reached == 74, f"got {reached}/74")
 # behavior_complete 门禁：暂不强制 66/66（首轮运行允许部分）
 gate("coverage-behavior-reported", True, f"behavior_complete={behavior_complete}/66")
 

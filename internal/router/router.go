@@ -28,6 +28,7 @@ type Deps struct {
 	LDAP            *handler.LDAPHandler
 	Import          *handler.ImportHandler
 	ImportTpl       *handler.ImportTemplateHandler
+	Telemetry       *handler.TelemetryHandler
 	GinMode         string
 }
 
@@ -62,6 +63,11 @@ func New(d Deps) *gin.Engine {
 			login.POST("/auth/login", d.Auth.Login)
 			login.GET("/auth/captcha", d.Auth.Captcha)
 		}
+
+		// 前端错误遥测(P1-R6):匿名可上报(登录页错误同样可见),每 IP 限流防滥用;
+		// 字段白名单与长度收敛在 handler 内完成
+		telemetry := v1.Group("", middleware.NewRateLimit(30, time.Minute))
+		telemetry.POST("/telemetry/frontend-errors", d.Telemetry.ReportFrontendError)
 
 		authed := v1.Group("")
 		authed.Use(middleware.Auth(d.Secret, d.Users, d.Revoker))
@@ -145,6 +151,7 @@ func New(d Deps) *gin.Engine {
 				admin.GET("/ldap", d.LDAP.Get)
 				admin.PUT("/ldap", d.LDAP.Update)
 				admin.POST("/ldap/test", d.LDAP.Test)
+				admin.GET("/telemetry/frontend-errors", d.Telemetry.ListFrontendErrors)
 			}
 		}
 	}

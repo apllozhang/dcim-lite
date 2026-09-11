@@ -1,20 +1,27 @@
 /**
- * 路由级 feature flag(第三轮复评 P0-R04):新页面与旧 ALE 之间的模块级切换。
+ * 路由级 feature flag(P0-R04;P0-R2 治理修订)。
  *
- * 取值优先级:URL 参数 ale_flags(演示/应急强制)> localStorage(用户级持久)
- * > window.__ALE_ROUTE_OVERRIDES__(部署注入)> 默认 "new"。
+ * 取值优先级:
+ *   生产构建(PROD):部署注入 __ALE_ROUTE_OVERRIDES__ 始终生效(部署端强制策略);
+ *     URL 参数 ale_flags 与 localStorage ale.flags 仅在调试令牌 ale.flags.debug=1
+ *     (授权管理员)时生效,普通用户不可绕过灰度策略。
+ *   开发/测试构建:URL > localStorage > 注入 > 默认。
  * 格式:"tree:legacy,devices:new"。
  *
  * 旧界面地址 = legacyBase + 旧路由;legacyBase 默认 "/legacy"(nginx/dev server
- * 反代到旧 bundle,不覆盖 oracle 的独立端口部署)。
+ * 反代到旧 bundle,不覆盖 oracle 的独立端口部署)。构建注入用 VITE_ALE_LEGACY_BASE
+ * (P0-R2:Vite 只向客户端暴露 envPrefix 内变量,旧名 ALE_LEGACY_BASE 保留兼容)。
  */
 export type RouteFlag = "new" | "legacy";
 
 const STORAGE_KEY = "ale.flags";
+const DEBUG_KEY = "ale.flags.debug";
 const URL_PARAM = "ale_flags";
 
 export const LEGACY_BASE: string =
-  (import.meta.env.ALE_LEGACY_BASE as string | undefined) ?? "/legacy";
+  (import.meta.env.VITE_ALE_LEGACY_BASE as string | undefined) ??
+  (import.meta.env.ALE_LEGACY_BASE as string | undefined) ??
+  "/legacy";
 
 interface FlagStore {
   [module: string]: RouteFlag;
@@ -28,6 +35,26 @@ function parse(raw: string | null | undefined): FlagStore {
     if (mod && (val === "new" || val === "legacy")) out[mod.trim()] = val;
   }
   return out;
+}
+
+/** 纯解析核心(可测):overridesAllowed=false 时 URL/localStorage 一律忽略,仅部署注入生效 */
+export function resolveRouteFlag(
+  module: string,
+  src: { url: FlagStore; storage: FlagStore; injected: FlagStore; overridesAllowed: boolean },
+  fallback: RouteFlag = "new",
+): RouteFlag {
+  if (!src.overridesAllowed) return src.injected[module] ?? fallback;
+  return src.url[module] ?? src.storage[module] ?? src.injected[module] ?? fallback;
+}
+
+/** 调试令牌是否解锁(P0-R2:生产环境 override 治理) */
+export function overridesUnlocked(): boolean {
+  if (!(import.meta.env.PROD as boolean)) return true;
+  try {
+    return localStorage.getItem(DEBUG_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
 function urlFlags(): FlagStore {
@@ -52,7 +79,16 @@ function injectedFlags(): FlagStore {
 }
 
 export function getRouteFlag(module: string, fallback: RouteFlag = "new"): RouteFlag {
-  return urlFlags()[module] ?? storedFlags()[module] ?? injectedFlags()[module] ?? fallback;
+  return resolveRouteFlag(
+    module,
+    {
+      url: urlFlags(),
+      storage: storedFlags(),
+      injected: injectedFlags(),
+      overridesAllowed: overridesUnlocked(),
+    },
+    fallback,
+  );
 }
 
 export function setRouteFlag(module: string, value: RouteFlag): void {

@@ -162,3 +162,8 @@ operations:
     required: [happy_path, conflict, invariant, auth_boundary]
   "DELETE /api/v1/pdu-connections/{id}":
     required: [happy_path, validation, auth_boundary]
+  # P1-R6 前端错误遥测(golden 套件不回放;行为类别为最小集,由集成/e2e 覆盖)
+  "POST /api/v1/telemetry/frontend-errors":
+    required: [happy_path, validation]
+  "GET /api/v1/admin/telemetry/frontend-errors":
+    required: [happy_path, auth_boundary]

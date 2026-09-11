@@ -1,39 +1,43 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
-import type { AxiosAdapter, AxiosResponse } from "axios";
+import type { Mock } from "vitest";
 import { useSessionStore } from "@/features/auth/session";
-import { http, getToken, setToken } from "@/api/client";
+import { getToken, setToken, setUnauthorizedHandler } from "@/api/client";
 
-/** 经 adapter mock,走完整拦截器链 */
-function useAdapter(fn: AxiosAdapter) {
-  http.defaults.adapter = fn;
+/** P1-R4:经 fetch stub,登录/whoami/logout 走完整 openapi-fetch 管道 */
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function useFetch(fn: (input: string) => Promise<Response>): Mock {
+  const spy = vi.fn(fn as (input: unknown) => Promise<Response>);
+  vi.stubGlobal("fetch", spy);
+  return spy;
 }
 
 afterEach(() => {
-  delete http.defaults.adapter;
+  vi.unstubAllGlobals();
   setToken("");
+  setUnauthorizedHandler(() => {});
 });
 
 describe("session store", () => {
   it("login persists token and loads user(isAdmin 派生)", async () => {
     setActivePinia(createPinia());
     let call = 0;
-    useAdapter(async () => {
+    useFetch(async () => {
       call += 1;
       if (call === 1) {
-        return {
-          status: 200,
-          data: { code: "SUCCESS", message: "ok", data: { token: "t-abc" } },
-        } as AxiosResponse;
+        return jsonResponse(200, { code: "SUCCESS", message: "ok", data: { token: "t-abc" } });
       }
-      return {
-        status: 200,
-        data: {
-          code: "SUCCESS",
-          message: "ok",
-          data: { id: "u1", username: "admin", roles: [{ code: "system_admin" }] },
-        },
-      } as AxiosResponse;
+      return jsonResponse(200, {
+        code: "SUCCESS",
+        message: "ok",
+        data: { id: "u1", username: "admin", roles: [{ code: "system_admin" }] },
+      });
     });
     const s = useSessionStore();
     await s.login("admin", "pw", "cid", "1234");
@@ -45,9 +49,8 @@ describe("session store", () => {
   it("logout clears token even when api fails", async () => {
     setActivePinia(createPinia());
     setToken("t-x");
-    useAdapter(async (config) => {
-      const err = new Error("net");
-      throw Object.assign(err, { config, isAxiosError: false });
+    useFetch(async () => {
+      throw new Error("net");
     });
     const s = useSessionStore();
     s.token = "t-x";
@@ -58,8 +61,8 @@ describe("session store", () => {
 
   it("whoami failure keeps anonymous state", async () => {
     setActivePinia(createPinia());
-    useAdapter(async (config) => {
-      throw Object.assign(new Error("boom"), { config });
+    useFetch(async () => {
+      throw new Error("boom");
     });
     const s = useSessionStore();
     s.token = "t-y";
@@ -69,13 +72,7 @@ describe("session store", () => {
 
   it("whoami 401 clears store token(e2e 实测守卫回弹根因)", async () => {
     setActivePinia(createPinia());
-    useAdapter(async (config) => {
-      const { AxiosError } = await import("axios");
-      throw new AxiosError("unauth", undefined, config, undefined, {
-        status: 401,
-        data: { code: "UNAUTHORIZED", message: "expired" },
-      } as AxiosResponse);
-    });
+    useFetch(async () => jsonResponse(401, { code: "UNAUTHORIZED", message: "expired" }));
     const s = useSessionStore();
     s.token = "stale-token";
     await s.whoami();

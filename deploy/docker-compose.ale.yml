@@ -1,0 +1,38 @@
+# dcim-lite 自主前端独立部署栈(P0-R3:19500 的源码化等价物)
+#
+# 形态:ale-app nginx 反代同网络的 backend(服务名 backend),旧 bundle 从仓库
+# frontend/ale 只读卷自提供(不再依赖 oracle 容器)。
+# 网络通过 ALE_UPSTREAM_NETWORK 指向上游栈所在 docker 网络(external)。
+#
+# 用法(干净主机,仅需仓库与本文件声明的输入):
+#   cd deploy
+#   cp .env.example .env   # 按环境填写
+#   docker compose -f docker-compose.ale.yml -p ale-app up -d --build
+#   ./smoke.sh http://127.0.0.1:${ALE_APP_PORT:-19500}
+services:
+  ale-app:
+    build:
+      context: ../frontend/app
+      dockerfile: Dockerfile
+      args:
+        APP_RELEASE: ${APP_RELEASE:-dev}
+    image: dcim-ale-app:${APP_RELEASE:-dev}
+    restart: unless-stopped
+    ports:
+      - "${ALE_APP_PORT:-19500}:80"
+    volumes:
+      # 旧 ALE 编译产物(归档证据;只读。退出条件见 docs/第四轮复评 §7)
+      - ../frontend/ale:/usr/share/nginx/legacy:ro
+      - ./frontend/nginx-default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: []
+    networks: [upstreams]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/login"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+networks:
+  upstreams:
+    name: ${ALE_UPSTREAM_NETWORK:-cabinet-rebuild-dev_default}
+    external: true

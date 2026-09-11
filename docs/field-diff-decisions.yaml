@@ -1,3750 +1,4041 @@
-# 字段差异机器决策台账(P1-C①,2026-09-11)
+# 字段差异机器决策台账(P1-C①;P1-R5 三维模型,2026-09-12)
 #
-# 来源: 三方 FIELD_BREAK 并集 —— docs/DIFF-REPLAY-FINAL-20260911.json(main 1914502,sha256 前12 a4fed7b61c5e)
-#       + 203 双库确定性验证 dualA/dualB vs 冻结基线(2026-09-11,竞态翻转新增 14 条)
-# 覆盖: 并集 354 条具体字段差异 -> 287 条台账目(caseId+fieldPath 唯一)
+# 来源: 四方 FIELD_BREAK 并集 —— docs/DIFF-REPLAY-FINAL-20260911.json(main 1914502)
+#       + 203 双库确定性验证 dualA/dualB(2026-09-11)+ 读模型候选回放 readmodel(竞态翻转与行错位新增)
+# 覆盖: 并集 394 条具体字段差异 -> 287 条台账目(caseId+fieldPath 唯一)
 # 分类口径: 复评 §4 P1-N3 五族; 逐条依据 docs/FIELD-DIFF-CLASSIFICATION-20260911.md
-# 状态: OPEN=待修(须仍在报告中) / ACCEPTED=有意保留(须附理由与证据) / CLOSED=已修复(不得重现)
-# raceDependent: true=条目现身与否取决于并发竞态胜负(免除 OPEN 在场检查,其余规则不变)
+# 三维模型(P1-R5,替代旧 status+residualNoise):
+#   implementationStatus: IMPLEMENTED=代码形状已补齐 / PENDING=待修
+#   observationStatus: CLOSED=报告不再出现 / ACCEPTED_NOISE=仍出现但符合 noiseRule / OBSERVED=待处理
+#   noiseRule(门禁对左右实际值执行,不可执行则为 "-"):
+#     EXACT|ABSENT_OR_NULL|UUID_V4|TIMESTAMP_TOLERANCE|ORDER_INSENSITIVE_BY_KEY|FIXTURE_PREFIX|SYMMETRIC_SWAP|FIXTURE_STATE
+# raceDependent: true=条目现身与否取决于并发竞态胜负(免除 OBSERVED 在场检查)
 # 校验: python3 tests/diff/field_gate.py --ledger <本文件> --report <diff-report.json>
 meta:
-  sourceReport: "DIFF-REPLAY-FINAL-20260911.json + dual-DB verification dualA/dualB (2026-09-11) union"
+  sourceReport: "DIFF-REPLAY-FINAL-20260911.json + dual-DB dualA/dualB + readmodel replay union"
   sourceReportSha256_12: "824593e591b0"
   generatedAtMain: "1914502"
   determinismEvidence: "203 dual-DB run 2026-09-11: A/B fresh DBs, 329/333 EQUIVALENT, 4 race-aftermath field cases"
-  fieldCompatRateBaseline: 68.0
-  fieldCompatRateObserved: "68.6 ~ 71.0 (source/dualA/dualB/readmodel, 2026-09-11) — race pairing and shape replication move the rate; floor set below observed minimum"
   categories: [REQUIRED_BY_NEW_UI, LEGACY_ONLY, INTENTIONAL_FIX, DATA_FIXTURE_NOISE, REAL_DEFECT]
-  statuses: [OPEN, ACCEPTED, CLOSED]
+  implementationStatuses: [IMPLEMENTED, PENDING]
+  observationStatuses: [CLOSED, ACCEPTED_NOISE, OBSERVED]
+  noiseRules: [EXACT, ABSENT_OR_NULL, UUID_V4, TIMESTAMP_TOLERANCE, ORDER_INSENSITIVE_BY_KEY, FIXTURE_PREFIX, SYMMETRIC_SWAP, FIXTURE_STATE]
 entries:
   - caseId: S02-RESOURCE-TREE
     fieldPath: data.items[*].rooms[*].racks[*].templateSnapshot.revision
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商模板快照空壳(revision/uHeight=0),候选填真值——对厂商缺陷的修复,不回退(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S02-RESOURCE-TREE
     fieldPath: data.items[*].rooms[*].racks[*].templateSnapshot.uHeight
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商模板快照空壳(revision/uHeight=0),候选填真值——对厂商缺陷的修复,不回退(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].lifecycleStatus
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].lifecycleStatus
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S05-DEV-LIST-FILTER
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.conflictDevices[*].device.heightU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.conflictDevices[*].device.lifecycleStatus
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.conflictDevices[*].device.type.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.conflictDevices[*].device.type.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.conflictDevices[*].device.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.conflictDevices[*].endU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.conflictDevices[*].heightU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.conflictDevices[*].orientation
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.conflictDevices[*].startU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.conflictDevices[*].version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.heightU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-OVERLAP
     fieldPath: details.startU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-SUCCESS
     fieldPath: data.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ASSIGN-SUCCESS
     fieldPath: data.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-DECOMMISSION
     fieldPath: data.device.heightU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-DECOMMISSION
     fieldPath: data.device.lifecycleStatus
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-DECOMMISSION
     fieldPath: data.device.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-DECOMMISSION
     fieldPath: data.executed
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-DECOMMISSION
     fieldPath: data.heightU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-DECOMMISSION
     fieldPath: data.lifecycleStatus
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-DECOMMISSION
     fieldPath: data.type.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-DECOMMISSION
     fieldPath: data.type.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-DECOMMISSION
     fieldPath: data.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-MOVE-SUCCESS
     fieldPath: data.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-MOVE-SUCCESS
     fieldPath: data.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ULAYOUT-READ
     fieldPath: data.positions[*].version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ULAYOUT-READ
     fieldPath: data.rack.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ULAYOUT-READ
     fieldPath: data.rack.uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ULAYOUT-READ
     fieldPath: data.rack.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ULAYOUT-READ
     fieldPath: data.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06-ULAYOUT-READ
     fieldPath: data.uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT0
     fieldPath: data.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT0
     fieldPath: data.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.conflictDevices[*].device.heightU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.conflictDevices[*].device.lifecycleStatus
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.conflictDevices[*].device.type.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.conflictDevices[*].device.type.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.conflictDevices[*].device.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.conflictDevices[*].endU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.conflictDevices[*].heightU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.conflictDevices[*].orientation
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.conflictDevices[*].startU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.conflictDevices[*].version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.heightU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S06C-U-CONCURRENT-CLIENT1
     fieldPath: details.startU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 位冲突详情不完整:冲突设备对象缺失,弹窗无法显示(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-DC-COPY-SUCCESS
     fieldPath: data.resource.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-DC-COPY-SUCCESS
     fieldPath: data.resource.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-DC-COPY-SUCCESS
     fieldPath: data.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-DC-COPY-SUCCESS
     fieldPath: data.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-RACK-COPY-SUCCESS
     fieldPath: data.resource.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-RACK-COPY-SUCCESS
     fieldPath: data.resource.uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-RACK-COPY-SUCCESS
     fieldPath: data.resource.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-RACK-COPY-SUCCESS
     fieldPath: data.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-RACK-COPY-SUCCESS
     fieldPath: data.templateSnapshot.revision
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-RACK-COPY-SUCCESS
     fieldPath: data.templateSnapshot.uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-RACK-COPY-SUCCESS
     fieldPath: data.uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-RACK-COPY-SUCCESS
     fieldPath: data.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-ROOM-COPY-SUCCESS
     fieldPath: data.resource.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-ROOM-COPY-SUCCESS
     fieldPath: data.resource.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-ROOM-COPY-SUCCESS
     fieldPath: data.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S07-ROOM-COPY-SUCCESS
     fieldPath: data.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "复制响应包装不一致:厂商 data.resource.* 嵌套,候选平铺 data.*;status 枚举亦待对齐(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-APPROVALS-LIST
     fieldPath: data.items[*].device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-APPROVALS-LIST
     fieldPath: data.items[*].device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-APPROVE-SUCCESS
     fieldPath: data.device.heightU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-APPROVE-SUCCESS
     fieldPath: data.device.lifecycleStatus
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-APPROVE-SUCCESS
     fieldPath: data.device.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-APPROVE-SUCCESS
     fieldPath: data.heightU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-APPROVE-SUCCESS
     fieldPath: data.lifecycleStatus
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-APPROVE-SUCCESS
     fieldPath: data.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-APPROVE-SUCCESS
     fieldPath: data.type.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-APPROVE-SUCCESS
     fieldPath: data.type.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "下架/批准响应缺回显对象(data.device.*/executed),前端无法渲染操作结果(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-ASSIGN-CREATES-APPROVAL
     fieldPath: data.approval.device.heightU
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-ASSIGN-CREATES-APPROVAL
     fieldPath: data.approval.device.lifecycleStatus
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-ASSIGN-CREATES-APPROVAL
     fieldPath: data.approval.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-ASSIGN-CREATES-APPROVAL
     fieldPath: data.approval.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-ASSIGN-CREATES-APPROVAL
     fieldPath: data.approval.device.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-REJECTABLE-ASSIGN
     fieldPath: data.approval.device.heightU
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-REJECTABLE-ASSIGN
     fieldPath: data.approval.device.lifecycleStatus
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-REJECTABLE-ASSIGN
     fieldPath: data.approval.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-REJECTABLE-ASSIGN
     fieldPath: data.approval.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-REJECTABLE-ASSIGN
     fieldPath: data.approval.device.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-STALE-ASSIGN-CREATES-APPROVAL
     fieldPath: data.approval.device.heightU
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-STALE-ASSIGN-CREATES-APPROVAL
     fieldPath: data.approval.device.lifecycleStatus
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-STALE-ASSIGN-CREATES-APPROVAL
     fieldPath: data.approval.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-STALE-ASSIGN-CREATES-APPROVAL
     fieldPath: data.approval.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S08-STALE-ASSIGN-CREATES-APPROVAL
     fieldPath: data.approval.device.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S09-TPL-NEW-VERSION
     fieldPath: data.isSystem
     category: REQUIRED_BY_NEW_UI
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "候选返回 isSystem,模板管理页需要;厂商缺失(C01 E 族)"
     targetPhase: "-"
     owner: frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S09-TPL-NEW-VERSION
     fieldPath: data.revision
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S09-TPL-NEW-VERSION
     fieldPath: data.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S09-TPL-NEW-VERSION
     fieldPath: data.uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S09-TPL-NEW-VERSION
     fieldPath: data.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S09-TPL-NEW-VERSION
     fieldPath: data.versions[*].revision
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S09-TPL-NEW-VERSION
     fieldPath: data.versions[*].uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S09-TPL-NEW-VERSION
     fieldPath: data.versions[*].version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S10-CONNECTIONS-LIST
     fieldPath: data.items[*].device.heightU
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "连接列表缺 device/socket 嵌套对象,设备与插座列无数据(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S10-CONNECTIONS-LIST
     fieldPath: data.items[*].device.lifecycleStatus
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "连接列表缺 device/socket 嵌套对象,设备与插座列无数据(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S10-CONNECTIONS-LIST
     fieldPath: data.items[*].device.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "连接列表缺 device/socket 嵌套对象,设备与插座列无数据(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S10-CONNECTIONS-LIST
     fieldPath: data.items[*].socket.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "连接列表缺 device/socket 嵌套对象,设备与插座列无数据(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S10-CONNECTIONS-LIST
     fieldPath: data.items[*].socket.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "连接列表缺 device/socket 嵌套对象,设备与插座列无数据(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S10-PDU-LIST
     fieldPath: data.items[*].sockets
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "PDU 列表不嵌套 sockets,插座面板无数据(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S10-PDU-LIST
     fieldPath: data.items[*].sockets[*].status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "PDU 列表不嵌套 sockets,插座面板无数据(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S10-PDU-LIST
     fieldPath: data.items[*].sockets[*].version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "PDU 列表不嵌套 sockets,插座面板无数据(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S10C-CONCURRENT-CONNECT-CLIENT0
     fieldPath: data.version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "SYMMETRIC_SWAP"
     decision: KEEP_CANDIDATE
     reason: "并发对称用例胜负互换:version 随获胜方变化,等价残影;两侧恰一次成功不变量均 PASS(C01 E 族登记)"
     targetPhase: "-"
     owner: backend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S10C-CONCURRENT-CONNECT-CLIENT1
     fieldPath: data.version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "SYMMETRIC_SWAP"
     decision: KEEP_CANDIDATE
     reason: "并发对称用例胜负互换:version 随获胜方变化,等价残影;两侧恰一次成功不变量均 PASS(C01 E 族登记)"
     targetPhase: "-"
     owner: backend
     raceDependent: true
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S11-USER-RESET-PASSWORD
     fieldPath: data.enabled
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "重置口令响应:厂商返回完整 user(enabled/roles/version),候选为简版(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S11-USER-RESET-PASSWORD
     fieldPath: data.roles[*].version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "重置口令响应:厂商返回完整 user(enabled/roles/version),候选为简版(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S11-USER-RESET-PASSWORD
     fieldPath: data.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "重置口令响应:厂商返回完整 user(enabled/roles/version),候选为简版(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S12-IMPORT-COMMIT
     fieldPath: data.ignored
     category: REQUIRED_BY_NEW_UI
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "导入回执 ignored 明细为候选超集,保留(C01 D/E 族)"
     targetPhase: "-"
     owner: frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S12-IMPORT-VALIDATE
     fieldPath: data.items[*].allowedActions
     category: REQUIRED_BY_NEW_UI
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "候选返回导入决策 allowedActions,导入 UI 需要(C01 E 族)"
     targetPhase: "-"
     owner: frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S12-IMPORT-VALIDATE
     fieldPath: data.summary.decisions
     category: REQUIRED_BY_NEW_UI
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "导入汇总 decisions 明细为候选超集,保留(C01 E 族)"
     targetPhase: "-"
     owner: frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S12-IMPORT-VALIDATE
     fieldPath: data.summary.total
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "导入校验汇总缺 summary.total(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].lifecycleStatus
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-1
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].lifecycleStatus
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-2
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-COMBO
     fieldPath: data.items[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-COMBO
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-COMBO
     fieldPath: data.total
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-LIFE
     fieldPath: data.items[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-LIFE
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-LIFE
     fieldPath: data.total
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].lifecycleStatus
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-SEARCH
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].lifecycleStatus
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S14-S14-PAGE-FILTER-TYPE
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S15-TPL-DUP-REVISION
     fieldPath: data.isSystem
     category: REQUIRED_BY_NEW_UI
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "候选返回 isSystem,模板管理页需要;厂商缺失(C01 E 族)"
     targetPhase: "-"
     owner: frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S15-TPL-DUP-REVISION
     fieldPath: data.revision
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S15-TPL-DUP-REVISION
     fieldPath: data.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S15-TPL-DUP-REVISION
     fieldPath: data.uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S15-TPL-DUP-REVISION
     fieldPath: data.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S15-TPL-DUP-REVISION
     fieldPath: data.versions[*].revision
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S15-TPL-DUP-REVISION
     fieldPath: data.versions[*].uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S15-TPL-DUP-REVISION
     fieldPath: data.versions[*].version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板版本发布响应主体不一致:厂商返回版本对象(revision/uHeight),候选返回模板对象(isSystem/status)(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S15-TPL-LIST-SUCCESS
     fieldPath: data.items[*].versions[*].revision
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板 versions 排序:厂商 revision 逆序,候选升序(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S15-TPL-LIST-SUCCESS
     fieldPath: data.items[*].versions[*].uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: ALIGN_RESPONSE_SHAPE
     reason: "模板 versions 排序:厂商 revision 逆序,候选升序(C01 D 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-OK
     fieldPath: data.device.heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-OK
     fieldPath: data.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-OK
     fieldPath: data.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-OK
     fieldPath: data.position.endU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-OK
     fieldPath: data.position.heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.endU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.heightU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.orientation
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.rack.status
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.rack.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.startU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.currentPosition.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-ASSIGN-READBACK
     fieldPath: data.heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-DEV-WAITING
     fieldPath: data.items[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-DEV-WAITING
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-DEV-WAITING
     fieldPath: data.total
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-MOVE-READBACK
     fieldPath: data.heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-MOVE-READBACK
     fieldPath: data.version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-PAGE-1
     fieldPath: data.items[*].lifecycleStatus
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-PAGE-1
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S16-PAGE-2
     fieldPath: data.items[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-ASSIGN-EXECUTE
     fieldPath: data.device.heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-ASSIGN-EXECUTE
     fieldPath: data.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-ASSIGN-EXECUTE
     fieldPath: data.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-ASSIGN-EXECUTE
     fieldPath: data.device.version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-ASSIGN-EXECUTE
     fieldPath: data.position.endU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-ASSIGN-EXECUTE
     fieldPath: data.position.heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-ASSIGN-EXECUTE
     fieldPath: data.position.startU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].lifecycleStatus
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-1
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].currentPosition.endU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].currentPosition.heightU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].currentPosition.orientation
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].currentPosition.rack.status
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].currentPosition.rack.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].currentPosition.startU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].currentPosition.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].lifecycleStatus
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S17-DEV-PAGE-2
     fieldPath: data.items[*].version
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-EXEC-13
     fieldPath: data.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-EXEC-13
     fieldPath: data.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-EXEC-13
     fieldPath: data.position.endU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-EXEC-13
     fieldPath: data.position.startU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.free[*].endU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.free[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.free[*].startU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.positions[*].device.heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.positions[*].endU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.positions[*].heightU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.positions[*].startU
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "U 布局段集合与起止值随库内占用状态漂移(两侧各自断言 PASS),非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.positions[*].version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.rack.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.rack.uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.rack.version
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.status
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-LAYOUT-13
     fieldPath: data.uHeight
     category: REAL_DEFECT
-    status: OPEN
+    implementationStatus: PENDING
+    observationStatus: OBSERVED
+    noiseRule: "-"
     decision: REPLICATE_VENDOR_SHAPE
     reason: "U 布局读回缺 rack 摘要与行级 version,乐观锁与头部信息不可用(复评 A 族)"
     targetPhase: "P1-写操作迁移前"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.endU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.heightU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.orientation
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.rack.status
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.rack.uHeight
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.rack.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.startU
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: S18-ASSIGN-READ-13
     fieldPath: data.currentPosition.version
     category: REAL_DEFECT
-    status: CLOSED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: REPLICATED_VENDOR_SHAPE
     reason: "设备位置读模型已落地并经回放验证(backendTest/frontendTest 见本条目);残余值为行错位噪声"
     targetPhase: "已复刻"
     owner: backend+frontend
     raceDependent: false
-    residualNoise: true
     backendTest: "internal/integration: TestDeviceCurrentPositionReadModel"
     frontendTest: "frontend/app: DeviceList.test.ts currentPosition renders"
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S02-RACK-CREATE
     fieldPath: data.templateSnapshot.revision
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商模板快照空壳(revision/uHeight=0),候选填真值——对厂商缺陷的修复,不回退(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S02-RACK-CREATE
     fieldPath: data.templateSnapshot.uHeight
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商模板快照空壳(revision/uHeight=0),候选填真值——对厂商缺陷的修复,不回退(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S08C-ASSIGN
     fieldPath: data.approval.device.heightU
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S08C-ASSIGN
     fieldPath: data.approval.device.lifecycleStatus
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S08C-ASSIGN
     fieldPath: data.approval.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S08C-ASSIGN
     fieldPath: data.approval.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S08C-ASSIGN
     fieldPath: data.approval.device.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商审批单内嵌设备空壳(0/''),候选填真值(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S09-RACKB-CREATE
     fieldPath: data.templateSnapshot.revision
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商模板快照空壳(revision/uHeight=0),候选填真值——对厂商缺陷的修复,不回退(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S09-RACKB-CREATE
     fieldPath: data.templateSnapshot.uHeight
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商模板快照空壳(revision/uHeight=0),候选填真值——对厂商缺陷的修复,不回退(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S09-RACKB-CREATE
     fieldPath: data.uHeight
     category: DATA_FIXTURE_NOISE
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "FIXTURE_STATE"
     decision: NOISE_VERIFIED
     reason: "同名字段数值漂移(total/version/heightU/startU/endU/lifecycleStatus):库内数据状态/用例序差异,非行为分歧(C01 B 族);已由 203 双库确定性验证(2026-09-11,同镜像两套全新库回放 329/333 等价,余 4 例为并发竞态次生且恰一次不变量双侧 PASS)——漂移归因于基线库状态/用例序差异"
     targetPhase: "已验证"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S10-DEVA-ASSIGN
     fieldPath: data.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S10-DEVA-ASSIGN
     fieldPath: data.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S10-DEVX-ASSIGN
     fieldPath: data.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S10-DEVX-ASSIGN
     fieldPath: data.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S10C-DEV0-ASSIGN
     fieldPath: data.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S10C-DEV0-ASSIGN
     fieldPath: data.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S10C-DEV1-ASSIGN
     fieldPath: data.device.type.status
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
   - caseId: SETUP-S10C-DEV1-ASSIGN
     fieldPath: data.device.type.version
     category: INTENTIONAL_FIX
-    status: ACCEPTED
+    implementationStatus: IMPLEMENTED
+    observationStatus: ACCEPTED_NOISE
+    noiseRule: "ABSENT_OR_NULL"
     decision: KEEP_CANDIDATE
     reason: "厂商设备类型空壳(status=''/version=0),候选填 ACTIVE/1(C01 C 族)"
     targetPhase: "-"
     owner: backend
     raceDependent: false
-    residualNoise: false
     backendTest: ""
     frontendTest: ""
     evidence: "DIFF-REPLAY-FINAL-20260911.json@main 1914502"
