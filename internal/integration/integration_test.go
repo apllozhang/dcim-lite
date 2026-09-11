@@ -962,6 +962,10 @@ func setupPDUWithSocket(t *testing.T, fx fixture, prefix string) (string, string
 func socketInfo(t *testing.T, pduID, sockID string) (string, float64, bool) {
 	t.Helper()
 	st, body := call("GET", "/api/v1/pdus/"+pduID+"/sockets", nil, adminTok)
+	if st == 404 {
+		// PDU 已被删除/归档:其名下插座必然不可见
+		return "", 0, false
+	}
 	if st != 200 {
 		t.Fatalf("list sockets: %d %v", st, body)
 	}
