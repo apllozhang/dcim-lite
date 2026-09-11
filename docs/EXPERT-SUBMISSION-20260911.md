@@ -6,7 +6,9 @@
 > **更新（2026-09-11 第二轮）**：专家复评意见（《最新代码复评与ALE自主前端启动决策-20260911》）
 > 已给出"有条件 GO"——Phase 0/Phase 1 立即启动，生产写切换受 Gate G1 约束。本轮响应：
 > P0-N1 已关闭（PR #25）、P1-N1/P1-N2 已关闭（PR #26/#27）、字段差异逐项分类完成
-> （`docs/FIELD-DIFF-CLASSIFICATION-20260911.md`），详见 §6。
+> （`docs/FIELD-DIFF-CLASSIFICATION-20260911.md`）、**D01 方案 A 已落地（PR #30）、
+> 前端 Phase 0 已交付（PR #29）、nightly 首次定时跑 SUCCESS、203 两栈已部署最新 main `67af2e2`**，
+> 详见 §6。导读:`EXPERT-COVER-LETTER-20260911.md`。
 
 ## 1. 材料索引（全部在仓库内，均为可复跑证据而非摘要）
 
@@ -102,7 +104,7 @@ pytest 套件（隔离/幂等/非零退出）承担，并已在 203 线上栈两
 「PR25 差分验证跑」(与 nightly 同款冻结基线,真实断裂 0,兼容率 82.0%)复核了
 `48636f3` 的运行时行为。
 
-### 6.2 本轮四批整改（复评派工 B01/B02/T01/T02/C01）
+### 6.2 本轮五批整改（复评派工 B01/B02/T01/T02/C01/D01）
 
 | 派工 | 状态 | 证据 |
 |---|---|---|
@@ -110,6 +112,12 @@ pytest 套件（隔离/幂等/非零退出）承担，并已在 203 线上栈两
 | T01(P1-N1 pytest 清理) | **已关闭**(PR #26/#27,main `7ce8a57`) | 重写清理协议 + `test_teardown_selfcheck.py` 故意失败自测;203 实测 flows 4/4 + selfcheck 双绿 |
 | T02(P1-N2 Python 自测入 CI) | **已关闭**(PR #26) | 三工具更名 selfcheck_*.py + UTF-8 输出;quality job 逐个执行 + pytest 零收集断言;**自测入库前即抓到真实漂移**:coverage-requirements 66 vs OpenAPI 72(PR #22 后),已对齐 |
 | C01(P1-N3 字段差异分类) | **已关闭** | `FIELD-DIFF-CLASSIFICATION-20260911.md`:53 项 = 数据值噪声 ~12 + 形状差异 ~41,复刻项全部划入前端替代范围 |
+| D01(P1-N4 移位与供电连接规则) | **已关闭**(PR #30,main `67af2e2`) | 业务确认方案 A:有活动供电连接禁止移位,`POST /devices/{id}/move` → 409 `DEVICE_POWERED`(设备行锁内检查,与 Connect/Disconnect 串行化);`TestMoveWithActiveConnectionBlocked` 验收(接电禁移→断开可移→复接再禁);golden 套件无带电移位用例,nightly 零影响;decommission 同族问题已在 COMPAT-DECISIONS 登记为待业务明确的关联项 |
+
+**补充证据（2026-09-11 晚）**:
+- **前端 Phase 0 已交付**(PR #29,main `338dd6e`):`docs/frontend/` 四件套(ADR/行为地图/视觉 tokens/legacy-ale 冻结 manifest)+ `frontend/app` 可构建骨架(Vue3+TS+Vite+Element Plus+openapi-typescript 类型生成),登录页/应用壳/资源树+设备列表只读切片;**CI 新增 frontend job**:OpenAPI 契约漂移检测(gen:api 后 diff 必须为空)+lint+vitest+vue-tsc build。
+- **差分 nightly 首次定时触发 SUCCESS**(run 34575314523,2026-09-11 07:38 UTC,恰好运行于 main `338dd6e`)——防漂移门禁在无人干预的定时场景自证可用。
+- **203 两个运行栈均已部署最新 main `67af2e2`**(线上 8080/5173 + dev 19080/19173,镜像 0.2.0):线上库按 main 迁移 0001~0007 重建(旧库 schema 漂移 `pd_uid`→`pdu_id`,测试环境无生产数据,经业务方确认重建;dump 备份留存);部署后 E2E flows 4/4 + selfcheck 双绿,线上冒烟含 D01 拦截实测(接电移位 409 → 断开后 200)。
 
 ### 6.3 Gate G1 门禁进度（复评 §7)
 
@@ -118,8 +126,8 @@ pytest 套件（隔离/幂等/非零退出）承担，并已在 203 线上栈两
 | P0-N1 修复 + 并发测试 | ✅ PR #25 |
 | pytest 清理修复 + 故意失败零残留 | ✅ PR #26/#27 |
 | 字段差异逐项分类 + 数据值差异关闭 | ✅ 分类完成;数据值差异实为库状态噪声(非缺陷) |
-| 设备移位与供电连接规则(D01) | ⏳ 待业务确认(工程侧建议方案 A:有活动连接禁止移位) |
-| 新前端 CI、错误监控、feature flag 回退 | ⏳ Phase 0 交付物 |
+| 设备移位与供电连接规则(D01) | ✅ 方案 A 已落地(PR #30);decommission 同族问题已登记待业务明确 |
+| 新前端 CI、错误监控、feature flag 回退 | 🟨 CI 四 job 已有(含 frontend);错误监控与路由级 feature flag 属 Phase 1 交付,进行中 |
 | 隔离环境只读双跑验收 | ⏳ Phase 1 交付物 |
 
 ### 6.4 复评 §10.4/§10.5 落实
