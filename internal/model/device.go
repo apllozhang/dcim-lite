@@ -33,6 +33,39 @@ type DeviceType struct {
 	SortOrder          int      `gorm:"not null;default:0" json:"sortOrder"`
 }
 
+// CurrentPositionView 设备当前在位读模型（A 族首批，复刻厂商 currentPosition 形状：
+// 仓位行 + rack 摘要）。由服务层按需组装，GORM 不映射；未在位设备为 nil（JSON 省略）。
+type CurrentPositionView struct {
+	ID           uuid.UUID            `gorm:"type:uuid;primaryKey" json:"id"`
+	CreatedAt    time.Time            `json:"createdAt"`
+	UpdatedAt    time.Time            `json:"updatedAt"`
+	Version      uint                 `json:"version"`
+	DeviceID     uuid.UUID            `gorm:"type:uuid" json:"deviceId"`
+	RackID       uuid.UUID            `gorm:"type:uuid" json:"rackId"`
+	RoomID       uuid.UUID            `gorm:"type:uuid" json:"roomId"`
+	DataCenterID uuid.UUID            `gorm:"type:uuid" json:"dataCenterId"`
+	StartU       int                  `json:"startU"`
+	HeightU      int                  `json:"heightU"`
+	EndU         int                  `json:"endU"`
+	Orientation  string               `json:"orientation"`
+	InstalledAt  time.Time            `json:"installedAt"`
+	InstalledBy  *uuid.UUID           `gorm:"type:uuid" json:"installedBy,omitempty"`
+	Reason       string               `json:"reason,omitempty"`
+	Rack         *PositionRackSummary `json:"rack,omitempty"`
+}
+
+// PositionRackSummary currentPosition 内嵌的机柜摘要（厂商形状）。
+type PositionRackSummary struct {
+	ID           uuid.UUID `json:"id"`
+	Code         string    `json:"code"`
+	Name         string    `json:"name"`
+	RoomID       uuid.UUID `json:"roomId"`
+	DataCenterID uuid.UUID `json:"dataCenterId"`
+	UHeight      int       `json:"uHeight"`
+	Status       string    `json:"status"`
+	Version      uint      `json:"version"`
+}
+
 type Device struct {
 	BaseModel
 	TypeID             uuid.UUID   `gorm:"type:uuid;not null;index" json:"typeId"`
@@ -71,6 +104,8 @@ type Device struct {
 	ExternalQRCodeURL  string      `gorm:"size:500" json:"externalQrCodeUrl,omitempty"`
 	Tags               string      `gorm:"size:500" json:"tags,omitempty"`
 	Remarks            string      `gorm:"type:text" json:"remarks,omitempty"`
+	// CurrentPosition 当前在位读模型（读接口由服务层组装；写操作响应不带，与厂商形状一致）
+	CurrentPosition *CurrentPositionView `gorm:"-" json:"currentPosition,omitempty"`
 }
 
 type RackDevicePosition struct {

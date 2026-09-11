@@ -1784,3 +1784,108 @@ func TestDecommissionVsDisconnectRace(t *testing.T) {
 		_ = pduID
 	}
 }
+
+// ── 第三轮复评 P1-C④ 验收:A 族读模型首批 currentPosition ──
+
+// assertNoCurrentPosition 断言响应体不含 currentPosition(未在位设备,厂商形状省略)。
+func assertNoCurrentPosition(t *testing.T, where string, body map[string]any) {
+	t.Helper()
+	if _, ok := data(body)["currentPosition"]; ok {
+		t.Fatalf("%s: idle device must not carry currentPosition", where)
+	}
+}
+
+// assertCurrentPosition 断言在位读模型完整:仓位行 + rack 摘要与厂商形状一致。
+func assertCurrentPosition(t *testing.T, where string, body map[string]any, fx fixture, wantStartU, wantEndU, wantHeightU int) map[string]any {
+	t.Helper()
+	cp, ok := data(body)["currentPosition"].(map[string]any)
+	if !ok {
+		t.Fatalf("%s: currentPosition missing", where)
+	}
+	if int(cp["startU"].(float64)) != wantStartU || int(cp["endU"].(float64)) != wantEndU ||
+		int(cp["heightU"].(float64)) != wantHeightU {
+		t.Fatalf("%s: position U mismatch: %v", where, cp)
+	}
+	if cp["orientation"] != "NORMAL" {
+		t.Fatalf("%s: orientation must be NORMAL, got %v", where, cp["orientation"])
+	}
+	if v, ok := cp["version"].(float64); !ok || v < 1 {
+		t.Fatalf("%s: position row version missing: %v", where, cp["version"])
+	}
+	if cp["rackId"].(string) != fx.rackID {
+		t.Fatalf("%s: rackId mismatch: %v", where, cp["rackId"])
+	}
+	rack, ok := cp["rack"].(map[string]any)
+	if !ok {
+		t.Fatalf("%s: currentPosition.rack summary missing", where)
+	}
+	if rack["id"].(string) != fx.rackID {
+		t.Fatalf("%s: rack.id mismatch: %v", where, rack["id"])
+	}
+	if int(rack["uHeight"].(float64)) != 20 {
+		t.Fatalf("%s: rack.uHeight mismatch: %v", where, rack["uHeight"])
+	}
+	if s, ok := rack["status"].(string); !ok || s == "" {
+		t.Fatalf("%s: rack.status missing: %v", where, rack["status"])
+	}
+	if v, ok := rack["version"].(float64); !ok || v < 1 {
+		t.Fatalf("%s: rack.version missing: %v", where, rack["version"])
+	}
+	return cp
+}
+
+// TestDeviceCurrentPositionReadModel:设备列表/详情读接口返回 currentPosition
+// (A 族首批,复刻厂商形状);未在位设备省略;写操作响应不带该字段。
+func TestDeviceCurrentPositionReadModel(t *testing.T) {
+	fx := newFixture(t, "RM")
+	dev := createDevice(t, fx, "RM-D"+short(), 2)
+
+	// 未在位:详情与列表都不得带 currentPosition
+	st, body := call("GET", "/api/v1/devices/"+dev, nil, adminTok)
+	if st != 200 {
+		t.Fatalf("get idle device: %d", st)
+	}
+	assertNoCurrentPosition(t, "idle detail", body)
+	st, list := call("GET", "/api/v1/devices?search="+data(body)["code"].(string), nil, adminTok)
+	if st != 200 {
+		t.Fatalf("list idle: %d", st)
+	}
+	assertNoCurrentPosition(t, "idle list", list)
+
+	// 上架后:详情与列表返回完整 currentPosition(rack 摘要齐备)
+	if st, _ := call("POST", "/api/v1/devices/"+dev+"/assign",
+		map[string]any{"rackId": fx.rackID, "startU": 3}, adminTok); st != 200 {
+		t.Fatal("assign failed")
+	}
+	st, body = call("GET", "/api/v1/devices/"+dev, nil, adminTok)
+	if st != 200 {
+		t.Fatalf("get positioned device: %d", st)
+	}
+	assertCurrentPosition(t, "detail", body, fx, 3, 4, 2)
+	// 写操作响应不带 currentPosition(与厂商 assign/move 响应形状一致)
+	if _, ok := data(body)["type"]; !ok {
+		t.Fatal("detail should preload type")
+	}
+
+	st, list = call("GET", "/api/v1/devices?search="+data(body)["code"].(string), nil, adminTok)
+	if st != 200 {
+		t.Fatalf("list positioned: %d", st)
+	}
+	items := data(list)["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("search should hit exactly 1, got %d", len(items))
+	}
+	item := items[0].(map[string]any)
+	assertCurrentPosition(t, "list", map[string]any{"data": item}, fx, 3, 4, 2)
+
+	// 下架后:currentPosition 再次省略
+	if st, _ := call("POST", "/api/v1/devices/"+dev+"/decommission",
+		map[string]any{"reason": "读模型验收"}, adminTok); st != 200 {
+		t.Fatal("decommission failed")
+	}
+	st, body = call("GET", "/api/v1/devices/"+dev, nil, adminTok)
+	if st != 200 {
+		t.Fatalf("get decommissioned device: %d", st)
+	}
+	assertNoCurrentPosition(t, "decommissioned detail", body)
+}

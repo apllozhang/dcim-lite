@@ -80,7 +80,17 @@ onMounted(load);
           </el-tag>
         </template>
       </el-table-column>
-      <!-- 位置列待 A 族读模型补齐(Device schema 暂无 currentPosition,P1-C) -->
+      <!-- A 族读模型首批:currentPosition 由后端读接口返回(未在位设备省略) -->
+      <el-table-column label="位置" min-width="170">
+        <template #default="{ row }">
+          <span v-if="row.currentPosition" data-test="device-position" class="tabular-nums">
+            {{ row.currentPosition.rack?.code ?? "" }} · U{{ row.currentPosition.startU }}-{{
+              row.currentPosition.endU
+            }}
+          </span>
+          <span v-else class="muted">—</span>
+        </template>
+      </el-table-column>
     </el-table>
     <el-pagination
       v-model:current-page="page"
@@ -97,5 +107,8 @@ onMounted(load);
   display: flex;
   gap: var(--ale-space-2);
   margin-bottom: var(--ale-space-3);
+}
+.muted {
+  color: var(--ale-text-secondary, #909399);
 }
 </style>

@@ -2225,6 +2225,45 @@ export interface components {
             tags?: string;
             remarks?: string;
             version?: number;
+            currentPosition?: components["schemas"]["CurrentPosition"];
+        };
+        CurrentPosition: {
+            /** Format: uuid */
+            id?: string;
+            createdAt?: string;
+            updatedAt?: string;
+            version?: number;
+            /** Format: uuid */
+            deviceId?: string;
+            /** Format: uuid */
+            rackId?: string;
+            /** Format: uuid */
+            roomId?: string;
+            /** Format: uuid */
+            dataCenterId?: string;
+            startU?: number;
+            heightU?: number;
+            endU?: number;
+            /** @enum {string} */
+            orientation?: "NORMAL" | "REVERSE";
+            installedAt?: string;
+            /** Format: uuid */
+            installedBy?: string | null;
+            reason?: string;
+            rack?: components["schemas"]["PositionRackSummary"];
+        };
+        PositionRackSummary: {
+            /** Format: uuid */
+            id?: string;
+            code?: string;
+            name?: string;
+            /** Format: uuid */
+            roomId?: string;
+            /** Format: uuid */
+            dataCenterId?: string;
+            uHeight?: number;
+            status?: string;
+            version?: number;
         };
         DeviceList: {
             items?: components["schemas"]["Device"][];
