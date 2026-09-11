@@ -1,0 +1,65 @@
+/* ALE design tokens —— 唯一样式来源(规范见 docs/frontend/ALE-VISUAL-TOKENS.md)。
+   业务代码禁止出现硬编码色值(design-system 目录除外)。 */
+
+:root {
+  /* 色彩(参考站实测值) */
+  --ale-primary: #6b489d;
+  --ale-primary-deep: #4f3478;
+  --ale-primary-light: #7e5cb4;
+  --ale-purple-100: #f1ecf7;
+  --ale-ink-900: #1a1a1a;
+  --ale-ink-700: #4b4d50;
+  --ale-ink-500: #75787b;
+  --ale-surface: #ffffff;
+  --ale-surface-soft: #f7f7f5;
+  --ale-line: #d9d9d6;
+  --ale-line-soft: #e9e8e4;
+  --ale-success: #4f9153;
+
+  /* 字体 */
+  --ale-font-family:
+    "Trebuchet MS", "Noto Sans SC", "Microsoft YaHei", -apple-system, "Segoe UI", sans-serif;
+
+  /* 几何 */
+  --ale-radius: 6px;
+  --ale-radius-lg: 8px;
+  --ale-space-1: 4px;
+  --ale-space-2: 8px;
+  --ale-space-3: 16px;
+  --ale-space-4: 24px;
+  --ale-header-h: 56px;
+  --ale-sidebar-w: 220px;
+  --ale-shadow: 0 1px 2px rgba(26, 26, 26, 0.08);
+
+  /* Element Plus 主题映射 */
+  --el-color-primary: var(--ale-primary);
+  --el-color-primary-dark-2: var(--ale-primary-deep);
+  --el-color-primary-light-3: var(--ale-primary-light);
+  --el-color-primary-light-9: var(--ale-purple-100);
+  --el-text-color-primary: var(--ale-ink-900);
+  --el-text-color-regular: var(--ale-ink-700);
+  --el-text-color-secondary: var(--ale-ink-500);
+  --el-border-color: var(--ale-line);
+  --el-border-color-lighter: var(--ale-line-soft);
+  --el-fill-color-light: var(--ale-surface-soft);
+  --el-font-family: var(--ale-font-family);
+  --el-border-radius-base: var(--ale-radius);
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--ale-font-family);
+  color: var(--ale-ink-900);
+  background: var(--ale-surface-soft);
+  font-size: 14px;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
