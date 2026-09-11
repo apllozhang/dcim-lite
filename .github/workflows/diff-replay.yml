@@ -130,18 +130,12 @@ jobs:
             --report determinism-report.json \
             --out determinism-gate.json
 
-      - name: record candidate image digest
-        id: image_digest
-        run: |
-          d=$(docker image inspect diff-rebuild:ci --format '{{index .RepoDigests 0}}' 2>/dev/null || echo "local-build:$(docker image inspect diff-rebuild:ci --format '{{.Id}}')")
-          echo "digest=$d" >> "$GITHUB_OUTPUT"
-
       - name: field gate (P1-C③：未知字段差异默认失败 + 台账双向一致 + 字段兼容率下限)
-        env:
-          # 候选镜像 digest 随门禁摘要一并上报，便于追溯
-          FIELD_GATE_IMAGE_DIGEST: ${{ steps.image_digest.outputs.digest }}
         run: |
           python3 -m pip install --quiet --disable-pip-version-check pyyaml
+          # 候选镜像 Id 随门禁摘要一并上报，便于追溯（本地构建无 RepoDigest，用 .Id）
+          d=$(docker image inspect diff-rebuild:ci --format '{{.Id}}' 2>/dev/null | head -n1 | tr -d '\r\n')
+          export FIELD_GATE_IMAGE_DIGEST="local-build:${d:-unknown}"
           python3 tests/diff/field_gate.py \
             --ledger docs/field-diff-decisions.yaml \
             --report diff-report.json \
