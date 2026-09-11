@@ -102,11 +102,21 @@ def page(browser):
     pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
     pg.goto(BASE_URL + "/login", wait_until="networkidle", timeout=30000)
     pg.wait_for_timeout(1800)
+
+    def _read_captcha():
+        return next((i.get_attribute("src") for i in pg.query_selector_all("img")
+                     if (i.get_attribute("src") or "").startswith("data:image/svg+xml;base64,")), None)
+
+    cap = _read_captcha()
+    if cap is None:
+        # 间歇性渲染时序：验证码 svg 未就绪，刷新重取一次
+        pg.reload(wait_until="networkidle", timeout=30000)
+        pg.wait_for_timeout(1500)
+        cap = _read_captcha()
+    assert cap, "登录页验证码图片未渲染（重试后仍失败）"
+    code = "".join(re.findall(r">(\d)</text>", base64.b64decode(cap.split(",", 1)[1]).decode()))
     pg.fill("input[placeholder='请输入用户名']", E2E_USERNAME)
     pg.fill("input[placeholder='请输入密码']", E2E_PASSWORD)
-    cap = next((i.get_attribute("src") for i in pg.query_selector_all("img")
-                if (i.get_attribute("src") or "").startswith("data:image/svg+xml;base64,")), None)
-    code = "".join(re.findall(r">(\d)</text>", base64.b64decode(cap.split(",", 1)[1]).decode()))
     pg.fill("#cmt-captcha-input", code)
     pg.click("button:has-text('登录')")
     pg.wait_for_function("() => !location.pathname.includes('login')", timeout=15000)
@@ -270,6 +280,8 @@ def env(request, admin_token):
     st, pol = api("GET", "/api/v1/admin/approval-policy", None, admin_token)
     if st == 200:
         ctx["policy_backup"] = data_of(pol)
+
+    return ctx
 
 
 @pytest.hookimpl(hookwrapper=True)

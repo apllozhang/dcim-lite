@@ -18,7 +18,7 @@ BOOM = {}
 @pytest.mark.xfail(reason="故意失败：验证 fixture 在用例异常时仍清理资源", strict=True)
 def test_boom_creates_resources_then_fails(env):
     dev1 = env["make_device"]()
-    dev2 = env["make_device"]()
+    dev2 = env["make_device"]("B")
     BOOM["run_id"] = env["run_id"]
     BOOM["dc"] = env["dc"]
     BOOM["device_ids"] = [dev1["id"], dev2["id"]]
