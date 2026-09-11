@@ -136,3 +136,7 @@ pytest 套件（隔离/幂等/非零退出）承担，并已在 203 线上栈两
   Windows 经 UTF-8 输出保护通过(本地实测 17+11+14 全过),pytest 零误收集有 CI 断言;
 - 本材料定位从「新前端替代待评审」更新为「专家有条件 GO,Phase 0/Phase 1 执行中,
   生产写切换受 Gate G1 约束」。
+
+## 7. 第三轮复评响应（2026-09-12）
+
+P0-A（PR #32）、P0-B（PR #33）、P1-C（PR #34/#35）三批次响应与证据见 docs/EXPERT-SUBMISSION-ROUND3-20260912.md；字段差异机器台账见 docs/field-diff-decisions.yaml，门禁校验器见 tests/diff/field_gate.py 与 tests/diff/determinism_gate.py。
