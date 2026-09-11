@@ -1,12 +1,13 @@
 /**
  * API 客户端:唯一的 HTTP 出口(ADR §3)。页面禁止手写请求。
  *
- * 契约约束(第三轮复评 P0-R03):
- * - 路径参数被 `keyof paths` 约束,写错路径无法通过编译;
- * - 响应类型从生成的 schema 派生,业务代码不得自行声明 T;
- * - Envelope.data 可选:getData 强制非空(缺失抛错),sendData 显式返回 D|undefined。
+ * 契约约束(P0-R03 → 第四轮 P1-R4 升级为 openapi-fetch 强类型客户端):
+ * - 方法/路径/请求体/query/响应四者均由 OpenAPI 生成类型约束;
+ *   GET 路径用于 POST、缺必填 body 字段、响应类型不符都会在编译期失败;
+ * - Envelope.data 可选:GET 路径强制非空(缺失抛 EMPTY_DATA),写路径显式返回 D|undefined;
+ * - 401 全局收口在 middleware 中实现(非 /auth/login 的 401 清 token 并触发注册的 handler)。
  */
-import axios, { AxiosError, type AxiosInstance } from "axios";
+import createClient from "openapi-fetch";
 import type { paths } from "./generated/schema";
 
 export interface Envelope<T = unknown> {
@@ -28,11 +29,6 @@ export class ApiError extends Error {
   }
 }
 
-/** GET /health/ready 探活 */
-export interface ReadyInfo {
-  status?: string;
-}
-
 const TOKEN_KEY = "ale.token";
 
 export function getToken(): string {
@@ -46,27 +42,32 @@ export function setToken(token: string): void {
 
 type UnauthorizedHandler = () => void;
 let onUnauthorized: UnauthorizedHandler = () => {};
-/** 注册全局 401 处理(main.ts 里接路由跳转;P1-R06) */
+/** 注册全局 401 处理(main.ts 里接路由跳转) */
 export function setUnauthorizedHandler(fn: UnauthorizedHandler): void {
   onUnauthorized = fn;
 }
 
-export const http: AxiosInstance = axios.create({ baseURL: "/", timeout: 20000 });
-
-http.interceptors.request.use((cfg) => {
-  const token = getToken();
-  if (token) cfg.headers.Authorization = `Bearer ${token}`;
-  return cfg;
+// 同源部署形态:显式携带 origin(Node fetch 与测试环境不接受相对 URL)。
+// fetch 经"调用时解引用"传递,保证测试期 vi.stubGlobal(fetch) 生效。
+export const api = createClient<paths>({
+  baseUrl: typeof window !== "undefined" ? window.location.origin : "",
+  fetch: (...args) => globalThis.fetch(...(args as Parameters<typeof fetch>)),
 });
 
-http.interceptors.response.use(
-  (resp) => resp,
-  (err: AxiosError<Envelope>) => {
-    const body = err.response?.data;
-    const status = err.response?.status ?? 0;
-    const url = err.config?.url ?? "";
+const REQUEST_TIMEOUT_MS = 20000;
+
+api.use({
+  onRequest({ request }) {
+    const token = getToken();
+    if (token) request.headers.set("Authorization", `Bearer ${token}`);
+    if (!request.signal) {
+      return new Request(request, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    }
+    return request;
+  },
+  onResponse({ request, response }) {
     // 全局 401 收口:除登录本身外,任何 401 清 token 并交由注册的 handler 跳转
-    if (status === 401 && !url.includes("/auth/login")) {
+    if (response.status === 401 && !request.url.includes("/auth/login")) {
       setToken("");
       try {
         onUnauthorized();
@@ -74,61 +75,64 @@ http.interceptors.response.use(
         /* handler 异常不掩盖原始错误 */
       }
     }
-    throw new ApiError(
-      status,
-      body?.code ?? (status === 0 ? "NETWORK_ERROR" : "HTTP_" + status),
-      body?.message ?? err.message,
-      body?.requestId,
-    );
+    return response;
   },
-);
+});
 
-/** 从生成类型提取 GET 响应的 data 部分 */
-type GetData<P extends keyof paths> = paths[P] extends {
-  get: { responses: { 200: { content: { "application/json": infer R } } } };
+/** 从 envelope 类型提取 data 部分 */
+type DataOf<T> = T extends { data?: infer D } ? D : never;
+/** openapi-fetch 的单次调用结果 */
+interface CallResult<T> {
+  data?: T | null;
+  error?: unknown;
+  response: Response;
 }
-  ? R extends { data?: infer D }
-    ? D
-    : never
-  : never;
 
-/** 从生成类型提取 POST 响应的 data 部分 */
-type PostData<P extends keyof paths> = paths[P] extends {
-  post: { responses: { 200: { content: { "application/json": infer R } } } };
+function toApiError(res: { error?: unknown; response: Response }): ApiError {
+  const body = res.error as Envelope | undefined;
+  const status = res.response.status;
+  return new ApiError(
+    status,
+    body?.code ?? (status === 0 ? "NETWORK_ERROR" : "HTTP_" + status),
+    body?.message ?? res.response.statusText,
+    body?.requestId,
+  );
 }
-  ? R extends { data?: infer D }
-    ? D
-    : never
-  : never;
 
-/** GET 并解开 Envelope.data;data 缺失/为空视为契约违例(收紧 P1-R06) */
-export async function getData<P extends keyof paths>(
-  path: P,
-  params?: Record<string, unknown>,
-): Promise<NonNullable<GetData<P>>> {
-  const resp = await http.get<Envelope<GetData<P>>>(path, { params });
-  const data = resp.data?.data;
-  if (data === undefined || data === null) {
-    throw new ApiError(resp.status, "EMPTY_DATA", `响应缺少 data:GET ${String(path)}`);
+/** GET 并解开 Envelope.data;data 缺失/为空视为契约违例(EMPTY_DATA) */
+export async function unwrapData<T>(
+  res: CallResult<T>,
+  op: string,
+): Promise<NonNullable<DataOf<T>>> {
+  if (!res.response.ok || !res.data) throw toApiError(res);
+  const d = (res.data as { data?: DataOf<T> }).data;
+  if (d === undefined || d === null) {
+    throw new ApiError(res.response.status, "EMPTY_DATA", `响应缺少 data:${op}`);
   }
-  return data as NonNullable<GetData<P>>;
+  return d as NonNullable<DataOf<T>>;
 }
 
 /** 写操作(POST/PUT/DELETE):data 可缺(如 logout),显式返回 D|undefined */
-export async function sendData<P extends keyof paths>(
-  method: "post" | "put" | "delete",
-  path: P,
-  body?: unknown,
-  params?: Record<string, unknown>,
-): Promise<PostData<P> | undefined> {
-  const resp = await http.request<Envelope<PostData<P>>>({ method, url: path, data: body, params });
-  return resp.data?.data;
+export async function unwrapOptional<T>(
+  res: CallResult<T>,
+  op: string,
+): Promise<DataOf<T> | undefined> {
+  if (!res.response.ok || !res.data) {
+    if (!res.response.ok) throw toApiError(res);
+    throw new ApiError(res.response.status, "EMPTY_DATA", `响应缺少 envelope:${op}`);
+  }
+  return (res.data as { data?: DataOf<T> }).data;
+}
+
+/** GET /health/ready 探活 */
+export interface ReadyInfo {
+  status?: string;
 }
 
 /** 后端探活(P0-B:补全 /health/ready 交付声明) */
 export async function fetchReady(): Promise<boolean> {
   try {
-    const resp = await http.get<ReadyInfo>("/health/ready", { timeout: 5000 });
+    const resp = await fetch("/health/ready", { signal: AbortSignal.timeout(5000) });
     return resp.status === 200;
   } catch {
     return false;

@@ -3,7 +3,7 @@
  * 类型从生成 schema 派生;el-tree 数据规整在此层完成(组件不做数据变换)。
  */
 import type { components } from "@/api/generated/schema";
-import { getData } from "@/api/client";
+import { api, unwrapData } from "@/api/client";
 
 export type TreeDataCenter = components["schemas"]["TreeDataCenter"];
 export type Device = components["schemas"]["Device"];
@@ -39,7 +39,10 @@ export function toTreeNodes(tree: TreeDataCenter[]): TreeNode[] {
 }
 
 export async function fetchResourceTree(): Promise<TreeNode[]> {
-  const data = await getData("/api/v1/resource-tree");
+  const data = await unwrapData(
+    await api.GET("/api/v1/resource-tree"),
+    "GET /api/v1/resource-tree",
+  );
   return toTreeNodes((data.items ?? []) as TreeDataCenter[]);
 }
 
@@ -53,6 +56,9 @@ export async function fetchDevices(params: {
   pageSize?: number;
   search?: string;
 }): Promise<DevicePage> {
-  const data = await getData("/api/v1/devices", params as Record<string, unknown>);
+  const data = await unwrapData(
+    await api.GET("/api/v1/devices", { params: { query: params } }),
+    "GET /api/v1/devices",
+  );
   return { items: data.items ?? [], total: data.total ?? 0 };
 }

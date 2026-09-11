@@ -1,15 +1,15 @@
 /**
  * 会话 store:登录/登出/当前用户。
- * 类型全部从 OpenAPI 生成 schema 派生(P0-R03);端点路径受 keyof paths 约束。
+ * 类型全部从 OpenAPI 生成 schema 派生(P0-R03);P1-R4 起方法/路径/请求体/响应
+ * 全部由 openapi-fetch 强类型约束(登录 body 不再需要 as never)。
  */
 import { defineStore } from "pinia";
 import type { components } from "@/api/generated/schema";
-import { ApiError, getData, sendData, setToken, getToken } from "@/api/client";
+import { api, unwrapData, unwrapOptional, ApiError, setToken, getToken } from "@/api/client";
 import { reportError } from "@/api/errors";
 
 type User = components["schemas"]["User"];
 type Captcha = components["schemas"]["Captcha"];
-type LoginResult = components["schemas"]["LoginResult"];
 
 export const useSessionStore = defineStore("session", {
   state: () => ({
@@ -29,16 +29,13 @@ export const useSessionStore = defineStore("session", {
   },
   actions: {
     async captcha(): Promise<Captcha> {
-      return getData("/api/v1/auth/captcha");
+      return unwrapData(await api.GET("/api/v1/auth/captcha"), "GET /api/v1/auth/captcha");
     },
     async login(username: string, password: string, captchaId: string, captcha: string) {
-      const data = await sendData("post", "/api/v1/auth/login", {
-        username,
-        password,
-        captchaId,
-        captcha,
-      } as never);
-      const result = data as LoginResult | undefined;
+      const result = await unwrapOptional(
+        await api.POST("/api/v1/auth/login", { body: { username, password, captchaId, captcha } }),
+        "POST /api/v1/auth/login",
+      );
       if (!result?.token) throw new Error("登录响应缺少 token");
       this.token = result.token;
       setToken(result.token);
@@ -47,9 +44,9 @@ export const useSessionStore = defineStore("session", {
     async whoami() {
       if (!this.token) return;
       try {
-        this.user = await getData("/api/v1/auth/me");
+        this.user = await unwrapData(await api.GET("/api/v1/auth/me"), "GET /api/v1/auth/me");
       } catch (e) {
-        // 会话失效:401 拦截器清了 localStorage,这里同步清 store 副本,
+        // 会话失效:401 middleware 清了 localStorage,这里同步清 store 副本,
         // 否则路由守卫仍按"已登录"放行(P1-R06 e2e 实测踩中)
         if (e instanceof ApiError && e.status === 401) {
           this.token = "";
@@ -63,7 +60,7 @@ export const useSessionStore = defineStore("session", {
     },
     async logout() {
       try {
-        await sendData("post", "/api/v1/auth/logout");
+        await unwrapOptional(await api.POST("/api/v1/auth/logout"), "POST /api/v1/auth/logout");
       } catch (e) {
         // 登出接口失败(网络/后端 5xx)不阻断本地会话清理
         reportError({
