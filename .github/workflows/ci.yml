@@ -102,3 +102,29 @@ jobs:
         with:
           format: spdx-json
           artifact-name: dcim-lite-sbom
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/app/package-lock.json
+      - name: install dependencies
+        run: npm ci
+      - name: OpenAPI typegen + contract drift check
+        run: |
+          npm run gen:api
+          git diff --exit-code -- src/api/generated/schema.d.ts || \
+            (echo "openapi.yaml 与已提交的生成类型不一致,请重新 gen:api 并提交" && exit 1)
+      - name: lint (eslint + prettier)
+        run: npm run lint
+      - name: unit tests (vitest)
+        run: npm test
+      - name: build (vue-tsc + vite)
+        run: npm run build
