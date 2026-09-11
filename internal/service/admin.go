@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -58,7 +59,32 @@ func (s *AdminService) ListUsers(q UserListQuery) ([]model.User, error) {
 	return s.users.ListUsers(q.Search, q.AuthSource)
 }
 
-func (s *AdminService) CreateUser(in UserAdminInput) (*model.User, error) {
+// auditJSON 构造审计 payload（脱敏：不含密码/hash，只记业务字段）。
+func auditJSON(fields map[string]any) *string {
+	b, err := json.Marshal(fields)
+	if err != nil {
+		return nil
+	}
+	s := string(b)
+	return &s
+}
+
+// writeAuditTx 在调用方事务内写业务审计（合规敏感操作：权限变更类不做 best-effort）。
+func writeAuditTx(tx *gorm.DB, action string, target *model.User, actor uuid.UUID, fields map[string]any) error {
+	tid := target.ID
+	after := auditJSON(fields)
+	return tx.Create(&model.AuditLog{
+		UserID:       &actor,
+		Action:       action,
+		ResourceType: "user",
+		ResourceID:   &tid,
+		AfterJSON:    after,
+		Result:       "SUCCESS",
+		Source:       "api",
+	}).Error
+}
+
+func (s *AdminService) CreateUser(in UserAdminInput, actor *uuid.UUID) (*model.User, error) {
 	in.Username = strings.TrimSpace(in.Username)
 	in.DisplayName = strings.TrimSpace(in.DisplayName)
 	// 厂商对用户字段错误返回 INVALID_USER（差分用例 S14-VAL-USER-EMPTYNAME/SHORTPW、S15-USER-NO-PASSWORD）
@@ -93,16 +119,30 @@ func (s *AdminService) CreateUser(in UserAdminInput) (*model.User, error) {
 		PasswordHash: string(hash), AuthSource: in.AuthSource, Enabled: enabled,
 		Roles: roles,
 	}
-	if err := s.users.CreateUser(u); err != nil {
-		if repository.IsUniqueViolation(err) {
-			return nil, apperr.New(409, "USER_CONFLICT", "用户名已存在")
+	// 创建用户与审计同事务：权限变更类操作的业务审计不做 best-effort
+	err = s.users.DB().Transaction(func(tx *gorm.DB) error {
+		if err := s.users.WithTx(tx).CreateUser(u); err != nil {
+			if repository.IsUniqueViolation(err) {
+				return apperr.New(409, "USER_CONFLICT", "用户名已存在")
+			}
+			return err
 		}
+		return s.users.WithTx(tx).WriteAudit(&model.AuditLog{
+			UserID: actor,
+			Action: "USER_CREATE", ResourceType: "user", ResourceID: &u.ID,
+			AfterJSON: auditJSON(map[string]any{
+				"username": u.Username, "enabled": u.Enabled, "roles": in.desiredRoleCodes(),
+			}),
+			Result: "SUCCESS", Source: "api",
+		})
+	})
+	if err != nil {
 		return nil, err
 	}
 	return s.users.FindByID(u.ID)
 }
 
-func (s *AdminService) UpdateUser(id uuid.UUID, version uint, in UserAdminInput) (*model.User, error) {
+func (s *AdminService) UpdateUser(id uuid.UUID, version uint, in UserAdminInput, actor *uuid.UUID) (*model.User, error) {
 	// 事务 + 管理员集合不变量锁：先取事务级 advisory 锁再校验，两个事务各自降级
 	// 不同管理员的写偏斜（互降级双双放行、系统归零管理员）在此串行化
 	err := s.users.DB().Transaction(func(tx *gorm.DB) error {
@@ -162,7 +202,19 @@ func (s *AdminService) UpdateUser(id uuid.UUID, version uint, in UserAdminInput)
 			}
 		}
 		// 停用（启用→停用）时递增会话版本：吊销该用户全部旧 token，防止重新启用后复活
-		return mapStoreErr(users.UpdateUser(id, version, in.Username, in.DisplayName, strings.TrimSpace(in.Email), in.AuthSource, enabled, roles, existing.Enabled && !enabled))
+		if err := mapStoreErr(users.UpdateUser(id, version, in.Username, in.DisplayName, strings.TrimSpace(in.Email), in.AuthSource, enabled, roles, existing.Enabled && !enabled)); err != nil {
+			return err
+		}
+		// 权限变更审计与业务同事务
+		if actor != nil {
+			if err := writeAuditTx(tx, "USER_UPDATE", existing, *actor, map[string]any{
+				"username": in.Username, "enabled": enabled,
+				"roles": in.desiredRoleCodes(), "wasEnabled": existing.Enabled,
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -170,7 +222,7 @@ func (s *AdminService) UpdateUser(id uuid.UUID, version uint, in UserAdminInput)
 	return s.users.FindByID(id)
 }
 
-func (s *AdminService) DeleteUser(id uuid.UUID, version uint) error {
+func (s *AdminService) DeleteUser(id uuid.UUID, version uint, actor *uuid.UUID) error {
 	return s.users.DB().Transaction(func(tx *gorm.DB) error {
 		users := s.users.WithTx(tx)
 		if err := users.LockAdminInvariant(tx); err != nil {
@@ -192,11 +244,21 @@ func (s *AdminService) DeleteUser(id uuid.UUID, version uint) error {
 				return apperr.New(409, "LAST_ADMIN_PROTECTED", "不能删除最后一个管理员")
 			}
 		}
-		return mapStoreErr(users.SoftDeleteUser(id, version))
+		if err := mapStoreErr(users.SoftDeleteUser(id, version)); err != nil {
+			return err
+		}
+		if actor != nil {
+			if err := writeAuditTx(tx, "USER_DELETE", existing, *actor, map[string]any{
+				"username": existing.Username,
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
-func (s *AdminService) ResetPassword(id uuid.UUID, version uint, password string) error {
+func (s *AdminService) ResetPassword(id uuid.UUID, version uint, password string, actor *uuid.UUID) error {
 	if len([]rune(password)) < 8 {
 		return apperr.New(400, "INVALID_USER", "invalid user: 本地用户密码至少 8 位")
 	}
@@ -210,7 +272,17 @@ func (s *AdminService) ResetPassword(id uuid.UUID, version uint, password string
 	if err != nil {
 		return err
 	}
-	return mapStoreErr(s.users.UpdatePasswordHash(id, version, string(hash)))
+	// 重置密码与审计同事务：重置即全端吊销，属合规敏感动作
+	return s.users.DB().Transaction(func(tx *gorm.DB) error {
+		if err := mapStoreErr(s.users.WithTx(tx).UpdatePasswordHash(id, version, string(hash))); err != nil {
+			return err
+		}
+		if actor != nil {
+			return writeAuditTx(tx, "USER_RESET_PASSWORD", &model.User{BaseModel: model.BaseModel{ID: id}}, *actor,
+				map[string]any{"targetUser": id})
+		}
+		return nil
+	})
 }
 
 func (s *AdminService) resolveRoles(codes []string) ([]model.Role, error) {

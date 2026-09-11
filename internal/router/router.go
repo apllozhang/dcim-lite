@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"dcim-lite/internal/handler"
 	"dcim-lite/internal/middleware"
@@ -36,7 +37,10 @@ func New(d Deps) *gin.Engine {
 	}
 	r := gin.New()
 	r.Use(middleware.RequestID(), middleware.Recovery(), gin.Logger())
-
+	// Prometheus 指标：请求计数/时延（路径取路由模板）
+	r.Use(middleware.Metrics())
+	// /metrics 公开（只暴露聚合指标，无业务数据）；生产可由反代/防火墙限制来源
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	r.NoRoute(func(c *gin.Context) {
 		response.Fail(c, 404, "RESOURCE_NOT_FOUND", "接口不存在")
 	})
