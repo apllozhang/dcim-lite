@@ -1,0 +1,29 @@
+# 权限角色矩阵（第六轮 §5）
+roles:
+  anonymous: []
+  user: [read]
+  system_admin: [read, write, approve, admin]
+
+operations:
+  "GET /api/v1/resource-tree":
+    allow: [user, system_admin]
+    deny: [anonymous]
+  "POST /api/v1/data-centers":
+    allow: [system_admin]
+    deny: [anonymous, user]
+  "POST /api/v1/devices":
+    allow: [system_admin]
+    deny: [anonymous, user]
+  "POST /api/v1/devices/{id}/assign":
+    allow: [system_admin]
+    deny: [anonymous, user]
+  "DELETE /api/v1/admin/users/{id}":
+    allow: [system_admin]
+    deny: [anonymous, user]
+    invariant: "last_admin_protected"
+  "PUT /api/v1/admin/approval-policy":
+    allow: [system_admin]
+    deny: [anonymous, user]
+  "POST /api/v1/admin/ldap/test":
+    allow: [system_admin]
+    deny: [anonymous, user]

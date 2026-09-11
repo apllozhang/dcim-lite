@@ -1,0 +1,86 @@
+# 状态机要求（第九轮 §10.1）
+stateMachines:
+  deviceLifecycle:
+    states: [WAITING_RACK, ON_RACK, OFF_RACK, SCRAPPED]
+    transitions:
+      - from: WAITING_RACK
+        action: assign
+        to: ON_RACK
+        allowed: true
+        evidenceCaseId: S06-ASSIGN-SUCCESS
+      - from: ON_RACK
+        action: move
+        to: ON_RACK
+        allowed: true
+        evidenceCaseId: S06-MOVE-SUCCESS
+      - from: ON_RACK
+        action: decommission
+        to: SCRAPPED
+        allowed: true
+        evidenceCaseId: S06-DECOMMISSION
+      - from: SCRAPPED
+        action: decommission
+        to: SCRAPPED
+        allowed: false
+        evidenceCaseId: S18-DECOMM-CONFLICT
+
+  approvalStatus:
+    states: [PENDING, APPROVED, REJECTED]
+    transitions:
+      - from: PENDING
+        action: approve
+        to: APPROVED
+        allowed: true
+        evidenceCaseId: S08-APPROVE-SUCCESS
+      - from: PENDING
+        action: reject
+        to: REJECTED
+        allowed: true
+        evidenceCaseId: S08-REJECT-SUCCESS
+      - from: REJECTED
+        action: reject
+        to: REJECTED
+        allowed: false
+        evidenceCaseId: S08-REJECT-DUPLICATE
+
+  userEnabled:
+    states: [ENABLED, DISABLED]
+    transitions:
+      - from: ENABLED
+        action: disable
+        to: DISABLED
+        allowed: true
+        evidenceCaseId: S11-USER-DISABLE
+      - from: DISABLED
+        action: enable
+        to: ENABLED
+        allowed: true
+        evidenceCaseId: S02-DC-ENABLE
+
+  templateVersion:
+    states: [ACTIVE, DISABLED, DELETED]
+    transitions:
+      - from: ACTIVE
+        action: newVersion
+        to: ACTIVE
+        allowed: true
+        evidenceCaseId: S09-TPL-NEW-VERSION
+      - from: ACTIVE
+        action: disable
+        to: DISABLED
+        allowed: true
+        evidenceCaseId: S09-SYS-TPL-DISABLE
+
+  socketConnection:
+    states: [FREE, CONNECTED]
+    transitions:
+      - from: FREE
+        action: connect
+        to: CONNECTED
+        allowed: true
+        evidenceCaseId: S10-CONNECT-SUCCESS
+      - from: CONNECTED
+        action: disconnect
+        to: FREE
+        allowed: true
+        evidenceCaseId: S10-DISCONNECT

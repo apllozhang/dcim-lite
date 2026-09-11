@@ -1,0 +1,150 @@
+# 行为覆盖要求（第四轮 P0-1）
+# 每个 OpenAPI 操作的适用必测类别。finalize_run 按 required - passed 计算缺失。
+# 类别: happy_path / auth_boundary / validation / conflict / stale_version / invariant / pagination
+operations:
+  "GET /health/live":
+    required: [happy_path]
+  "GET /health/ready":
+    required: [happy_path]
+
+  "POST /api/v1/auth/login":
+    required: [happy_path, validation]
+  "GET /api/v1/auth/me":
+    required: [happy_path, auth_boundary]
+  "POST /api/v1/auth/logout":
+    required: [happy_path]
+
+  "GET /api/v1/resource-tree":
+    required: [happy_path, auth_boundary]
+
+  "POST /api/v1/data-centers":
+    required: [happy_path, validation, conflict, auth_boundary]
+  "PUT /api/v1/data-centers/{id}":
+    required: [happy_path, validation, stale_version, auth_boundary]
+  "DELETE /api/v1/data-centers/{id}":
+    required: [happy_path, conflict, auth_boundary]
+  "POST /api/v1/data-centers/{id}/rooms":
+    required: [happy_path, validation, conflict, auth_boundary]
+  "POST /api/v1/data-centers/{id}/copy":
+    required: [happy_path, conflict, stale_version, auth_boundary]
+
+  "PUT /api/v1/rooms/{id}":
+    required: [happy_path, validation, auth_boundary]
+  "DELETE /api/v1/rooms/{id}":
+    required: [happy_path, conflict, auth_boundary]
+  "POST /api/v1/rooms/{id}/racks":
+    required: [happy_path, validation, conflict, auth_boundary]
+  "POST /api/v1/rooms/{id}/copy":
+    required: [happy_path, conflict, stale_version, auth_boundary]
+  "POST /api/v1/rooms/{id}/move":
+    required: [happy_path, conflict, stale_version, invariant, auth_boundary]
+
+  "PUT /api/v1/racks/{id}":
+    required: [happy_path, validation, auth_boundary]
+  "DELETE /api/v1/racks/{id}":
+    required: [happy_path, conflict, auth_boundary]
+  "POST /api/v1/racks/{id}/copy":
+    required: [happy_path, conflict, stale_version, auth_boundary]
+  "POST /api/v1/racks/{id}/move":
+    required: [happy_path, conflict, stale_version, invariant, auth_boundary]
+  "GET /api/v1/racks/{id}/u-layout":
+    required: [happy_path, auth_boundary]
+
+  "GET /api/v1/racks/{rackId}/pdus":
+    required: [happy_path, auth_boundary]
+  "POST /api/v1/racks/{rackId}/pdus":
+    required: [happy_path, validation, conflict, auth_boundary]
+  "GET /api/v1/racks/{rackId}/pdu-connections":
+    required: [happy_path, auth_boundary]
+
+  "GET /api/v1/device-types":
+    required: [happy_path, auth_boundary]
+  "POST /api/v1/device-types":
+    required: [happy_path, validation, conflict, auth_boundary]
+  "PUT /api/v1/device-types/{id}":
+    required: [happy_path, validation, auth_boundary]
+  "DELETE /api/v1/device-types/{id}":
+    required: [happy_path, conflict, auth_boundary]
+
+  "GET /api/v1/devices":
+    required: [happy_path, pagination, auth_boundary]
+  "POST /api/v1/devices":
+    required: [happy_path, validation, conflict, auth_boundary]
+  "GET /api/v1/devices/{id}":
+    required: [happy_path, auth_boundary]
+  "PUT /api/v1/devices/{id}":
+    required: [happy_path, validation, stale_version, auth_boundary]
+  "DELETE /api/v1/devices/{id}":
+    required: [happy_path, conflict, auth_boundary]
+  "POST /api/v1/devices/{id}/assign":
+    required: [happy_path, validation, conflict, invariant, auth_boundary]
+  "POST /api/v1/devices/{id}/move":
+    required: [happy_path, conflict, invariant, auth_boundary]
+  "POST /api/v1/devices/{id}/decommission":
+    required: [happy_path, conflict, auth_boundary]
+  "GET /api/v1/devices/{id}/history":
+    required: [happy_path, auth_boundary]
+
+  "GET /api/v1/rack-templates":
+    required: [happy_path, auth_boundary]
+  "POST /api/v1/rack-templates":
+    required: [happy_path, validation, conflict, auth_boundary]
+  "PUT /api/v1/rack-templates/{id}":
+    required: [happy_path, validation, conflict, auth_boundary]
+  "DELETE /api/v1/rack-templates/{id}":
+    required: [happy_path, conflict, auth_boundary]
+  "POST /api/v1/rack-templates/{id}/versions":
+    required: [happy_path, conflict, stale_version, auth_boundary]
+
+  "GET /api/v1/admin/users":
+    required: [happy_path, auth_boundary]
+  "POST /api/v1/admin/users":
+    required: [happy_path, validation, conflict, auth_boundary]
+  "PUT /api/v1/admin/users/{id}":
+    required: [happy_path, validation, conflict, auth_boundary]
+  "DELETE /api/v1/admin/users/{id}":
+    required: [happy_path, conflict, auth_boundary]
+  "POST /api/v1/admin/users/{id}/reset-password":
+    required: [happy_path, validation, auth_boundary]
+
+  "GET /api/v1/admin/roles":
+    required: [happy_path, auth_boundary]
+  "GET /api/v1/admin/approvals":
+    required: [happy_path, auth_boundary]
+  "POST /api/v1/admin/approvals/{id}/approve":
+    required: [happy_path, conflict, stale_version, auth_boundary]
+  "POST /api/v1/admin/approvals/{id}/reject":
+    required: [happy_path, conflict, stale_version, auth_boundary]
+  "GET /api/v1/admin/approval-policy":
+    required: [happy_path, auth_boundary]
+  "PUT /api/v1/admin/approval-policy":
+    required: [happy_path, auth_boundary]
+
+  "GET /api/v1/admin/ldap":
+    required: [happy_path, auth_boundary]
+  "PUT /api/v1/admin/ldap":
+    required: [happy_path, auth_boundary]
+  "POST /api/v1/admin/ldap/test":
+    required: [happy_path]
+
+  "POST /api/v1/rooms/{id}/rack-diagram-import/validate":
+    required: [happy_path, validation, auth_boundary]
+  "POST /api/v1/rooms/{id}/rack-diagram-import/commit":
+    required: [happy_path, conflict, auth_boundary]
+
+  "PUT /api/v1/pdus/{id}":
+    required: [happy_path, validation, auth_boundary]
+  "DELETE /api/v1/pdus/{id}":
+    required: [happy_path, conflict, auth_boundary]
+  "GET /api/v1/pdus/{id}/sockets":
+    required: [happy_path, auth_boundary]
+  "POST /api/v1/pdus/{id}/sockets":
+    required: [happy_path, validation, conflict, auth_boundary]
+  "PUT /api/v1/pdu-sockets/{id}":
+    required: [happy_path, validation, auth_boundary]
+  "DELETE /api/v1/pdu-sockets/{id}":
+    required: [happy_path, conflict, auth_boundary]
+  "POST /api/v1/pdu-sockets/{id}/connection":
+    required: [happy_path, conflict, invariant, auth_boundary]
+  "DELETE /api/v1/pdu-connections/{id}":
+    required: [happy_path, validation, auth_boundary]
