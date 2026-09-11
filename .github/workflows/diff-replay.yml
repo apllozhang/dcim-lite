@@ -11,7 +11,7 @@ on:
 jobs:
   diff:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -88,6 +88,65 @@ jobs:
           print("diff-replay gate: PASS")
           PY
 
+      # ── P1-C② 确定性双库验证:抹卷重启得到第二套全新库,再回放一遍 ──
+      - name: reset stack for second fresh-DB run
+        working-directory: tests/diff
+        run: |
+          docker compose -f docker-compose.ci.yml down -v
+          docker compose -f docker-compose.ci.yml up -d
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/health/ready || true)
+            [ "$code" = "200" ] && echo "candidate ready" && exit 0
+            sleep 2
+          done
+          echo "candidate did not come back" >&2
+          exit 1
+
+      - name: replay golden suite (second fresh DB)
+        working-directory: tests/sandbox
+        env:
+          GT_CAPTCHA: auto
+        run: |
+          python3 gt_final_v3.py \
+            --env-file ../diff/ci.env \
+            --run-id "ci-$GITHUB_RUN_ID-b" \
+            --pg none \
+            --out "$GITHUB_WORKSPACE/out-run2" \
+            --api http://127.0.0.1:18080
+
+      - name: compare run2 vs run1 (determinism)
+        working-directory: tests/sandbox
+        run: |
+          python3 diff_compare_v2.py \
+            "$GITHUB_WORKSPACE/out/final-regression" \
+            "$GITHUB_WORKSPACE/out-run2/final-regression" \
+            "$GITHUB_WORKSPACE/determinism-report.md"
+
+      - name: determinism gate (P1-C②③：两套全新库间除已登记噪声外零差异)
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pyyaml
+          python3 tests/diff/determinism_gate.py \
+            --ledger docs/field-diff-decisions.yaml \
+            --report determinism-report.json \
+            --out determinism-gate.json
+
+      - name: record candidate image digest
+        id: image_digest
+        run: |
+          d=$(docker image inspect diff-rebuild:ci --format '{{index .RepoDigests 0}}' 2>/dev/null || echo "local-build:$(docker image inspect diff-rebuild:ci --format '{{.Id}}')")
+          echo "digest=$d" >> "$GITHUB_OUTPUT"
+
+      - name: field gate (P1-C③：未知字段差异默认失败 + 台账双向一致 + 字段兼容率下限)
+        env:
+          # 候选镜像 digest 随门禁摘要一并上报，便于追溯
+          FIELD_GATE_IMAGE_DIGEST: ${{ steps.image_digest.outputs.digest }}
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pyyaml
+          python3 tests/diff/field_gate.py \
+            --ledger docs/field-diff-decisions.yaml \
+            --report diff-report.json \
+            --out field-gate.json
+
       - name: upload report
         if: always()
         uses: actions/upload-artifact@v4
@@ -96,3 +155,7 @@ jobs:
           path: |
             diff-report.md
             diff-report.json
+            field-gate.json
+            determinism-report.md
+            determinism-report.json
+            determinism-gate.json

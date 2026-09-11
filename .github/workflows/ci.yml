@@ -43,6 +43,13 @@ jobs:
           n=$(python3 -m pytest tests/sandbox/ --collect-only -q 2>/dev/null | grep -c "::" || true)
           echo "collected: $n"
           test "$n" -eq 0
+      - name: field-decision ledger gate (P1-C③：台账 schema/唯一键 + 与冻结差分报告双向一致)
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 tests/diff/field_gate.py \
+            --ledger docs/field-diff-decisions.yaml \
+            --report docs/DIFF-REPLAY-FINAL-20260911.json \
+            --out field-gate-summary.json
 
   integration:
     runs-on: ubuntu-latest

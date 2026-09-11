@@ -152,6 +152,15 @@ def detect_symmetric_pairs(base, cand):
     return pairs
 
 
+UUID_TAIL_RE = re.compile(r"-[0-9a-f]{4,8}(?:-[0-9a-f]{1,4})*-?$", re.IGNORECASE)
+
+
+def root_key(cid):
+    """AUTH 探针用例的 caseId 内嵌资源 UUID(每库不同),配对前先剥掉后缀。
+    例:S14-AUTH-003-PUT-bf3f8967-a7d0- -> S14-AUTH-003-PUT"""
+    return UUID_TAIL_RE.sub("", cid)
+
+
 def main():
     bd, cd = sys.argv[1], sys.argv[2]
     outp = sys.argv[3] if len(sys.argv) > 3 else "diff-report-v2.md"
@@ -159,6 +168,9 @@ def main():
     cand = load_results(os.path.join(cd, "results.jsonl"))
     base_n = load_normalized(os.path.join(bd, "api", "normalized", "normalized.jsonl"))
     cand_n = load_normalized(os.path.join(cd, "api", "normalized", "normalized.jsonl"))
+    cand_by_root = {}
+    for cid in cand:
+        cand_by_root.setdefault(root_key(cid), []).append(cid)
 
     sym_members = detect_symmetric_pairs(base, cand)
     cats = collections.Counter()
@@ -169,6 +181,13 @@ def main():
         if b["kind"] not in ("TEST", "SETUP"):
             continue
         c = cand.get(cid)
+        if c is None:
+            # caseId 内嵌 UUID 时按 root 配对(两侧库的 UUID 必然不同)
+            root_matches = cand_by_root.get(root_key(cid), [])
+            if root_key(cid) != cid and len(root_matches) == 1:
+                c = cand[root_matches[0]]
+            elif root_key(cid) != cid:
+                continue  # root 相同的多条探针无法一一配对,不计 MISSING
         if c is None:
             missing.append(cid)
             cats["MISSING"] += 1
@@ -181,7 +200,8 @@ def main():
         if cat in ("BREAK_STATUS", "BREAK_CODE", "BREAK_BOTH"):
             breaks.append((cid, why, b, c))
             continue
-        bn, cn = base_n.get(cid), cand_n.get(cid)
+        bn = base_n.get(cid)
+        cn = cand_n.get(c["caseId"]) if c is not None else None
         if bn is None or cn is None:
             continue
         diffs = field_diffs(bn, cn)
