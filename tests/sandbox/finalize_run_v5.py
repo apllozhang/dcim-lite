@@ -145,7 +145,7 @@ def main():
                 if method in ("get", "post", "put", "delete", "patch"):
                     ops.append((method.upper(), path))
         gate("openapi-parseable", True)
-        gate("openapi-count-72", len(ops) == 72, f"got {len(ops)}")
+        gate("openapi-count-74", len(ops) == 74, f"got {len(ops)}")  # P1-R6: +telemetry/frontend-errors x2
     except Exception as e:
         gate("openapi-parseable", False, str(e)[:80])
         ops = []
@@ -157,7 +157,7 @@ def main():
             m, p = key.split(" ", 1)
             req_map[(m, p)] = set(spec.get("required", []))
         gate("requirements-parseable", True)
-        gate("requirements-count-72", len(req_map) == 72, f"got {len(req_map)}")
+        gate("requirements-count-74", len(req_map) == 74, f"got {len(req_map)}")
         req_keys = set(req_map.keys())
         openapi_keys = set(ops)
         gate("requirements-match-openapi", req_keys == openapi_keys,
@@ -249,9 +249,9 @@ def main():
             "evidence_cases": ";".join(sorted(set(c["caseId"] for c in mc if c["kind"] == "TEST"))[:5]),
         })
 
-    gate("coverage-reached-72", reached == 72, f"got {reached}/72")
+    gate("coverage-reached-74", reached == 74, f"got {reached}/72")
     # P0-C: 真门禁（非写死）
-    gate("coverage-behavior-complete-72", behavior_complete == 72, f"got {behavior_complete}/72")
+    gate("coverage-behavior-complete-72", behavior_complete == 74, f"got {behavior_complete}/74")
 
     # 写矩阵
     cov_dir = FR / "coverage"

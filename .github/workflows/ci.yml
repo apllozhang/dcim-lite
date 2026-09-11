@@ -185,6 +185,7 @@ jobs:
           done
           curl -sf http://127.0.0.1:18080/health/ready || (cat /tmp/backend.log && exit 1)
       - name: start real legacy static site (P0-R1:回退演练必须加载真旧页面)
+        working-directory: .
         run: |
           mkdir -p /tmp/legacy-site
           cp -r frontend/ale/. /tmp/legacy-site/
