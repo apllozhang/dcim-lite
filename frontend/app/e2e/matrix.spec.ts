@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "playwright/test";
+import * as fs from "node:fs";
 
 /**
  * 第 5 轮 P1-D 收口(复评 §5/§6):
@@ -325,7 +326,11 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
     page.waitForEvent("download", { timeout: 30000 }),
     page.locator("[data-test=screen-export-btn]").click(),
   ]);
-  const xlsxPath = await download.path();
+  // download.path() 是无后缀 GUID 临时名,应用的扩展名校验会正确拒绝——
+  // 必须改名为 .xlsx 再回传(应用的防护是对的,测试要遵守)
+  const xlsxRaw = await download.path();
+  const xlsxPath = `${xlsxRaw}.xlsx`;
+  fs.renameSync(xlsxRaw, xlsxPath);
   expect(xlsxPath, "导出机柜图落地").toBeTruthy();
 
   await page.locator("[data-test=screen-import-btn]").click();
@@ -334,7 +339,7 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
     if (m.text().includes("[diagram]")) console.log("PAGE:", m.text().slice(0, 160));
   });
   await page.locator("button", { hasText: "选择机柜图" }).click();
-  await page.setInputFiles("input[type=file][accept='.xlsx']", xlsxPath!);
+  await page.setInputFiles("input[type=file][accept='.xlsx']", xlsxPath);
   await page.locator("[data-test=diagram-validate-btn]").click();
   // 诊断:validate 请求状态与响应体直打日志(失败时 error-context 只有页面快照,看不到 toast)
   const vrespPromise = page.waitForResponse(
