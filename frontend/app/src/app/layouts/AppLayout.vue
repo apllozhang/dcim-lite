@@ -9,6 +9,7 @@ import {
   overridesUnlocked,
   type RouteFlag,
 } from "@/app/flags";
+import { reportError } from "@/api/errors";
 
 const session = useSessionStore();
 const route = useRoute();
@@ -25,6 +26,11 @@ const currentModule = computed(() => (route.meta.flagModule as string | undefine
 const uiVersion = ref<RouteFlag>(getRouteFlag(currentModule.value));
 
 function switchUi(value: RouteFlag) {
+  // 模块级回退审计(P1-D):经遥测通道留服务端痕迹(message 白名单化,不含业务数据)
+  reportError({
+    message: `ui-flag-switch: ${currentModule.value}→${value}`,
+    apiCode: "FLAG_SWITCH",
+  });
   setRouteFlag(currentModule.value, value);
   if (value === "legacy") {
     // 整页跳出至旧 bundle(SPA 无法渲染旧路由)
