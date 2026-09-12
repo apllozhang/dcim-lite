@@ -15,7 +15,7 @@ const session = useSessionStore();
 const route = useRoute();
 const router = useRouter();
 
-// 菜单与图标复刻 v2(layout-enhance.js MENU 表的 SVG path;机柜管理/机柜模板随后续轮次交付)
+// 菜单与图标复刻 v2(layout-enhance.js MENU 表的 SVG path;顺序与 v2 一致)
 const menu = computed(() => [
   {
     path: "/",
@@ -33,6 +33,18 @@ const menu = computed(() => [
     path: "/room-screen",
     label: "机房大屏",
     icon: "M3 5h18v12H3zm4 15h10v2H7z",
+    auth: true,
+  },
+  {
+    path: "/racks",
+    label: "机柜管理",
+    icon: "M4 3h16v18H4zm2 2v3h12V5zm0 5v3h12v-3zm0 5v3h12v-3z",
+    auth: true,
+  },
+  {
+    path: "/rack-templates",
+    label: "机柜模板",
+    icon: "M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z",
     auth: true,
   },
   {

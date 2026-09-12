@@ -109,6 +109,8 @@ export function setRouteFlag(module: string, value: RouteFlag): void {
 /** 模块的新前端路径 → 旧 bundle 路径(旧 ALE 为 HTML5 history 模式,根路径路由) */
 const LEGACY_PATHS: Record<string, string> = {
   tree: "/data-centers",
+  racks: "/racks",
+  "rack-templates": "/rack-templates",
   devices: "/devices",
 };
 
