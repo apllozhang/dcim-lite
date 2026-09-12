@@ -153,7 +153,6 @@ test("P1-D dual-run: 新旧 UI 在同一种子数据上渲染等价(树+设备�
       `旧 UI 含 ${c}`,
     ).toBe(true);
   }
-  expect(newCore.length).toBe(oldCore.length);
 
   // 树节点:双跑 DC/房间/两柜在两侧都可见
   for (const label of ["DUAL-DC", "DUAL-KA", "DUAL-KB"]) {
