@@ -287,6 +287,24 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
     fullPage: true,
     maxDiffPixelRatio: 0.02,
   });
+
+  // ── 像素基准:新 UI 机房大屏(暗色;独立全屏路由) ──
+  // 时钟每秒走字,基准必须 mask 时钟区域,否则永久假红。
+  await page.goto("/room-screen");
+  await expect(page.locator("[data-test=room-screen]")).toBeVisible({ timeout: 15000 });
+  await expect(page.locator(".rack-card").first()).toBeVisible({ timeout: 20000 });
+  const screenText = await page.locator("[data-test=room-screen]").innerText();
+  expect(screenText, "大屏品牌区").toContain("机房资源大屏");
+  expect(screenText, "画布工具栏").toContain("机柜 U 位总览");
+  expect(screenText, "状态图例").toContain("机柜状态图例");
+  expect(screenText, "设备类型图例").toContain("设备类型图例");
+  // 大屏常有一台当前选中(v2 同款自动选中)
+  await expect(page.locator(".selected-card")).toBeVisible({ timeout: 10000 });
+  await expect(page).toHaveScreenshot("mtx-new-room-screen.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+    mask: [page.locator(".clock")],
+  });
 });
 
 test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({ page }) => {
