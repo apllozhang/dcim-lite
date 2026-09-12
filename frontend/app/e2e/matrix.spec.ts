@@ -101,7 +101,7 @@ test.beforeAll(async ({ request }) => {
 
 test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", async ({ page }) => {
   test.skip(!ADMIN_PASS, "E2E_PASSWORD 未提供时跳过");
-  test.setTimeout(120000); // 种子 API 多次往返 + 双 UI 渲染 + 两轮筛选
+  test.setTimeout(180000); // 种子 API 多次往返 + 双 UI 渲染 + 两轮筛选 + 屏6b 导出回导闭环
 
   // ── 种子:1 DC/1 房/2 柜 + 五态各一 ──
   adminToken = await loginAs(page, ADMIN, ADMIN_PASS);
@@ -305,6 +305,40 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
     maxDiffPixelRatio: 0.02,
     mask: [page.locator(".clock")],
   });
+
+  // ── 屏6b:容量对话框 + 机柜图导出→回导校验闭环(不 commit,不写数据) ──
+  await page.locator(".u-button", { hasText: "查看完整 U 位详情" }).click();
+  const shell = page.locator(".rack-detail-shell");
+  await expect(shell).toBeVisible({ timeout: 10000 });
+  const capText = await shell.innerText();
+  expect(capText, "容量对话框标题").toContain("机柜详情与容量分析");
+  expect(capText, "利用率指标卡").toContain("U 位利用率");
+  expect(capText, "PDU 面板").toContain("PDU 与供电连接");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(600);
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download", { timeout: 30000 }),
+    page.locator("[data-test=screen-export-btn]").click(),
+  ]);
+  const xlsxPath = await download.path();
+  expect(xlsxPath, "导出机柜图落地").toBeTruthy();
+
+  await page.locator("[data-test=screen-import-btn]").click();
+  await page.waitForTimeout(600);
+  await page.locator("button", { hasText: "选择机柜图" }).click();
+  await page.setInputFiles("input[type=file][accept='.xlsx']", xlsxPath!);
+  await page.locator("[data-test=diagram-validate-btn]").click();
+  // 回导同源文件:全部设备"保持不变",0 错误 0 待确认(dualrun 种子确定性)
+  await expect(page.locator(".validation-summary")).toBeVisible({ timeout: 20000 });
+  const sumText = await page.locator(".validation-summary").innerText();
+  expect(sumText, "回导校验无错误").toMatch(/错误\s*\n?\s*0/);
+  expect(sumText, "回导校验无待确认").toMatch(/待人工确认\s*\n?\s*0/);
+  await expect(page.locator(".el-overlay:visible .el-dialog", { hasText: "校验通过" })).toBeVisible(
+    {
+      timeout: 10000,
+    },
+  );
 });
 
 test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({ page }) => {
