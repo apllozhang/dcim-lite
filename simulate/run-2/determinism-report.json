@@ -1,0 +1,193 @@
+{
+ "v2_categories": {
+  "EQUIVALENT": 810,
+  "FIELD_BREAK": 190
+ },
+ "considered": 1000,
+ "compat_rate_status_code": 98.8,
+ "compat_rate_field": 68.6,
+ "breaks": [],
+ "field_breaks": [
+  {
+   "caseId": "S02-RESOURCE-TREE",
+   "diffs": [
+    {
+     "field": "data.items[*].rooms[*].racks[*].templateSnapshot.revision",
+     "baseline": "<absent>",
+     "candidate": 0
+    },
+    {
+     "field": "data.items[*].rooms[*].racks[*].templateSnapshot.uHeight",
+     "baseline": "<absent>",
+     "candidate": 0
+    }
+   ]
+  },
+  {
+   "caseId": "S05-DEV-LIST",
+   "diffs": [
+    {
+     "field": "data.items[*].currentPosition.endU",
+     "baseline": "endU_val_4002",
+     "candidate": "endU_val_4002"
+    },
+    {
+     "field": "data.items[*].currentPosition.heightU",
+     "baseline": "heightU_val_4003",
+     "candidate": "heightU_val_4003"
+    },
+    {
+     "field": "data.items[*].currentPosition.orientation",
+     "baseline": "orientation_val_4004",
+     "candidate": "orientation_val_4004"
+    },
+    {
+     "field": "data.items[*].currentPosition.rack.status",
+     "baseline": "APPROVED",
+     "candidate": "APPROVED"
+    },
+    {
+     "field": "data.items[*].currentPosition.rack.uHeight",
+     "baseline": "uHeight_val_4006",
+     "candidate": "uHeight_val_4006"
+    },
+    {
+     "field": "data.items[*].currentPosition.rack.version",
+     "baseline": "version_val_4007",
+     "candidate": "version_val_4007"
+    },
+    {
+     "field": "data.items[*].currentPosition.startU",
+     "baseline": "startU_val_4008",
+     "candidate": "startU_val_4008"
+    },
+    {
+     "field": "data.items[*].currentPosition.version",
+     "baseline": "version_val_4009",
+     "candidate": "version_val_4009"
+    },
+    {
+     "field": "data.items[*].heightU",
+     "baseline": "heightU_val_4010",
+     "candidate": "heightU_val_4010"
+    },
+    {
+     "field": "data.items[*].lifecycleStatus",
+     "baseline": "RUNNING",
+     "candidate": "RUNNING"
+    },
+    {
+     "field": "data.items[*].version",
+     "baseline": "version_val_4012",
+     "candidate": "version_val_4012"
+    }
+   ]
+  },
+  {
+   "caseId": "S05-DEV-LIST-FILTER",
+   "diffs": [
+    {
+     "field": "data.items[*].currentPosition.endU",
+     "baseline": "endU_val_4013",
+     "candidate": "endU_val_4013"
+    },
+    {
+     "field": "data.items[*].currentPosition.heightU",
+     "baseline": "heightU_val_4014",
+     "candidate": "heightU_val_4014"
+    },
+    {
+     "field": "data.items[*].currentPosition.orientation",
+     "baseline": "orientation_val_4015",
+     "candidate": "orientation_val_4015"
+    },
+    {
+     "field": "data.items[*].currentPosition.rack.status",
+     "baseline": "REJECTED",
+     "candidate": "REJECTED"
+    },
+    {
+     "field": "data.items[*].currentPosition.rack.uHeight",
+     "baseline": "uHeight_val_4017",
+     "candidate": "uHeight_val_4017"
+    },
+    {
+     "field": "data.items[*].currentPosition.rack.version",
+     "baseline": "version_val_4018",
+     "candidate": "version_val_4018"
+    },
+    {
+     "field": "data.items[*].currentPosition.startU",
+     "baseline": "startU_val_4019",
+     "candidate": "startU_val_4019"
+    },
+    {
+     "field": "data.items[*].currentPosition.version",
+     "baseline": "version_val_4020",
+     "candidate": "version_val_4020"
+    },
+    {
+     "field": "data.items[*].heightU",
+     "baseline": "heightU_val_4021",
+     "candidate": "heightU_val_4021"
+    },
+    {
+     "field": "data.items[*].lifecycleStatus",
+     "baseline": "PENDING_REMOVAL",
+     "candidate": "PENDING_REMOVAL"
+    },
+    {
+     "field": "data.items[*].version",
+     "baseline": "version_val_4023",
+     "candidate": "version_val_4023"
+    }
+   ]
+  },
+  {
+   "caseId": "S06-ASSIGN-SUCCESS",
+   "diffs": [
+    {
+     "field": "data.device.type.status",
+     "baseline": "<absent>",
+     "candidate": 0
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": "<absent>",
+     "candidate": 0
+    }
+   ]
+  },
+  {
+   "caseId": "S06-MOVE-SUCCESS",
+   "diffs": [
+    {
+     "field": "data.device.type.status",
+     "baseline": "<absent>",
+     "candidate": 0
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": "<absent>",
+     "candidate": 0
+    }
+   ]
+  },
+  {
+   "caseId": "S06C-U-CONCURRENT-CLIENT0",
+   "diffs": [
+    {
+     "field": "data.device.type.status",
+     "baseline": "<absent>",
+     "candidate": 0
+    },
+    {
+     "field": "data.device.type.version",
+     "baseline": "<absent>",
+     "candidate": 0
+    }
+   ]
+  }
+ ],
+ "missing": []
+}

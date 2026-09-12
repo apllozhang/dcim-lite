@@ -1,0 +1,8 @@
+{
+  "verdict": "PASS",
+  "real_breaks": 0,
+  "missing": 0,
+  "field_break_cases": 6,
+  "ledger_sha256": "c6c240a092f23ae780591474f4129ac222ffa16a632246e4c1b98b70a0b3d368",
+  "commit": ""
+}

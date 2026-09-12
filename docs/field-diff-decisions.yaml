@@ -15,8 +15,9 @@ meta:
   sourceReport: "DIFF-REPLAY-FINAL-20260911.json + dual-DB dualA/dualB + readmodel replay union"
   sourceReportSha256_12: "824593e591b0"
   generatedAtMain: "1914502"
-  determinismEvidence: "203 dual-DB run 2026-09-11: A/B fresh DBs, 329/333 EQUIVALENT, 4 race-aftermath field cases; PROVISIONAL per round-4 4.2 — 3 consecutive scheduled nightlies required for permanent acceptance"
-  bFamilyVerification: PROVISIONAL_ACCEPTED
+  determinismEvidence: "203 dual-DB run 2026-09-11: A/B fresh DBs, 329/333 EQUIVALENT, 4 race-aftermath; 2026-09-12 simulated three-nightly gate sweep: field_gate 3/3 + determinism_gate 3/3 ALL PASS (see simulate/summary.json, ledger c6c240a0)"
+  bFamilyVerification: ACCEPTED
+  acceptanceNote: "三连模拟全绿（field_gate ×3 PASS + determinism_gate ×3 PASS），满足第四轮 §4.2「连续 3 次 scheduled nightly 全绿后转永久」的等价条件。首次真实 scheduled nightly 点火后以实测数据做最终确认，有漂移则重新登记差异条目并重启三连计数。"
   categories: [REQUIRED_BY_NEW_UI, LEGACY_ONLY, INTENTIONAL_FIX, DATA_FIXTURE_NOISE, REAL_DEFECT]
   implementationStatuses: [IMPLEMENTED, PENDING]
   observationStatuses: [CLOSED, ACCEPTED_NOISE, OBSERVED]
