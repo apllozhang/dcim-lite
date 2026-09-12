@@ -19,3 +19,6 @@ _*.py
 _regress-shots/
 __pycache__/
 *.pyc
+
+# 模拟 nightly 证据（run-* 固定证据入库，summary.json 每次重新生成）
+simulate/summary.json

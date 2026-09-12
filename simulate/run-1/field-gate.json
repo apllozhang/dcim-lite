@@ -1,0 +1,22 @@
+{
+  "verdict": "PASS",
+  "unknown_field_breaks": 0,
+  "ledger_entries": 287,
+  "report_field_break_cases": 53,
+  "report_field_diffs": 287,
+  "compat_rate_field": 72.8,
+  "ratchet_baseline": 68.6,
+  "ledger_sha256": "c6c240a092f23ae780591474f4129ac222ffa16a632246e4c1b98b70a0b3d368",
+  "commit": "",
+  "image_digest": "",
+  "observation": {
+    "ACCEPTED_NOISE": 190,
+    "OBSERVED": 97
+  },
+  "categories": {
+    "INTENTIONAL_FIX": 48,
+    "REAL_DEFECT": 177,
+    "DATA_FIXTURE_NOISE": 57,
+    "REQUIRED_BY_NEW_UI": 5
+  }
+}

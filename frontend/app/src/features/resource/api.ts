@@ -7,6 +7,12 @@ import { api, unwrapData } from "@/api/client";
 
 export type TreeDataCenter = components["schemas"]["TreeDataCenter"];
 export type Device = components["schemas"]["Device"];
+export type DeviceType = components["schemas"]["DeviceType"];
+
+export async function fetchDeviceTypes(): Promise<DeviceType[]> {
+  const data = await unwrapData(await api.GET("/api/v1/device-types"), "GET /api/v1/device-types");
+  return data.items ?? [];
+}
 
 /** el-tree 节点:两级子字段(rooms/racks)规整为统一 children */
 export interface TreeNode {
@@ -55,6 +61,8 @@ export async function fetchDevices(params: {
   page?: number;
   pageSize?: number;
   search?: string;
+  lifecycleStatus?: string;
+  typeId?: string;
 }): Promise<DevicePage> {
   const data = await unwrapData(
     await api.GET("/api/v1/devices", { params: { query: params } }),

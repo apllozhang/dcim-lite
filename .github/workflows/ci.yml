@@ -219,6 +219,18 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           npx playwright test
+      - name: upload pixel baselines (matrix.spec 生成式基准,首跑后下载入库)
+        # 第 5 轮像素基准:CI Linux 字体环境生成,本地 Windows 生成的必假红。
+        # 流程:首跑此处生成基准 → 从 artifact 下载入 e2e/*-snapshots/ 提交
+        # → 此后上方严格门禁生效。基线入库后本步骤仅作漂移时的基准再生成入口。
+        if: always()
+        working-directory: frontend/app
+        env:
+          ALE_API_PROXY: http://127.0.0.1:18080
+          E2E_USERNAME: admin
+          E2E_PASSWORD: E2E#Passw0rd!
+          APP_RELEASE: ci-${{ github.sha }}
+        run: npx playwright test matrix.spec --update-snapshots || true
       - name: e2e negative (P0-R1:旧源不可用时演练必须失败)
         working-directory: frontend/app
         env:
@@ -242,10 +254,12 @@ jobs:
           VITE_ALE_LEGACY_BASE=/wl-inject npx vite build --outDir dist-inject --emptyOutDir --logLevel error
           grep -q "/wl-inject" dist-inject/assets/*.js
           rm -rf dist-inject
-      - name: upload dual-run evidence (P1-D 截图/上下文)
+      - name: upload dual-run evidence (P1-D 截图/上下文/像素基准)
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dualrun-evidence
-          path: frontend/app/test-results/
+          path: |
+            frontend/app/test-results/
+            frontend/app/e2e/*-snapshots/
           if-no-files-found: ignore

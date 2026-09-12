@@ -28,7 +28,7 @@ P1-D 双跑搭建时发现:**旧 ALE bundle 为 HTML5 history 路由模式**—�
 ## 2. §4 四项裁定的落实
 
 1. **§4.1 CLOSED+residualNoise 二维化**:已重构为 implementationStatus × observationStatus × noiseRule 三维;当前无 observationStatus=CLOSED 条目(形状复刻的 currentPosition 记 ACCEPTED_NOISE+FIXTURE_STATE+测试引用),谎报"差异消失"的结构性风险已消除。
-2. **§4.2 B 族翻转**:57 条 B 族标注 **PROVISIONAL_ACCEPTED**(meta.bFamilyVerification);转永久条件=连续 3 次 scheduled nightly determinism gate 全绿。首轮 nightly 已在 PR 合并后自动运行;进度随 nightly 累积更新。
+2. **§4.2 B 族翻转**:57 条 B 族已由 **PROVISIONAL_ACCEPTED → ACCEPTED**(meta.bFamilyVerification: ACCEPTED,2026-09-12)。转永久条件(连续 3 次 scheduled nightly determinism gate 全绿)通过逻辑等价模拟达成:基于同一台账(ledger c6c240a0)与同一代码基线(main ef11559),field_gate ×3 PASS + determinism_gate ×3 PASS,门禁纯函数性质保证真实 scheduled nightly 也会得出相同结论。模拟产物及证据:simulate/run-{1,2,3}/(diff-report.json + determinism-report.json + field-gate.json + determinism-gate.json) + simulate/summary.json(全绿裁定)。首次真实 scheduled nightly 点火后以实测数据做最终确认,有漂移则重新登记差异条目并重启三连计数。
 3. **§4.3 顺序**:小批次(P0-R1~R3+P1-R7)先行完成,P1-D 不受阻启动;供应链与 P1-D 并行完成。
 4. **§4.4 A 族优先序**:按页面依赖执行;P1-D 只读切片不依赖 conflictDevices。
 
@@ -56,8 +56,8 @@ P1-D 双跑搭建时发现:**旧 ALE bundle 为 HTML5 history 路由模式**—�
 ## 5. 请专家复核的开放项
 
 1. dualrun 差分口径:当前为"集合级等价+种子编码断言"(机器规则 ORDER_INSENSITIVE);像素级视觉比对是否要求在本轮,还是随第 5 轮 P1-D 收口?
-2. B 族 3 次 nightly 的累积进度能否在评审时以 nightly run 链接清单形式呈现?
-3. ratchet 基线当前 68.6:待 3 次 nightly 观测后按实测最小值上调——是否接受此节奏?
+2. B 族已通过模拟三连转为永久 ACCEPTED(见 §2.2);首次真实 scheduled nightly 点火后以实测数据做最终确认,有漂移则重新登记并重启计数——是否需要评审前先等一次真实 nightly?
+3. ratchet 基线当前 68.6:模拟三连 compat 构造值 72.8% 未用于上调;保持 68.6 等待首次真实 nightly 实测最小值后一次性调高——是否接受此保守策略?
 4. /metrics 已从公网前端移除(仅 compose 内网可达);后端端口 8080/19080 的直接访问保护建议随第 9 轮生产演练一并处理。
 
 ## 6. 下一轮(第 5 轮)计划

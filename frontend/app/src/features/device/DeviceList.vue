@@ -1,13 +1,26 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { fetchDevices, type Device } from "@/features/resource/api";
+import {
+  fetchDevices,
+  fetchDeviceTypes,
+  type Device,
+  type DeviceType,
+} from "@/features/resource/api";
 import { reportError } from "@/api/errors";
+import {
+  LIFECYCLE_STATUS_OPTIONS,
+  lifecycleLabel,
+  lifecycleTagType,
+} from "@/features/device/statusLabel";
 
 const rows = ref<Device[]>([]);
+const types = ref<DeviceType[]>([]);
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(20);
 const search = ref("");
+const statusFilter = ref("");
+const typeFilter = ref("");
 const loading = ref(false);
 const error = ref("");
 const loaded = ref(false);
@@ -20,6 +33,8 @@ async function load() {
       page: page.value,
       pageSize: pageSize.value,
       search: search.value,
+      lifecycleStatus: statusFilter.value || undefined,
+      typeId: typeFilter.value || undefined,
     });
     rows.value = pg.items;
     total.value = pg.total;
@@ -37,7 +52,15 @@ function resetAndLoad() {
   load();
 }
 
-onMounted(load);
+onMounted(async () => {
+  load();
+  // 类型筛选选项(独立加载,失败不阻断列表——下拉退化为空)
+  try {
+    types.value = await fetchDeviceTypes();
+  } catch {
+    types.value = [];
+  }
+});
 </script>
 
 <template>
@@ -45,12 +68,38 @@ onMounted(load);
     <div class="toolbar">
       <el-input
         v-model="search"
-        placeholder="按编码/名称搜索"
+        placeholder="名称、编码、资产号、序列号或 IP"
         clearable
         style="width: 260px"
         data-test="device-search"
         @change="resetAndLoad"
       />
+      <el-select
+        v-model="statusFilter"
+        placeholder="生命周期"
+        clearable
+        style="width: 150px"
+        data-test="device-status-filter"
+        @change="resetAndLoad"
+      >
+        <el-option
+          v-for="o in LIFECYCLE_STATUS_OPTIONS"
+          :key="o.value"
+          :label="o.label"
+          :value="o.value"
+        />
+      </el-select>
+      <el-select
+        v-model="typeFilter"
+        placeholder="设备类型"
+        clearable
+        filterable
+        style="width: 170px"
+        data-test="device-type-filter"
+        @change="resetAndLoad"
+      >
+        <el-option v-for="t in types" :key="t.id" :label="t.name ?? t.code" :value="t.id" />
+      </el-select>
       <el-button type="primary" plain data-test="device-search-btn" @click="resetAndLoad">
         查询
       </el-button>
@@ -73,10 +122,14 @@ onMounted(load);
         align="right"
         class-name="tabular-nums"
       />
-      <el-table-column prop="lifecycleStatus" label="状态" width="130">
+      <el-table-column prop="lifecycleStatus" label="状态" width="110">
         <template #default="{ row }">
-          <el-tag :type="row.lifecycleStatus === 'RUNNING' ? 'success' : 'info'" size="small">
-            {{ row.lifecycleStatus }}
+          <el-tag
+            :type="lifecycleTagType(row.lifecycleStatus)"
+            size="small"
+            data-test="device-status-tag"
+          >
+            {{ lifecycleLabel(row.lifecycleStatus) }}
           </el-tag>
         </template>
       </el-table-column>
