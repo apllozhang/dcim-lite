@@ -333,7 +333,24 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
   await page.locator("button", { hasText: "选择机柜图" }).click();
   await page.setInputFiles("input[type=file][accept='.xlsx']", xlsxPath!);
   await page.locator("[data-test=diagram-validate-btn]").click();
-  // 回导同源文件:全部设备"保持不变",0 错误 0 待确认(dualrun 种子确定性)
+  // 诊断:validate 请求状态与响应体直打日志(失败时 error-context 只有页面快照,看不到 toast)
+  const vrespPromise = page.waitForResponse(
+    (r) => r.url().includes("rack-diagram-import/validate"),
+    { timeout: 30000 },
+  );
+  let vdesc = "no-request";
+  try {
+    const vresp = await vrespPromise;
+    vdesc = `${vresp.status()} ${(await vresp.text()).slice(0, 300)}`;
+  } catch {
+    vdesc = "no-request-within-30s";
+  }
+  console.log("DIAGRAM-VALIDATE:", vdesc);
+  console.log(
+    "IMPORT-DIALOG-OPEN:",
+    await page.locator(".el-overlay:visible .el-dialog", { hasText: "导入机柜图" }).count(),
+  );
+  // 同源导出秒级回读:全部设备"保持不变",0 错误 0 待确认(dualrun 种子确定性)
   await expect(page.locator(".validation-summary")).toBeVisible({ timeout: 20000 });
   const sumText = await page.locator(".validation-summary").innerText();
   expect(sumText, "回导校验无错误").toMatch(/错误\s*\n?\s*0/);
