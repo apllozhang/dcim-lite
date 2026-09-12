@@ -7,6 +7,12 @@ const router = createRouter({
   routes: [
     { path: "/login", component: () => import("@/features/auth/LoginView.vue") },
     {
+      // 机房大屏(复刻 v2 /room-screen;屏6):独立全屏页,不套应用布局(v2 同款)
+      path: "/room-screen",
+      component: () => import("@/features/screen/RoomScreenView.vue"),
+      meta: { flagModule: "room-screen" },
+    },
+    {
       path: "/",
       component: () => import("@/app/layouts/AppLayout.vue"),
       children: [
@@ -20,11 +26,6 @@ const router = createRouter({
           path: "data-centers",
           component: () => import("@/features/resource/ResourceHierarchy.vue"),
           meta: { flagModule: "tree" },
-        },
-        {
-          // 机房大屏(第 6 轮重建中,占位)
-          path: "room-screen",
-          component: () => import("@/features/screen/RoomScreenStub.vue"),
         },
         {
           // 机柜管理(复刻 v2 /racks;屏4)

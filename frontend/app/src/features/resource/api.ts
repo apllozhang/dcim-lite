@@ -5,6 +5,7 @@
 import type { components } from "@/api/generated/schema";
 import type { paths } from "@/api/generated/schema";
 import { api, unwrapData, unwrapOptional } from "@/api/client";
+import { deviceColor } from "@/features/screen/screenShared";
 
 export type TreeDataCenter = components["schemas"]["TreeDataCenter"];
 export type Device = components["schemas"]["Device"];
@@ -270,6 +271,41 @@ export async function fetchDevice(id: string): Promise<Device> {
   );
 }
 
+/* ── 设备上架/移位/下架(第 6 轮 屏6 机房大屏 U 位操作) ── */
+export async function assignDevice(
+  id: string,
+  body: { rackId: string; startU: number },
+): Promise<void> {
+  await unwrapOptional(
+    await api.POST("/api/v1/devices/{id}/assign", {
+      params: { path: { id } },
+      body,
+    } as never),
+    "POST /api/v1/devices/{id}/assign",
+  );
+}
+export async function moveDevice(
+  id: string,
+  body: { rackId: string; startU: number },
+): Promise<void> {
+  await unwrapOptional(
+    await api.POST("/api/v1/devices/{id}/move", {
+      params: { path: { id } },
+      body,
+    } as never),
+    "POST /api/v1/devices/{id}/move",
+  );
+}
+export async function decommissionDevice(id: string, reason: string): Promise<void> {
+  await unwrapOptional(
+    await api.POST("/api/v1/devices/{id}/decommission", {
+      params: { path: { id } },
+      body: { reason },
+    } as never),
+    "POST /api/v1/devices/{id}/decommission",
+  );
+}
+
 /* ── 设备类型写操作 ── */
 export async function createDeviceType(body: Record<string, unknown>): Promise<void> {
   await unwrapOptional(
@@ -297,7 +333,10 @@ export async function deleteDeviceType(id: string, version: number): Promise<voi
   );
 }
 
-/* ── 机柜U位视图(屏3 第三个Tab) ── */
+/* ── 机柜U位视图(屏3 第三个Tab;屏6 大屏复用) ──
+ * 后端实际返回 {positions:[{...,device:摘要}], free:[空闲段]},无 used/devices
+ * 字段(2026-09-12 屏6 实测);此处统一映射为视图模型,used 与 devices 由
+ * positions 派生——屏3 U 位 Tab 此前因此一直显示 0,本映射顺带修复。 */
 export interface ULayoutDevice {
   id: string;
   code: string;
@@ -305,20 +344,63 @@ export interface ULayoutDevice {
   startU: number;
   endU: number;
   heightU: number;
+  category?: string;
   color: string;
 }
 export interface ULayoutResponse {
+  rackId?: string;
+  rackCode?: string;
+  rackName?: string;
   uHeight: number;
   used: number;
   free: number;
   devices: ULayoutDevice[];
 }
 export async function fetchULayout(rackId: string): Promise<ULayoutResponse> {
-  const data = await unwrapData(
+  const data = (await unwrapData(
     await api.GET("/api/v1/racks/{id}/u-layout", { params: { path: { id: rackId } } }),
     "GET /api/v1/racks/{id}/u-layout",
-  );
-  return data as unknown as ULayoutResponse;
+  )) as {
+    rackId?: string;
+    rackCode?: string;
+    rackName?: string;
+    uHeight?: number;
+    positions?: {
+      deviceId: string;
+      startU: number;
+      endU: number;
+      heightU?: number;
+      device?: {
+        id: string;
+        code?: string;
+        name?: string;
+        heightU?: number;
+        type?: { category?: string };
+      };
+    }[];
+  };
+  const devices: ULayoutDevice[] = (data.positions ?? [])
+    .filter((p) => p.device)
+    .map((p) => ({
+      id: p.device!.id,
+      code: p.device?.code ?? "",
+      name: p.device?.name ?? "",
+      startU: p.startU,
+      endU: p.endU,
+      heightU: p.device?.heightU ?? p.endU - p.startU + 1,
+      category: p.device?.type?.category,
+      color: deviceColor(p.device?.type?.category),
+    }));
+  const used = (data.positions ?? []).reduce((s, p) => s + Math.max(1, p.endU - p.startU + 1), 0);
+  return {
+    rackId: data.rackId,
+    rackCode: data.rackCode,
+    rackName: data.rackName,
+    uHeight: data.uHeight ?? 0,
+    used,
+    free: Math.max(0, (data.uHeight ?? 0) - used),
+    devices,
+  };
 }
 export async function fetchRacks(params?: {
   page?: number;
