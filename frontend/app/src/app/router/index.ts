@@ -28,7 +28,7 @@ const router = createRouter({
         },
         {
           path: "devices",
-          component: () => import("@/features/device/DeviceList.vue"),
+          component: () => import("@/features/device/DeviceManager.vue"),
           meta: { flagModule: "devices" },
         },
         {
