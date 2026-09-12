@@ -46,9 +46,10 @@ async function doLogout() {
 
 <template>
   <el-container class="layout">
-    <el-header class="header">
-      <span class="brand"> <span class="brand-mark">ALE</span> 机柜管理 </span>
-      <div class="header-right">
+    <!-- 顶栏复刻 v2:浅底 + 左侧平台名 + 右侧工具区;紫色签名下边线由 ale-theme.css .topbar 提供 -->
+    <el-header class="topbar" height="56px">
+      <span class="topbar-title">基础资源管理平台</span>
+      <div class="topbar-right">
         <el-select
           v-if="overridesUnlocked()"
           :model-value="uiVersion"
@@ -75,13 +76,15 @@ async function doLogout() {
     </el-header>
     <el-container>
       <el-aside :width="'220px'" class="sidebar">
+        <!-- 文字被 ale-theme.css .sidebar .logo 置零,由伪元素渲染官方彩色 logo(与 v2 同源) -->
+        <div class="logo">ALE 机柜管理</div>
         <el-menu :default-active="route.path" router>
           <el-menu-item v-for="m in menu.filter((x) => x.auth)" :key="m.path" :index="m.path">
             {{ m.label }}
           </el-menu-item>
         </el-menu>
       </el-aside>
-      <el-main class="main">
+      <el-main class="main main-content">
         <router-view />
       </el-main>
     </el-container>
@@ -92,26 +95,19 @@ async function doLogout() {
 .layout {
   height: 100%;
 }
-.header {
-  height: var(--ale-header-h);
-  background: var(--ale-primary-deep);
-  color: #fff;
+.topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: #ffffff;
   padding: 0 var(--ale-space-4);
 }
-.brand {
-  font-size: 18px;
+.topbar-title {
+  font-size: 15px;
   font-weight: 600;
+  color: var(--el-text-color-primary, #1a1a1a);
 }
-.brand-mark {
-  color: #fff;
-  letter-spacing: 1px;
-  margin-right: var(--ale-space-2);
-  border-bottom: 2px solid var(--ale-primary-light);
-}
-.header-right {
+.topbar-right {
   display: flex;
   align-items: center;
   gap: var(--ale-space-3);
@@ -120,14 +116,14 @@ async function doLogout() {
   width: 120px;
 }
 .user {
-  color: var(--ale-purple-100);
+  color: var(--el-text-color-regular, #4b4d50);
   cursor: pointer;
 }
 .sidebar {
-  background: var(--ale-surface);
-  border-right: 1px solid var(--ale-line-soft);
+  background: #ffffff;
+  border-right: 1px solid var(--el-border-color-light, #e9e8e4);
 }
 .main {
-  background: var(--ale-surface-soft);
+  background: var(--el-bg-color-page, #f7f7f5);
 }
 </style>

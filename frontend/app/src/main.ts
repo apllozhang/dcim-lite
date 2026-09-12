@@ -5,7 +5,11 @@ import router from "@/app/router";
 import { setUnauthorizedHandler, fetchReady } from "@/api/client";
 import { reportError } from "@/api/errors";
 import { useSessionStore } from "@/features/auth/session";
+// EP 全量样式显式引入一次(自动导入Resolver改 importStyle:false)——
+// 级联顺序确定性:EP 基线 → 设计令牌 → ALE 主题覆盖层(逐变量压过 EP 默认)
+import "element-plus/dist/index.css";
 import "@/design-system/tokens.css";
+import "@/design-system/ale-theme.css";
 
 const app = createApp(App);
 const pinia = createPinia();
