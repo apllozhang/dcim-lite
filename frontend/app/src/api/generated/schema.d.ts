@@ -1683,7 +1683,7 @@ export interface paths {
             };
             requestBody?: components["requestBodies"]["UserCreateBody"];
             responses: {
-                200: components["responses"]["UserOK"];
+                201: components["responses"]["UserOK"];
                 409: components["responses"]["Fail"];
             };
         };

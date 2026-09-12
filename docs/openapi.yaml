@@ -457,7 +457,7 @@ paths:
       summary: 创建用户（本地用户密码必填 >=8 位）
       requestBody: { $ref: "#/components/requestBodies/UserCreateBody" }
       responses:
-        "200": { $ref: "#/components/responses/UserOK" }
+        "201": { $ref: "#/components/responses/UserOK" }
         "409": { $ref: "#/components/responses/Fail" }
   /api/v1/admin/users/{id}:
     put:
