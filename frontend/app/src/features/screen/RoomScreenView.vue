@@ -30,6 +30,9 @@ import {
   type TreeDataCenter,
 } from "@/features/resource/api";
 import type { ULayoutResponse } from "@/features/resource/api";
+import RackDetailDialog from "@/features/screen/RackDetailDialog.vue";
+import RackDiagramImportDialog from "@/features/screen/RackDiagramImportDialog.vue";
+import { exportRackDiagram } from "@/features/screen/rackDiagram";
 import {
   CLOCK_WEEKDAYS,
   COL_PITCH,
@@ -609,12 +612,59 @@ async function removeRack(rack: TreeRack | null = selectedRack.value) {
   }
 }
 
-/* ── 机柜详情对话框 ── */
+/* ── 机柜详情(容量分析对话框,屏6b) ── */
 const detailVisible = ref(false);
 function openDetail(rack: TreeRack | null = selectedRack.value) {
   if (!rack) return;
   selectedRack.value = rack;
   detailVisible.value = true;
+}
+
+/* ── 机柜图导出/导入(屏6b) ── */
+const exporting = ref(false);
+const importVisible = ref(false);
+function openImport() {
+  if (!roomId.value || !dcId.value) {
+    ElMessage.warning("请先选择机房");
+    return;
+  }
+  importVisible.value = true;
+}
+async function doExport() {
+  if (!room.value || !roomRacks.value.length) {
+    ElMessage.warning("当前机房暂无可导出的机柜");
+    return;
+  }
+  exporting.value = true;
+  try {
+    const missing = roomRacks.value.filter((r) => !layouts[r.id ?? ""]);
+    await loadLayouts();
+    void missing;
+    const lay: Record<string, ULayoutResponse | undefined> = {};
+    roomRacks.value.forEach((r) => {
+      lay[r.id ?? ""] = layouts[r.id ?? ""];
+    });
+    exportRackDiagram({
+      dataCenter: {
+        id: dcId.value,
+        code: tree.value.find((d) => d.id === dcId.value)?.code,
+        name: tree.value.find((d) => d.id === dcId.value)?.name ?? "",
+      },
+      room: {
+        id: roomId.value,
+        code: room.value.code,
+        name: room.value.name,
+        racksPerRow: ext(room.value, "racksPerRow") as number | undefined,
+      },
+      racks: roomRacks.value,
+      layouts: lay,
+    });
+    ElMessage.success(`已导出 ${roomRacks.value.length} 个机柜的机柜图`);
+  } catch (e) {
+    ElMessage.error(rackErrMsg(e));
+  } finally {
+    exporting.value = false;
+  }
 }
 
 /* ── 搜索 ── */
@@ -705,8 +755,17 @@ onBeforeUnmount(() => {
         </div>
         <div class="room-card-actions">
           <button type="button" @click="openCreateRack()">新增机柜</button>
-          <button type="button" disabled title="机柜图导出随后续轮次交付">导出机柜图</button>
-          <button type="button" disabled title="机柜图导入随后续轮次交付">导入机柜图</button>
+          <button
+            type="button"
+            :disabled="exporting"
+            data-test="screen-export-btn"
+            @click="doExport"
+          >
+            {{ exporting ? "正在导出..." : "导出机柜图" }}
+          </button>
+          <button type="button" data-test="screen-import-btn" @click="openImport">
+            导入机柜图
+          </button>
           <button type="button" @click="loadTree()">刷新数据</button>
         </div>
       </div>
@@ -1184,44 +1243,25 @@ onBeforeUnmount(() => {
       </template>
     </el-dialog>
 
-    <!-- 机柜详情 -->
-    <el-dialog
+    <!-- 机柜详情与容量分析(屏6b) -->
+    <RackDetailDialog
       v-model="detailVisible"
-      :title="`机柜详情 · ${selectedRack?.name ?? ''}`"
-      width="760px"
-    >
-      <template v-if="selectedRack">
-        <el-descriptions :column="3" border>
-          <el-descriptions-item label="编码">{{ selectedRack.code }}</el-descriptions-item>
-          <el-descriptions-item label="规格">{{ selectedRack.uHeight }}U</el-descriptions-item>
-          <el-descriptions-item label="状态">
-            {{ statusLabel(selectedRack.status ?? "") }}
-          </el-descriptions-item>
-          <el-descriptions-item label="尺寸" :span="2">
-            {{ selectedRack.widthMm }} × {{ selectedRack.depthMm }} × {{ selectedRack.heightMm }} mm
-          </el-descriptions-item>
-          <el-descriptions-item label="位置">
-            {{ rackPositionText(selectedRack) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="已使用">
-            {{ layoutUsed(selectedRack) }}U
-          </el-descriptions-item>
-          <el-descriptions-item label="剩余">
-            {{ selectedMetrics(selectedRack)?.remain }}U
-          </el-descriptions-item>
-          <el-descriptions-item label="使用率">
-            {{ selectedMetrics(selectedRack)?.rate }}%
-          </el-descriptions-item>
-          <el-descriptions-item label="所属位置" :span="3">
-            {{ selectedRack.dcName }} / {{ room?.name }}
-          </el-descriptions-item>
-        </el-descriptions>
-        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px">
-          <el-button @click="openEditRack()">编辑机柜</el-button>
-          <el-button type="danger" plain @click="removeRack()">删除机柜</el-button>
-        </div>
-      </template>
-    </el-dialog>
+      :rack="selectedRack"
+      :layout="selectedRack ? layouts[selectedRack.id ?? ''] : undefined"
+      :layout-loading="loading"
+      :dc-name="tree.find((d) => d.id === dcId)?.name"
+      :room-name="room?.name"
+      @edit="openEditRack()"
+      @remove="removeRack()"
+    />
+
+    <!-- 机柜图导入(屏6b) -->
+    <RackDiagramImportDialog
+      v-model="importVisible"
+      :room-id="roomId"
+      :dc-id="dcId"
+      @imported="loadTree()"
+    />
 
     <!-- 机柜新增/编辑 -->
     <el-dialog

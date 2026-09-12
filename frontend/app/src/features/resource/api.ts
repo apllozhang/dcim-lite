@@ -306,6 +306,175 @@ export async function decommissionDevice(id: string, reason: string): Promise<vo
   );
 }
 
+/* ── PDU 与供电(屏6b;全部契约见 openapi PDU/PDUSocket/PDUConnection) ── */
+export type PDU = components["schemas"]["PDU"];
+export type PDUSocket = components["schemas"]["PDUSocket"];
+export type PDUConnection = components["schemas"]["PDUConnection"];
+
+export async function fetchPDUs(rackId: string): Promise<PDU[]> {
+  const data = await unwrapData(
+    await api.GET("/api/v1/racks/{id}/pdus", { params: { path: { id: rackId } } }),
+    "GET /api/v1/racks/{id}/pdus",
+  );
+  return data.items ?? [];
+}
+export async function createPDU(rackId: string, body: Record<string, unknown>): Promise<void> {
+  await unwrapOptional(
+    await api.POST("/api/v1/racks/{id}/pdus", {
+      params: { path: { id: rackId } },
+      body,
+    } as never),
+    "POST /api/v1/racks/{id}/pdus",
+  );
+}
+export async function updatePDU(
+  id: string,
+  version: number,
+  body: Record<string, unknown>,
+): Promise<void> {
+  await unwrapOptional(
+    await api.PUT("/api/v1/pdus/{id}", {
+      params: { path: { id }, query: { version } },
+      body,
+    } as never),
+    "PUT /api/v1/pdus/{id}",
+  );
+}
+export async function deletePDU(id: string, version: number): Promise<void> {
+  await unwrapOptional(
+    await api.DELETE("/api/v1/pdus/{id}", {
+      params: { path: { id }, query: { version } },
+    }),
+    "DELETE /api/v1/pdus/{id}",
+  );
+}
+export async function fetchSockets(pduId: string): Promise<PDUSocket[]> {
+  const data = await unwrapData(
+    await api.GET("/api/v1/pdus/{id}/sockets", { params: { path: { id: pduId } } }),
+    "GET /api/v1/pdus/{id}/sockets",
+  );
+  return data.items ?? [];
+}
+export async function createSocket(pduId: string, body: Record<string, unknown>): Promise<void> {
+  await unwrapOptional(
+    await api.POST("/api/v1/pdus/{id}/sockets", {
+      params: { path: { id: pduId } },
+      body,
+    } as never),
+    "POST /api/v1/pdus/{id}/sockets",
+  );
+}
+export async function updateSocket(
+  id: string,
+  version: number,
+  body: Record<string, unknown>,
+): Promise<void> {
+  await unwrapOptional(
+    await api.PUT("/api/v1/pdu-sockets/{id}", {
+      params: { path: { id }, query: { version } },
+      body,
+    } as never),
+    "PUT /api/v1/pdu-sockets/{id}",
+  );
+}
+export async function deleteSocket(id: string, version: number): Promise<void> {
+  await unwrapOptional(
+    await api.DELETE("/api/v1/pdu-sockets/{id}", {
+      params: { path: { id }, query: { version } },
+    }),
+    "DELETE /api/v1/pdu-sockets/{id}",
+  );
+}
+export async function fetchPDUConnections(rackId: string): Promise<PDUConnection[]> {
+  const data = await unwrapData(
+    await api.GET("/api/v1/racks/{id}/pdu-connections", { params: { path: { id: rackId } } }),
+    "GET /api/v1/racks/{id}/pdu-connections",
+  );
+  return data.items ?? [];
+}
+export async function connectSocket(
+  socketId: string,
+  body: { deviceId: string; powerW?: number; circuit?: string; redundancyRole?: string },
+): Promise<void> {
+  await unwrapOptional(
+    await api.POST("/api/v1/pdu-sockets/{id}/connection", {
+      params: { path: { id: socketId } },
+      body,
+    } as never),
+    "POST /api/v1/pdu-sockets/{id}/connection",
+  );
+}
+export async function disconnectPDUConnection(id: string, version: number): Promise<void> {
+  await unwrapOptional(
+    await api.DELETE("/api/v1/pdu-connections/{id}", {
+      params: { path: { id } },
+      body: { version },
+    } as never),
+    "DELETE /api/v1/pdu-connections/{id}",
+  );
+}
+
+/* ── 机柜图导入两阶段(屏6b) ── */
+export interface DiagramImportItem {
+  id: string;
+  kind: string;
+  requiresDecision?: boolean;
+  clientId?: string;
+  rackId?: string;
+  rackCode?: string;
+  startU?: number;
+  endU?: number;
+  name?: string;
+  sourceDeviceId?: string;
+  sourceDeviceCode?: string;
+  message?: string;
+  allowedActions?: string[];
+}
+export interface DiagramValidateResult {
+  token: string;
+  items: DiagramImportItem[];
+  summary: {
+    errors: number;
+    create: number;
+    update: number;
+    move: number;
+    removals: number;
+    decisions: number;
+    unchanged: number;
+  };
+}
+export interface DiagramCommitResult {
+  created: number;
+  updated: number;
+  moved: number;
+  decommissioned: number;
+  ignored: number;
+}
+export async function validateRackDiagram(
+  roomId: string,
+  body: Record<string, unknown>,
+): Promise<DiagramValidateResult> {
+  return unwrapData(
+    await api.POST("/api/v1/rooms/{id}/rack-diagram-import/validate", {
+      params: { path: { id: roomId } },
+      body,
+    } as never),
+    "POST /api/v1/rooms/{id}/rack-diagram-import/validate",
+  );
+}
+export async function commitRackDiagram(
+  roomId: string,
+  body: { token: string; decisions: { itemId: string; action: string }[] },
+): Promise<DiagramCommitResult> {
+  return unwrapData(
+    await api.POST("/api/v1/rooms/{id}/rack-diagram-import/commit", {
+      params: { path: { id: roomId } },
+      body,
+    } as never),
+    "POST /api/v1/rooms/{id}/rack-diagram-import/commit",
+  );
+}
+
 /* ── 设备类型写操作 ── */
 export async function createDeviceType(body: Record<string, unknown>): Promise<void> {
   await unwrapOptional(
@@ -346,6 +515,11 @@ export interface ULayoutDevice {
   heightU: number;
   category?: string;
   color: string;
+  /* 机柜图导出/详情对话框需要的台账字段(契约 schema 未声明但 u-layout 实际返回) */
+  version?: number;
+  serialNumber?: string;
+  ratedPowerW?: number;
+  typeId?: string;
 }
 export interface ULayoutResponse {
   rackId?: string;
@@ -375,6 +549,10 @@ export async function fetchULayout(rackId: string): Promise<ULayoutResponse> {
         code?: string;
         name?: string;
         heightU?: number;
+        version?: number;
+        serialNumber?: string;
+        ratedPowerW?: number;
+        typeId?: string;
         type?: { category?: string };
       };
     }[];
@@ -390,6 +568,10 @@ export async function fetchULayout(rackId: string): Promise<ULayoutResponse> {
       heightU: p.device?.heightU ?? p.endU - p.startU + 1,
       category: p.device?.type?.category,
       color: deviceColor(p.device?.type?.category),
+      version: p.device?.version,
+      serialNumber: p.device?.serialNumber,
+      ratedPowerW: p.device?.ratedPowerW,
+      typeId: p.device?.typeId,
     }));
   const used = (data.positions ?? []).reduce((s, p) => s + Math.max(1, p.endU - p.startU + 1), 0);
   return {
