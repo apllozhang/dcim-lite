@@ -11,8 +11,10 @@ const LEGACY_PROXY = process.env.ALE_LEGACY_PROXY ?? "http://127.0.0.1:19173";
 export default defineConfig({
   plugins: [
     vue(),
-    AutoImport({ resolvers: [ElementPlusResolver()] }),
-    Components({ resolvers: [ElementPlusResolver()] }),
+    // importStyle:false:EP 样式由 main.ts 全量引入一次(级联顺序确定),
+    // 自动导入只管组件与 API 的 JS 部分
+    AutoImport({ resolvers: [ElementPlusResolver({ importStyle: false })] }),
+    Components({ resolvers: [ElementPlusResolver({ importStyle: false })] }),
   ],
   // P0-R2:ALE_ 前缀为历史兼容(旧 ALE_LEGACY_BASE);客户端注入一律用 VITE_ 前缀
   envPrefix: ["VITE_", "ALE_"],

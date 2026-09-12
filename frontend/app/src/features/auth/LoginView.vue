@@ -60,12 +60,13 @@ async function submit() {
 </script>
 
 <template>
-  <div class="login-wrap">
+  <div class="login-wrap login-page">
     <el-card class="login-card">
       <template #header>
-        <div class="login-brand">
-          <span class="brand-mark">ALE</span>
-          <span class="brand-title">机柜管理</span>
+        <!-- v2 口径:官方彩色 logo(ale-theme.css .brand::before)置产品名上方,品牌在前 -->
+        <div class="brand">
+          <h1>机柜管理工具</h1>
+          <p>基础资源管理平台</p>
         </div>
       </template>
       <el-form label-position="top" @submit.prevent="submit">
@@ -121,26 +122,22 @@ async function submit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--ale-primary-deep), var(--ale-primary));
 }
 .login-card {
   width: 380px;
-  border-radius: var(--ale-radius-lg);
+  border-radius: var(--ale-radius-lg, 12px);
 }
-.login-brand {
-  display: flex;
-  align-items: baseline;
-  gap: var(--ale-space-2);
+.brand {
+  text-align: center;
 }
-.brand-mark {
-  font-size: 22px;
+.brand h1 {
+  font-size: 20px;
   font-weight: 700;
-  color: var(--ale-primary);
-  letter-spacing: 1px;
+  margin: 0 0 4px;
 }
-.brand-title {
-  font-size: 16px;
-  color: var(--ale-ink-700);
+.brand p {
+  font-size: 13px;
+  margin: 0;
 }
 .captcha-row {
   display: flex;
@@ -151,12 +148,12 @@ async function submit() {
   display: flex;
   align-items: center;
   gap: var(--ale-space-2);
-  color: var(--ale-ink-700);
+  color: var(--el-text-color-regular, #4b4d50);
 }
 .captcha-img {
   height: 32px;
   cursor: pointer;
-  border-radius: var(--ale-radius);
-  border: 1px solid var(--ale-line);
+  border-radius: var(--ale-radius, 8px);
+  border: 1px solid var(--el-border-color, #d9d9d6);
 }
 </style>
