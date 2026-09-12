@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   fetchDevices,
@@ -35,6 +36,7 @@ const deviceStatus = ref("");
 const deviceTypeFilter = ref("");
 const deviceLoading = ref(false);
 const tabActive = ref("devices");
+const route = useRoute();
 
 /** 从后端对象读取契约 schema 未声明但实际返回的扩展字段(如 warrantyExpiresAt) */
 function ext<T>(obj: unknown, key: string): T | undefined {
@@ -85,6 +87,13 @@ function searchDevices() {
 onMounted(() => {
   loadDevices();
   loadTypes();
+  // 屏4 机柜管理“U 位”入口跳转(v2 同款 query:/devices?tab=layout&rackId=…)
+  if (route.query.tab === "layout") {
+    tabActive.value = "u-layout";
+    loadRacks();
+    const rid = String(route.query.rackId ?? "");
+    if (rid) selectedRackId.value = rid;
+  }
 });
 
 /* ── 设备新增/编辑对话框 ── */

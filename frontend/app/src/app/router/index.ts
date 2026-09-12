@@ -27,6 +27,18 @@ const router = createRouter({
           component: () => import("@/features/screen/RoomScreenStub.vue"),
         },
         {
+          // 机柜管理(复刻 v2 /racks;屏4)
+          path: "racks",
+          component: () => import("@/features/rack/CabinetManager.vue"),
+          meta: { flagModule: "racks" },
+        },
+        {
+          // 机柜模板(复刻 v2 /rack-templates;屏5)
+          path: "rack-templates",
+          component: () => import("@/features/rack/CabinetTemplate.vue"),
+          meta: { flagModule: "rack-templates" },
+        },
+        {
           path: "devices",
           component: () => import("@/features/device/DeviceManager.vue"),
           meta: { flagModule: "devices" },

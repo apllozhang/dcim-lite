@@ -257,6 +257,36 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
     fullPage: true,
     maxDiffPixelRatio: 0.02,
   });
+
+  // ── 像素基准:新 UI 机柜管理(MTX 两柜入台账;状态/规格/模板口径与 v2 一致) ──
+  await page.goto("/racks");
+  await expect(page.locator("[data-test=rack-table] tbody tr").first()).toBeVisible({
+    timeout: 15000,
+  });
+  rows = await tableRows(page);
+  for (const code of ["MTX-KA", "MTX-KB"]) {
+    const row = rows.find((r) => r.includes(code));
+    expect(row, `机柜台账含 ${code}`).toBeTruthy();
+    expect(row, `${code} 状态中文口径`).toContain("空闲");
+  }
+  expect(await page.locator("[data-test=rack-page]").innerText()).toContain("机柜总数");
+  await expect(page).toHaveScreenshot("mtx-new-racks.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+  });
+
+  // ── 像素基准:新 UI 机柜模板(系统内置 42U 模板在列) ──
+  await page.goto("/rack-templates");
+  await expect(page.locator("[data-test=rack-template-table] tbody tr").first()).toBeVisible({
+    timeout: 15000,
+  });
+  const tplText = await page.locator("[data-test=rack-template-table]").innerText();
+  expect(tplText, "模板列表含系统内置标准 42U 模板").toContain("标准 42U");
+  expect(tplText, "系统内置模板带系统标记").toContain("系统");
+  await expect(page).toHaveScreenshot("mtx-new-rack-templates.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+  });
 });
 
 test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({ page }) => {

@@ -161,6 +161,57 @@ export async function fetchRackTemplates(): Promise<RackTemplate[]> {
   return data.items ?? [];
 }
 
+/* ── 模板写操作(第 6 轮 屏5 机柜模板) ── */
+export type TemplateVersionInput = NonNullable<components["schemas"]["TemplateVersionInput"]>;
+type TemplateCreateInput = NonNullable<
+  paths["/api/v1/rack-templates"]["post"]["requestBody"]
+>["content"]["application/json"];
+type TemplateUpdateInput = NonNullable<
+  paths["/api/v1/rack-templates/{id}"]["put"]["requestBody"]
+>["content"]["application/json"];
+export type { TemplateCreateInput, TemplateUpdateInput };
+
+export async function createRackTemplate(body: TemplateCreateInput): Promise<void> {
+  await unwrapOptional(
+    await api.POST("/api/v1/rack-templates", { body }),
+    "POST /api/v1/rack-templates",
+  );
+}
+export async function updateRackTemplate(
+  id: string,
+  version: number,
+  body: TemplateUpdateInput,
+): Promise<void> {
+  await unwrapOptional(
+    await api.PUT("/api/v1/rack-templates/{id}", {
+      params: { path: { id }, query: { version } },
+      body,
+    }),
+    "PUT /api/v1/rack-templates/{id}",
+  );
+}
+export async function deleteRackTemplate(id: string, version: number): Promise<void> {
+  await unwrapOptional(
+    await api.DELETE("/api/v1/rack-templates/{id}", {
+      params: { path: { id }, query: { version } },
+    }),
+    "DELETE /api/v1/rack-templates/{id}",
+  );
+}
+export async function publishRackTemplateVersion(
+  id: string,
+  version: number,
+  spec: TemplateVersionInput,
+): Promise<void> {
+  await unwrapOptional(
+    await api.POST("/api/v1/rack-templates/{id}/versions", {
+      params: { path: { id }, query: { version } },
+      body: spec,
+    }),
+    "POST /api/v1/rack-templates/{id}/versions",
+  );
+}
+
 /* ── 设备(列表/类型;台账页与运行概览共用) ── */
 export interface DevicePage {
   items: Device[];
