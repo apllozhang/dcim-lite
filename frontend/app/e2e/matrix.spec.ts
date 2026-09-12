@@ -284,6 +284,10 @@ test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({
   expect(await page.locator(".el-menu").innerText()).toContain("系统管理");
   await page.locator(".el-menu-item", { hasText: "系统管理" }).click();
   await expect(page.locator("[data-test=admin-users-table]").first()).toBeVisible();
+  // 数据行异步加载:先等首行出现,否则 innerText 只抓到表头(flaky 根因)
+  await expect(page.locator("[data-test=admin-users-table] tbody tr").first()).toBeVisible({
+    timeout: 10000,
+  });
   expect(await page.locator("[data-test=admin-users-table]").innerText()).toContain("admin");
   expect(await page.locator("[data-test=admin-users-table]").innerText()).toContain(username);
 
