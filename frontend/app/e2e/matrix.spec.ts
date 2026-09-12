@@ -354,12 +354,8 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
     await page.locator(".el-overlay:visible .el-dialog", { hasText: "导入机柜图" }).count(),
   );
   console.log(
-    "FILE-SPAN:",
-    await page
-      .locator(".file-control span")
-      .first()
-      .innerText()
-      .catch(() => "n/a"),
+    "FILE-STATUS:",
+    await page.locator(".file-control > span").first().innerText().catch(() => "n/a")),
   );
   console.log(
     "TOAST:",
