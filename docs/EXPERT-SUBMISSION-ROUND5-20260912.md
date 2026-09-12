@@ -73,20 +73,25 @@ routeGuard 提取为纯函数,5 用例:匿名→/login、user→/admin 拦、adm
 
 ## 3. 搜索/筛选/排序交互差分(§5 第 3 项)
 
-### 3.1 旧 bundle 交互面实锤(编译产物反推)
+### 3.1 旧 bundle 交互面实锤(编译产物反推 + CI aria 快照修正)
 
 DeviceManagementView 查询对象:`{page, pageSize, search: x.search||void 0,
-typeId: x.typeId||void 0, lifecycleStatus: x.status||void 0}`;UI 控件仅两个下拉
-(placeholder="生命周期"/"设备类型")——**无搜索输入框**(search 字段存在但恒 undefined),
-**无排序交互**(sortBy/sortDir 不传)。
+typeId: x.typeId||void 0, lifecycleStatus: x.status||void 0}`。
+
+**重要更正**:bundle 静态反推曾误判"旧 UI 无搜索输入框"(动态绑定 placeholder 未被
+静态提取抓到)。CI e2e 的 aria 快照实证:旧 UI 设备台账**有搜索框**(placeholder=
+"名称、编码、资产号、序列号或 IP")与两个筛选下拉("生命周期"/"设备类型"),变更后
+须点"查询"按钮才发请求(筛选变更不自动查询)。后端 search 语义=六列 ILIKE
+(name/code/asset_number/serial_number/management_ip/business_ip),旧 UI placeholder
+为如实描述。无排序交互(sortBy/sortDir 不传)。
 
 ### 3.2 差分口径与结论
 
 | 交互 | 旧 UI | 新 UI | 处置 |
 |---|---|---|---|
-| 生命周期筛选 | 有(中文 label 下拉) | **本轮补齐**(同款下拉) | 双跑差分:两侧筛"待上架"→均只剩 MTX-DV2(集合级等价) ✅ |
+| 生命周期筛选 | 有(中文 label 下拉+查询按钮) | **本轮补齐**(同款下拉,变更即查) | 双跑差分:两侧筛"待上架"→均只剩 MTX-DV2(集合级等价) ✅ |
+| 搜索框 | 有(六列语义 placeholder) | 有(placeholder 已对齐六列语义) | **双跑差分:同搜 MTX-DV2 → 两侧均收窄到一台** ✅ |
 | 设备类型筛选 | 有 | **本轮补齐** | 交互同款,断言随下拉参数(vitest 校验传参) |
-| 搜索框 | **无** | 有(此前已交付) | 如实记录:新 UI 增强,非行为回归(不构成差分项) |
 | 排序 | 无 | 不新增 | 如实记录:两侧均无服务端排序,保持一致 |
 
 ## 4. 像素级基准与阈值(§5 第 4 项)
@@ -106,6 +111,11 @@ PENDING_REMOVAL**(后端 model/device.go L13 明确定义)。P1-R4 类型投资�
 契约与实现漂移在编译期被拦截。已修 openapi.yaml + 重新生成 schema.d.ts(契约漂移
 门禁同步验证)。
 
+**契约漂移第二处**(e2e 实测抓到):POST /api/v1/admin/users 后端
+`response.Created` → HTTP **201**,openapi 原声明 200。已修契约(201)并同步
+e2e 断言。两处漂移均在无强类型/实测门禁的路径上被本轮流程拦截——印证
+"编译期契约+运行期实测"双门禁的必要性。
+
 ## 6. B 族转永久(§4.2 条款执行)
 
 按用户决策以**模拟方式**满足"连续 3 次 scheduled nightly 全绿"条件:门禁脚本为
@@ -119,8 +129,12 @@ field_gate×3 + determinism_gate×3,全部 PASS。台账
 
 - vue-tsc 首跑抓到枚举缺口(§5)与测试 helper 宽类型(即改);
 - vitest 首跑 1/43 红:happy-dom 下 location.replace 不可 redefine——改 stubGlobal;
-- CI 首跑预期像素基准缺失红(bootstrap 流程第一步),基准入库后二跑全绿(链接:
-  <CI 结果链接>);
+- CI 首跑 lint 红:4 文件未过 prettier(本地只跑了 eslint)——补 prettier --write;
+- CI 次跑两处红:e2e 实测抓到 POST /admin/users 实际 201(契约漂移第二处,§5);
+  旧 UI 生命周期筛选定位失败——EP 2.x 新结构 placeholder 渲染为 span 文本而非
+  input 属性(error-context aria 快照实证),改 `.el-select` hasText 定位;
+- 像素基准首跑按预期红(基准缺失):CI Linux 环境生成→artifact 下载入库流程跑通
+  (devices 基准已入库;tree 基准随 bootstrap 迭代入库);
 
 ## 8. 请专家复核的开放项
 

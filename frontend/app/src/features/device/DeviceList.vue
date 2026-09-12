@@ -68,9 +68,9 @@ onMounted(async () => {
     <div class="toolbar">
       <el-input
         v-model="search"
-        placeholder="按编码/名称搜索"
+        placeholder="名称、编码、资产号、序列号或 IP"
         clearable
-        style="width: 220px"
+        style="width: 260px"
         data-test="device-search"
         @change="resetAndLoad"
       />

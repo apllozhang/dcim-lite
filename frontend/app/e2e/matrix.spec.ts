@@ -31,8 +31,16 @@ const FIVE = [
 let adminToken = "";
 
 async function loginAs(page: Page, user: string, pass: string): Promise<string> {
+  // 先清会话:已登录(localStorage 有 ale.token)时路由守卫把 /login 弹回首页,
+  // 登录表单永远不出现(CI 第三跑用例2 fill 超时根因,aria 快照实证)
   await page.goto("/login");
-  await page.evaluate(() => localStorage.setItem("ale.flags.debug", "1"));
+  await page.evaluate(() => {
+    localStorage.removeItem("ale.token");
+    localStorage.setItem("ale.flags.debug", "1");
+  });
+  // 清 token 后重新完整导航,应用重载、守卫按匿名放行
+  await page.goto("/login");
+  await page.reload();
   await page.fill("input[placeholder='请输入用户名']", user);
   await page.fill("input[placeholder='请输入密码']", pass);
   const src = await page.locator("[data-test=captcha-img]").getAttribute("src");
@@ -178,6 +186,18 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
   expect(mtxVisible.length, "新 UI 筛选后 MTX 设备只剩待上架一台").toBe(1);
   expect(mtxVisible[0]).toContain("MTX-DV2");
 
+  // ── 新 UI:搜索差分(编码搜索 → 收窄到一台;后端六列 ILIKE 同语义) ──
+  const newSearch = page.waitForResponse(
+    (r) => r.url().includes("search=MTX-DV2") && r.request().method() === "GET",
+  );
+  await page.fill("[data-test=device-search]", "MTX-DV2");
+  await page.locator("[data-test=device-search-btn]").click();
+  await newSearch;
+  rows = await tableRows(page);
+  const newSearched = rows.filter((r) => r.includes("MTX-DV"));
+  expect(newSearched.length, "新 UI 搜索 MTX-DV2 只剩一台").toBe(1);
+  expect(newSearched[0]).toContain("MTX-DV2");
+
   // ── 旧 UI:五台设备 + 中文状态(独立源注入会话) ──
   const oldErrors: string[] = [];
   page.on("pageerror", (e) => oldErrors.push(String(e)));
@@ -197,17 +217,32 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
   // 旧 bundle 为 EP 2.x 新结构:placeholder 渲染为 span 文本而非 input 属性
   // (error-context aria 快照实证:combobox + generic"生命周期"),
   // 故用 .el-select hasText 定位而非 [placeholder=...]。
+  // 且旧 UI 筛选变更不自动查询——须点"查询"按钮(CI 第三跑 waitForResponse 超时根因)。
   const filtered = page.waitForResponse(
     (r) => r.url().includes("lifecycleStatus=WAITING_RACK") && r.request().method() === "GET",
   );
   await page.locator(".el-select", { hasText: "生命周期" }).click();
   await page.locator(".el-select-dropdown__item", { hasText: "待上架" }).click();
+  await page.locator("button", { hasText: "查询" }).click();
   await filtered;
   await page.waitForTimeout(1200);
   oldRows = await tableRows(page);
   const oldVisible = oldRows.filter((r) => r.includes("MTX-DV"));
   expect(oldVisible.length, "旧 UI 筛选后 MTX 设备只剩待上架一台(与新 UI 一致)").toBe(1);
   expect(oldVisible[0]).toContain("MTX-DV2");
+
+  // ── 旧 UI:搜索差分(aria 实证有搜索框:placeholder=名称、编码、资产号、序列号或 IP) ──
+  const oldSearch = page.waitForResponse(
+    (r) => r.url().includes("search=MTX-DV2") && r.request().method() === "GET",
+  );
+  await page.locator("input[placeholder*='编码']").fill("MTX-DV2");
+  await page.locator("button", { hasText: "查询" }).click();
+  await oldSearch;
+  await page.waitForTimeout(1200);
+  oldRows = await tableRows(page);
+  const oldSearched = oldRows.filter((r) => r.includes("MTX-DV"));
+  expect(oldSearched.length, "旧 UI 搜索 MTX-DV2 只剩一台(与新 UI 一致)").toBe(1);
+  expect(oldSearched[0]).toContain("MTX-DV2");
   expect(oldErrors, "旧 UI 全程无未捕获异常").toEqual([]);
 
   // ── 像素基准:新 UI 资源树(MTX 种子后) ──
