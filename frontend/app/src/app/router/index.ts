@@ -11,9 +11,20 @@ const router = createRouter({
       component: () => import("@/app/layouts/AppLayout.vue"),
       children: [
         {
+          // 运行概览(第 6 轮;新 UI 独有页面,无 legacy 对应模块)
           path: "",
-          component: () => import("@/features/resource/ResourceTree.vue"),
+          component: () => import("@/features/dashboard/DashboardView.vue"),
+        },
+        {
+          // 资源层级(复刻 v2 /data-centers;flag 模块 tree 的 legacy 跳转目标同为 /data-centers)
+          path: "data-centers",
+          component: () => import("@/features/resource/ResourceHierarchy.vue"),
           meta: { flagModule: "tree" },
+        },
+        {
+          // 机房大屏(第 6 轮重建中,占位)
+          path: "room-screen",
+          component: () => import("@/features/screen/RoomScreenStub.vue"),
         },
         {
           path: "devices",

@@ -29,7 +29,8 @@ test("anonymous is redirected to login with captcha", async ({ page }) => {
 test("full login flow reaches read-only shell", async ({ page }) => {
   test.skip(!PASS, "E2E_PASSWORD 未提供时跳过");
   await login(page);
-  await expect(page.locator("[data-test=resource-tree]")).toBeVisible();
+  // 第 6 轮起登录落地页为运行概览(/)
+  await expect(page.locator("[data-test=dashboard]")).toBeVisible();
   await expect(page.locator("[data-test=user-menu]")).toContainText("管理员");
 
   // 会话恢复:刷新后仍登录
@@ -112,11 +113,11 @@ test("legacy flag redirects module to legacy origin(新→旧→新回退演练,
   });
   expect(pageErrors, "旧页面不得有未捕获 JS 异常").toEqual([]);
 
-  // 新→旧→新:回到新源,URL 参数切回 devices:new,断言新树真实渲染且 API 成功
-  await page.goto("/?ale_flags=devices:new");
+  // 新→旧→新:回到新源,URL 参数切回 devices:new,断言新设备台账真实渲染且 API 成功
+  await page.goto("/devices?ale_flags=devices:new");
   await page.waitForURL((u) => u.port !== "19501", { timeout: 15000 });
   await expect(page).toHaveTitle(/ALE 机柜管理/, { timeout: 15000 });
-  await expect(page.locator("[data-test=resource-tree]")).toBeVisible();
+  await expect(page.locator("[data-test=device-table]")).toBeVisible();
   expect(api200, "切回新版后 API 必须真实成功").toBeGreaterThan(0);
   expect(pageErrors, "新页面不得有未捕获 JS 异常").toEqual([]);
 });

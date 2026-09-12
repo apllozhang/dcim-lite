@@ -247,12 +247,13 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
   expect(oldSearched[0]).toContain("MTX-DV2");
   expect(oldErrors, "旧 UI 全程无未捕获异常").toEqual([]);
 
-  // ── 像素基准:新 UI 资源树(MTX 种子后) ──
-  await page.goto("/");
-  await expect(page.locator("[data-test=resource-tree] .el-tree-node").first()).toBeVisible({
+  // ── 像素基准:新 UI 资源层级页(MTX 种子后;第 6 轮起为三栏资源页) ──
+  await page.goto("/data-centers");
+  await expect(page.locator("[data-test=resource-page]")).toBeVisible({
     timeout: 15000,
   });
-  await expect(page).toHaveScreenshot("mtx-new-tree.png", {
+  await expect(page.locator("[data-test=dc-item]", { hasText: "MTX-DC" })).toBeVisible();
+  await expect(page).toHaveScreenshot("mtx-new-hierarchy.png", {
     fullPage: true,
     maxDiffPixelRatio: 0.02,
   });
@@ -282,7 +283,7 @@ test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({
 
   // ── 新 UI admin:菜单含系统管理 + /admin 用户表渲染(页面此刻是 admin 会话) ──
   await page.goto("/");
-  await expect(page.locator("[data-test=resource-tree]").first()).toBeVisible();
+  await expect(page.locator("[data-test=dashboard]").first()).toBeVisible();
   expect(await page.locator(".el-menu").innerText()).toContain("系统管理");
   await page.locator(".el-menu-item", { hasText: "系统管理" }).click();
   await expect(page.locator("[data-test=admin-users-table]").first()).toBeVisible();
