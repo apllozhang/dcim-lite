@@ -185,3 +185,97 @@ export async function fetchDeviceTypes(): Promise<DeviceType[]> {
   const data = await unwrapData(await api.GET("/api/v1/device-types"), "GET /api/v1/device-types");
   return data.items ?? [];
 }
+
+/* ── 设备写操作(第6轮 屏3) ── */
+export async function createDevice(body: Record<string, unknown>): Promise<void> {
+  await unwrapOptional(
+    await api.POST("/api/v1/devices", { body } as never),
+    "POST /api/v1/devices",
+  );
+}
+export async function updateDevice(
+  id: string,
+  version: number,
+  body: Record<string, unknown>,
+): Promise<void> {
+  await unwrapOptional(
+    await api.PUT("/api/v1/devices/{id}", {
+      params: { path: { id }, query: { version } },
+      body,
+    } as never),
+    "PUT /api/v1/devices/{id}",
+  );
+}
+export async function deleteDevice(id: string, version: number): Promise<void> {
+  await unwrapOptional(
+    await api.DELETE("/api/v1/devices/{id}", { params: { path: { id }, query: { version } } }),
+    "DELETE /api/v1/devices/{id}",
+  );
+}
+export async function fetchDevice(id: string): Promise<Device> {
+  return unwrapData(
+    await api.GET("/api/v1/devices/{id}", { params: { path: { id } } }),
+    "GET /api/v1/devices/{id}",
+  );
+}
+
+/* ── 设备类型写操作 ── */
+export async function createDeviceType(body: Record<string, unknown>): Promise<void> {
+  await unwrapOptional(
+    await api.POST("/api/v1/device-types", { body } as never),
+    "POST /api/v1/device-types",
+  );
+}
+export async function updateDeviceType(
+  id: string,
+  version: number,
+  body: Record<string, unknown>,
+): Promise<void> {
+  await unwrapOptional(
+    await api.PUT("/api/v1/device-types/{id}", {
+      params: { path: { id }, query: { version } },
+      body,
+    } as never),
+    "PUT /api/v1/device-types/{id}",
+  );
+}
+export async function deleteDeviceType(id: string, version: number): Promise<void> {
+  await unwrapOptional(
+    await api.DELETE("/api/v1/device-types/{id}", { params: { path: { id }, query: { version } } }),
+    "DELETE /api/v1/device-types/{id}",
+  );
+}
+
+/* ── 机柜U位视图(屏3 第三个Tab) ── */
+export interface ULayoutDevice {
+  id: string;
+  code: string;
+  name: string;
+  startU: number;
+  endU: number;
+  heightU: number;
+  color: string;
+}
+export interface ULayoutResponse {
+  uHeight: number;
+  used: number;
+  free: number;
+  devices: ULayoutDevice[];
+}
+export async function fetchULayout(rackId: string): Promise<ULayoutResponse> {
+  const data = await unwrapData(
+    await api.GET("/api/v1/racks/{id}/u-layout", { params: { path: { id: rackId } } }),
+    "GET /api/v1/racks/{id}/u-layout",
+  );
+  return data as unknown as ULayoutResponse;
+}
+export async function fetchRacks(params?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<{ items: Rack[]; total: number }> {
+  const data = await unwrapData(
+    await api.GET("/api/v1/racks-page", { params: { query: params ?? {} } }),
+    "GET /api/v1/racks-page",
+  );
+  return { items: data.items ?? [], total: data.total ?? 0 };
+}
