@@ -350,6 +350,21 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
     "IMPORT-DIALOG-OPEN:",
     await page.locator(".el-overlay:visible .el-dialog", { hasText: "导入机柜图" }).count(),
   );
+  console.log(
+    "FILE-SPAN:",
+    await page
+      .locator(".file-control span")
+      .first()
+      .innerText()
+      .catch(() => "n/a"),
+  );
+  console.log(
+    "TOAST:",
+    await page
+      .locator(".el-message")
+      .allInnerTexts()
+      .catch(() => []),
+  );
   // 同源导出秒级回读:全部设备"保持不变",0 错误 0 待确认(dualrun 种子确定性)
   await expect(page.locator(".validation-summary")).toBeVisible({ timeout: 20000 });
   const sumText = await page.locator(".validation-summary").innerText();
