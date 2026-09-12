@@ -1,7 +1,10 @@
 # 第五轮响应:P1-D 收口提交材料(2026-09-12)
 
 > 对应:第四轮复评 §5 验收负例清单与 §6 第 5 轮计划;第四轮提交材料 §6 计划的完整落地。
-> 评估对象基线:main `ef11559`;本轮交付:PR #48(main `<合并后填>`)。
+> 评估对象基线:main `ef11559`;本轮交付:PR #48(main `fa4910b`,7 commits)。
+> CI:全绿 https://github.com/apllozhang/dcim-lite/actions/runs/34669229733(8/8 checks)。
+> 部署:203 ale-app 双源已重建为 fa4910b(~/r6-build),冒烟 19500/19501/health=200、
+> /metrics=404,dist 含全部第 5 轮特性(中文状态/筛选下拉/系统管理/AdminUsers)。
 > 四词纪律执行:每项按「实现→部署→验证→关闭」陈述。
 
 ## 0. 范围与结论速览
@@ -125,22 +128,31 @@ field_gate×3 + determinism_gate×3,全部 PASS。台账
 点火后以实测数据最终确认,有漂移则重新登记差异条目并重启三连计数**。ratchet 基线
 保持 68.6(模拟值 72.8 为构造值不用于上调;等首次真实 nightly 实测最小值后一次性调高)。
 
-## 7. 过程失败如实记录
+## 7. 过程失败如实记录(CI 七轮迭代,全部留痕)
 
 - vue-tsc 首跑抓到枚举缺口(§5)与测试 helper 宽类型(即改);
 - vitest 首跑 1/43 红:happy-dom 下 location.replace 不可 redefine——改 stubGlobal;
-- CI 首跑 lint 红:4 文件未过 prettier(本地只跑了 eslint)——补 prettier --write;
-- CI 次跑两处红:e2e 实测抓到 POST /admin/users 实际 201(契约漂移第二处,§5);
+- CI 第 1 轮 lint 红:4 文件未过 prettier(本地只跑了 eslint)——补 prettier --write;
+- CI 第 2 轮两处红:e2e 实测抓到 POST /admin/users 实际 201(契约漂移第二处,§5);
   旧 UI 生命周期筛选定位失败——EP 2.x 新结构 placeholder 渲染为 span 文本而非
   input 属性(error-context aria 快照实证),改 `.el-select` hasText 定位;
-- 像素基准首跑按预期红(基准缺失):CI Linux 环境生成→artifact 下载入库流程跑通
-  (devices 基准已入库;tree 基准随 bootstrap 迭代入库);
+- CI 第 3 轮两处超时:旧 UI 筛选变更**不自动查询**(须点"查询"按钮,waitForResponse
+  永等不到);loginAs 复用会话时守卫把 /login 弹回首页(fill 等不到表单)——
+  loginAs 先清 ale.token;
+- CI 第 4 轮:三权限用例页面未真实登录 admin(模块级 token 复用跳过登录,而每个
+  test 是新 context)——显式 loginAs;tree 像素基准按预期红→bootstrap 生成入库;
+- CI 第 5 轮 flaky:admin 用户表表头先于数据渲染,innerText 抓早——等 tbody 首行;
+- CI 第 6 轮竞态:新 UI 筛选 waitForResponse 在 click 之后注册,快环境请求瞬间
+  完成 miss 掉——统一先注册监听再交互;
+- **CI 第 7 轮全绿**(8/8 checks,链接见页首);像素基准严格比对通过
+  (devices+tree 两基准,阈值 2%)。
 
 ## 8. 请专家复核的开放项
 
 1. 五态种子中 MAINTENANCE/PENDING_REMOVAL 经"创建时指定"注入(唯一合法 API 路径,
    状态机无入口)——是否接受此口径,还是要求后端补状态机转换接口(影响第 6 轮写链路)?
-2. 搜索框:旧 UI 无、新 UI 有(增强)——确认"增强不算行为分歧"的口径;
+2. 搜索框:两侧都有(§3.1 更正后口径),已做双跑差分;新 UI 筛选变更即查、旧 UI
+   须点查询按钮——交互时序差异保留各自原生行为,确认可接受;
 3. 像素基准阈值 2% + 基准页仅两页(设备列表/资源树)——是否要求扩展到登录页
    (需 mask 验证码)与管理页(动态时间列)?
 4. B 族模拟转永久的条款(首次真实 nightly 最终确认)是否满足 §4.2 原意,或要求
