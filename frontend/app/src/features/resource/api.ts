@@ -10,10 +10,7 @@ export type Device = components["schemas"]["Device"];
 export type DeviceType = components["schemas"]["DeviceType"];
 
 export async function fetchDeviceTypes(): Promise<DeviceType[]> {
-  const data = await unwrapData(
-    await api.GET("/api/v1/device-types"),
-    "GET /api/v1/device-types",
-  );
+  const data = await unwrapData(await api.GET("/api/v1/device-types"), "GET /api/v1/device-types");
   return data.items ?? [];
 }
 

@@ -27,13 +27,7 @@ onMounted(async () => {
     <h2 class="page-title">系统管理 · 用户</h2>
     <el-alert v-if="error" type="error" :title="`用户列表加载失败:${error}`" :closable="false" />
     <el-empty v-else-if="loaded && users.length === 0" description="暂无用户" />
-    <el-table
-      v-else
-      v-loading="loading"
-      :data="users"
-      size="default"
-      data-test="admin-users-table"
-    >
+    <el-table v-else v-loading="loading" :data="users" size="default" data-test="admin-users-table">
       <el-table-column prop="username" label="用户名" min-width="140" />
       <el-table-column prop="displayName" label="显示名称" min-width="140" />
       <el-table-column prop="authSource" label="来源" width="100" />

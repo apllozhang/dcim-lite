@@ -252,10 +252,9 @@ test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({
   // ── 新 UI user:菜单无系统管理,直达 /admin 被守卫重定向 ──
   await loginAs(page, username, userPass);
   await page.goto("/");
-  expect(
-    await page.locator(".el-menu").innerText(),
-    "user 菜单无系统管理",
-  ).not.toContain("系统管理");
+  expect(await page.locator(".el-menu").innerText(), "user 菜单无系统管理").not.toContain(
+    "系统管理",
+  );
   await page.goto("/admin");
   await page.waitForURL((u) => u.pathname === "/" || u.pathname === "", { timeout: 10000 });
   expect(page.url().includes("/admin"), "user 直达 /admin 不停留").toBe(false);
@@ -268,17 +267,15 @@ test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({
     (u) => u.host === "localhost:19501" && (u.pathname === "/" || u.pathname === ""),
     { timeout: 15000 },
   );
-  expect(
-    await page.locator(".el-menu").innerText(),
-    "旧 UI user 菜单无系统管理",
-  ).not.toContain("系统管理");
+  expect(await page.locator(".el-menu").innerText(), "旧 UI user 菜单无系统管理").not.toContain(
+    "系统管理",
+  );
 
   // ── 旧 UI admin:菜单含系统管理(正向对照) ──
   await page.evaluate((t) => localStorage.setItem("cabinet_access_token", t), adminToken);
   await page.goto(`${OLD}/admin`);
   await page.waitForTimeout(2000);
-  expect(
-    await page.locator(".el-menu").innerText(),
-    "旧 UI admin 菜单含系统管理",
-  ).toContain("系统管理");
+  expect(await page.locator(".el-menu").innerText(), "旧 UI admin 菜单含系统管理").toContain(
+    "系统管理",
+  );
 });

@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { fetchDevices, fetchDeviceTypes, type Device, type DeviceType } from "@/features/resource/api";
+import {
+  fetchDevices,
+  fetchDeviceTypes,
+  type Device,
+  type DeviceType,
+} from "@/features/resource/api";
 import { reportError } from "@/api/errors";
 import {
   LIFECYCLE_STATUS_OPTIONS,
@@ -119,7 +124,11 @@ onMounted(async () => {
       />
       <el-table-column prop="lifecycleStatus" label="状态" width="110">
         <template #default="{ row }">
-          <el-tag :type="lifecycleTagType(row.lifecycleStatus)" size="small" data-test="device-status-tag">
+          <el-tag
+            :type="lifecycleTagType(row.lifecycleStatus)"
+            size="small"
+            data-test="device-status-tag"
+          >
             {{ lifecycleLabel(row.lifecycleStatus) }}
           </el-tag>
         </template>
