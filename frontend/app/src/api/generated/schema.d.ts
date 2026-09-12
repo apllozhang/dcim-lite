@@ -2281,7 +2281,7 @@ export interface components {
             businessSystem?: string;
             applicationName?: string;
             /** @enum {string} */
-            lifecycleStatus?: "WAITING_RACK" | "RUNNING" | "MAINTENANCE" | "OFF_RACK" | "SCRAPPED";
+            lifecycleStatus?: "WAITING_RACK" | "RUNNING" | "MAINTENANCE" | "PENDING_REMOVAL" | "OFF_RACK" | "SCRAPPED";
             heightU?: number;
             widthMm?: number | null;
             depthMm?: number | null;

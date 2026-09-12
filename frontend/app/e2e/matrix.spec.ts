@@ -1,0 +1,284 @@
+import { expect, test, type Page } from "playwright/test";
+
+/**
+ * 第 5 轮 P1-D 收口(复评 §5/§6):
+ * 1) 五态种子(WAITING_RACK/RUNNING/MAINTENANCE/PENDING_REMOVAL/OFF_RACK)
+ *    × 新旧双跑对照——状态列以旧 bundle 中文口径(待上架/运行中/…)断言;
+ * 2) 筛选交互差分:生命周期筛选在新旧两侧结果集合一致;
+ * 3) 三权限矩阵:admin/user × 新 UI(菜单+/admin 守卫) × 旧 UI(菜单+/admin 重定向)
+ *    + 后端 API 矩阵(user GET /admin/users 403);
+ * 4) 新 UI 关键页像素基准(toHaveScreenshot,阈值 2%,基准由 CI 首跑生成入库)。
+ *
+ * 种子前缀 MTX-:与 dualrun.spec 的 DUAL- 前缀隔离(同栈多 spec 编码不冲突)。
+ * 状态可达性口径:WAITING_RACK=创建缺省,RUNNING=assign,OFF_RACK=assign→decommission,
+ * MAINTENANCE/PENDING_REMOVAL=创建时显式指定(CreateDevice 接受合法枚举;
+ * PUT 更新对状态收权 preserve existing,与厂商一致)。
+ */
+
+const ADMIN = process.env.E2E_USERNAME ?? "admin";
+const ADMIN_PASS = process.env.E2E_PASSWORD ?? "";
+const OLD = "http://localhost:19501";
+
+/** 五态种子(确定性顺序,任何环境可复现) */
+const FIVE = [
+  { code: "MTX-DV1", status: "RUNNING", label: "运行中" },
+  { code: "MTX-DV2", status: "WAITING_RACK", label: "待上架" },
+  { code: "MTX-DV3", status: "MAINTENANCE", label: "维护中" },
+  { code: "MTX-DV4", status: "OFF_RACK", label: "已下架" },
+  { code: "MTX-DV5", status: "PENDING_REMOVAL", label: "待下架" },
+];
+
+let adminToken = "";
+
+async function loginAs(page: Page, user: string, pass: string): Promise<string> {
+  await page.goto("/login");
+  await page.evaluate(() => localStorage.setItem("ale.flags.debug", "1"));
+  await page.fill("input[placeholder='请输入用户名']", user);
+  await page.fill("input[placeholder='请输入密码']", pass);
+  const src = await page.locator("[data-test=captcha-img]").getAttribute("src");
+  const code = await page.evaluate((b64) => {
+    const svg = atob(b64.split(",", 2)[1]);
+    return (svg.match(/>(\d)<\/text>/g) ?? []).map((m) => m[1]).join("");
+  }, src ?? "");
+  await page.fill("[data-test=captcha-input]", code);
+  await page.click("[data-test=login-btn]");
+  await page.waitForURL((u) => !u.pathname.includes("/login"), { timeout: 15000 });
+  return page.evaluate(() => localStorage.getItem("ale.token") ?? "");
+}
+
+/** API 直调:返回 {status, envelope};envelope.data 即资源(Envelope 单层包装) */
+async function api(
+  page: Page,
+  method: string,
+  path: string,
+  body?: unknown,
+  token: string = adminToken,
+): Promise<{ status: number; envelope: { data?: unknown; code?: string } | null }> {
+  return page.evaluate(
+    async ({ method, path, body, token }) => {
+      const r = await fetch(path, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      let j = null;
+      try {
+        j = await r.json();
+      } catch {
+        /* 非 JSON */
+      }
+      return { status: r.status, envelope: j };
+    },
+    { method, path, body, token },
+  );
+}
+
+async function tableRows(page: Page): Promise<string[]> {
+  return page.$$eval(".el-table__body tr", (rows) =>
+    rows.map((r) => r.textContent?.replace(/\s+/g, " ").trim() ?? ""),
+  );
+}
+
+test.beforeAll(async ({ request }) => {
+  for (let i = 0; i < 30; i++) {
+    const r = await request.get("/health/ready");
+    if (r.ok()) return;
+    await new Promise((res) => setTimeout(res, 2000));
+  }
+  throw new Error("backend not ready");
+});
+
+test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", async ({ page }) => {
+  test.skip(!ADMIN_PASS, "E2E_PASSWORD 未提供时跳过");
+
+  // ── 种子:1 DC/1 房/2 柜 + 五态各一 ──
+  adminToken = await loginAs(page, ADMIN, ADMIN_PASS);
+  const resOf = (r: { envelope: { data?: unknown } | null }) =>
+    (r.envelope?.data ?? {}) as { id?: string };
+  const dc = resOf(
+    await api(page, "POST", "/api/v1/data-centers", { code: "MTX-DC", name: "矩阵机房" }),
+  );
+  const room = resOf(
+    await api(page, "POST", `/api/v1/data-centers/${dc.id}/rooms`, {
+      code: "MTX-R",
+      name: "矩阵房间",
+    }),
+  );
+  const rackA = resOf(
+    await api(page, "POST", `/api/v1/rooms/${room.id}/racks`, {
+      code: "MTX-KA",
+      name: "矩阵柜A",
+      uHeight: 20,
+    }),
+  );
+  const rackB = resOf(
+    await api(page, "POST", `/api/v1/rooms/${room.id}/racks`, {
+      code: "MTX-KB",
+      name: "矩阵柜B",
+      uHeight: 20,
+    }),
+  );
+  const types = (await api(page, "GET", "/api/v1/device-types")).envelope?.data as {
+    items?: { code: string; id: string }[];
+  };
+  const srv = types?.items?.find((t) => t.code === "SERVER");
+
+  const idOf: Record<string, string> = {};
+  for (const d of FIVE) {
+    const dev = resOf(
+      await api(page, "POST", "/api/v1/devices", {
+        typeId: srv?.id,
+        code: d.code,
+        name: `矩阵-${d.code}`,
+        heightU: 1,
+        ...(d.status === "MAINTENANCE" || d.status === "PENDING_REMOVAL"
+          ? { lifecycleStatus: d.status }
+          : {}),
+      }),
+    );
+    idOf[d.code] = dev.id ?? "";
+  }
+  // 状态机路径:DV1 上架→RUNNING;DV4 上架再下架→OFF_RACK
+  await api(page, "POST", `/api/v1/devices/${idOf["MTX-DV1"]}/assign`, {
+    rackId: rackA.id,
+    startU: 1,
+  });
+  await api(page, "POST", `/api/v1/devices/${idOf["MTX-DV4"]}/assign`, {
+    rackId: rackB.id,
+    startU: 1,
+  });
+  await api(page, "POST", `/api/v1/devices/${idOf["MTX-DV4"]}/decommission`, {
+    reason: "matrix-e2e",
+  });
+
+  // ── 新 UI:五台设备 + 中文状态标签(旧 bundle zl 口径) ──
+  await page.goto("/devices");
+  await expect(page.locator("[data-test=device-table] tbody tr").first()).toBeVisible();
+  let rows = await tableRows(page);
+  for (const d of FIVE) {
+    const row = rows.find((r) => r.includes(d.code));
+    expect(row, `新 UI 含 ${d.code}`).toBeTruthy();
+    expect(row, `新 UI ${d.code} 状态列中文口径`).toContain(d.label);
+  }
+  await expect(page).toHaveScreenshot("mtx-new-devices.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+  });
+
+  // ── 新 UI:生命周期筛选"待上架" → 只剩 DV2 ──
+  await page.locator("[data-test=device-status-filter]").click();
+  await page.locator(".el-select-dropdown__item", { hasText: "待上架" }).click();
+  await page.waitForResponse((r) => r.url().includes("lifecycleStatus=WAITING_RACK"));
+  rows = await tableRows(page);
+  const mtxVisible = rows.filter((r) => r.includes("MTX-DV"));
+  expect(mtxVisible.length, "新 UI 筛选后 MTX 设备只剩待上架一台").toBe(1);
+  expect(mtxVisible[0]).toContain("MTX-DV2");
+
+  // ── 旧 UI:五台设备 + 中文状态(独立源注入会话) ──
+  const oldErrors: string[] = [];
+  page.on("pageerror", (e) => oldErrors.push(String(e)));
+  await page.goto(`${OLD}/`);
+  await page.evaluate((t) => localStorage.setItem("cabinet_access_token", t), adminToken);
+  await page.goto(`${OLD}/devices`);
+  await page.waitForSelector(".el-table__body tr", { timeout: 20000 });
+  await page.waitForTimeout(1500);
+  let oldRows = await tableRows(page);
+  for (const d of FIVE) {
+    const row = oldRows.find((r) => r.includes(d.code));
+    expect(row, `旧 UI 含 ${d.code}`).toBeTruthy();
+    expect(row, `旧 UI ${d.code} 状态中文`).toContain(d.label);
+  }
+
+  // ── 旧 UI:生命周期筛选"待上架"(placeholder=生命周期) → 同样只剩 DV2 ──
+  const filtered = page.waitForResponse(
+    (r) => r.url().includes("lifecycleStatus=WAITING_RACK") && r.request().method() === "GET",
+  );
+  await page.locator("[placeholder='生命周期']").click();
+  await page.locator(".el-select-dropdown__item", { hasText: "待上架" }).click();
+  await filtered;
+  await page.waitForTimeout(1200);
+  oldRows = await tableRows(page);
+  const oldVisible = oldRows.filter((r) => r.includes("MTX-DV"));
+  expect(oldVisible.length, "旧 UI 筛选后 MTX 设备只剩待上架一台(与新 UI 一致)").toBe(1);
+  expect(oldVisible[0]).toContain("MTX-DV2");
+  expect(oldErrors, "旧 UI 全程无未捕获异常").toEqual([]);
+
+  // ── 像素基准:新 UI 资源树(MTX 种子后) ──
+  await page.goto("/");
+  await expect(page.locator("[data-test=resource-tree] .el-tree-node").first()).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(page).toHaveScreenshot("mtx-new-tree.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+  });
+});
+
+test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({ page }) => {
+  test.skip(!ADMIN_PASS, "E2E_PASSWORD 未提供时跳过");
+  adminToken = adminToken || (await loginAs(page, ADMIN, ADMIN_PASS));
+
+  // 创建 user 测试账号(用户名带时间戳,重跑不冲突;自建临时口令)
+  const stamp = `${Date.now() % 100000}`;
+  const username = `e2e-mtx-${stamp}`;
+  const userPass = `Mtx#E2e${stamp}a`;
+  const created = await api(page, "POST", "/api/v1/admin/users", {
+    username,
+    displayName: "矩阵只读用户",
+    password: userPass,
+    roleCodes: ["user"],
+    enabled: true,
+  });
+  expect(created.status, "user 测试账号创建").toBe(200);
+  const userToken = await loginAs(page, username, userPass);
+
+  // ── API 矩阵(后端裁决,两侧同源) ──
+  const adminList = await api(page, "GET", "/api/v1/admin/users");
+  expect(adminList.status, "admin GET /admin/users = 200").toBe(200);
+  const userList = await api(page, "GET", "/api/v1/admin/users", undefined, userToken);
+  expect(userList.status, "user GET /admin/users = 403").toBe(403);
+
+  // ── 新 UI admin:菜单含系统管理 + /admin 用户表渲染 ──
+  await page.goto("/");
+  await expect(page.locator("[data-test=resource-tree]").first()).toBeVisible();
+  expect(await page.locator(".el-menu").innerText()).toContain("系统管理");
+  await page.locator(".el-menu-item", { hasText: "系统管理" }).click();
+  await expect(page.locator("[data-test=admin-users-table]").first()).toBeVisible();
+  expect(await page.locator("[data-test=admin-users-table]").innerText()).toContain("admin");
+
+  // ── 新 UI user:菜单无系统管理,直达 /admin 被守卫重定向 ──
+  await loginAs(page, username, userPass);
+  await page.goto("/");
+  expect(
+    await page.locator(".el-menu").innerText(),
+    "user 菜单无系统管理",
+  ).not.toContain("系统管理");
+  await page.goto("/admin");
+  await page.waitForURL((u) => u.pathname === "/" || u.pathname === "", { timeout: 10000 });
+  expect(page.url().includes("/admin"), "user 直达 /admin 不停留").toBe(false);
+
+  // ── 旧 UI user:菜单无系统管理,直达 /admin 重定向 dashboard(旧守卫同口径) ──
+  await page.goto(`${OLD}/`);
+  await page.evaluate((t) => localStorage.setItem("cabinet_access_token", t), userToken);
+  await page.goto(`${OLD}/admin`);
+  await page.waitForURL(
+    (u) => u.host === "localhost:19501" && (u.pathname === "/" || u.pathname === ""),
+    { timeout: 15000 },
+  );
+  expect(
+    await page.locator(".el-menu").innerText(),
+    "旧 UI user 菜单无系统管理",
+  ).not.toContain("系统管理");
+
+  // ── 旧 UI admin:菜单含系统管理(正向对照) ──
+  await page.evaluate((t) => localStorage.setItem("cabinet_access_token", t), adminToken);
+  await page.goto(`${OLD}/admin`);
+  await page.waitForTimeout(2000);
+  expect(
+    await page.locator(".el-menu").innerText(),
+    "旧 UI admin 菜单含系统管理",
+  ).toContain("系统管理");
+});

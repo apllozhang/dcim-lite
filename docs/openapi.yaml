@@ -1528,7 +1528,7 @@ components:
         contact: { type: string }
         businessSystem: { type: string }
         applicationName: { type: string }
-        lifecycleStatus: { type: string, enum: [WAITING_RACK, RUNNING, MAINTENANCE, OFF_RACK, SCRAPPED] }
+        lifecycleStatus: { type: string, enum: [WAITING_RACK, RUNNING, MAINTENANCE, PENDING_REMOVAL, OFF_RACK, SCRAPPED] }
         heightU: { type: integer }
         widthMm: { type: integer, nullable: true }
         depthMm: { type: integer, nullable: true }
