@@ -259,7 +259,10 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
 test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({ page }) => {
   test.skip(!ADMIN_PASS, "E2E_PASSWORD 未提供时跳过");
   test.setTimeout(120000); // 账号创建 + 三轮登录 + 双 UI 直达/重定向
-  adminToken = adminToken || (await loginAs(page, ADMIN, ADMIN_PASS));
+
+  // 页面必须真实登录 admin(模块级 adminToken 复用会跳过登录,页面仍是匿名态——
+  // CI 第四轮菜单断言挂败根因:每个 test 是新 context,会话不跨用例继承)
+  adminToken = await loginAs(page, ADMIN, ADMIN_PASS);
 
   // 创建 user 测试账号(用户名带时间戳,重跑不冲突;自建临时口令)
   const stamp = `${Date.now() % 100000}`;
@@ -274,6 +277,17 @@ test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({
   });
   // 后端 response.Created → 201(openapi 原写 200,契约漂移已修)
   expect(created.status, "user 测试账号创建").toBe(201);
+
+  // ── 新 UI admin:菜单含系统管理 + /admin 用户表渲染(页面此刻是 admin 会话) ──
+  await page.goto("/");
+  await expect(page.locator("[data-test=resource-tree]").first()).toBeVisible();
+  expect(await page.locator(".el-menu").innerText()).toContain("系统管理");
+  await page.locator(".el-menu-item", { hasText: "系统管理" }).click();
+  await expect(page.locator("[data-test=admin-users-table]").first()).toBeVisible();
+  expect(await page.locator("[data-test=admin-users-table]").innerText()).toContain("admin");
+  expect(await page.locator("[data-test=admin-users-table]").innerText()).toContain(username);
+
+  // ── user 登录(页面会话切换为 user)──
   const userToken = await loginAs(page, username, userPass);
 
   // ── API 矩阵(后端裁决,两侧同源) ──
@@ -282,16 +296,7 @@ test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({
   const userList = await api(page, "GET", "/api/v1/admin/users", undefined, userToken);
   expect(userList.status, "user GET /admin/users = 403").toBe(403);
 
-  // ── 新 UI admin:菜单含系统管理 + /admin 用户表渲染 ──
-  await page.goto("/");
-  await expect(page.locator("[data-test=resource-tree]").first()).toBeVisible();
-  expect(await page.locator(".el-menu").innerText()).toContain("系统管理");
-  await page.locator(".el-menu-item", { hasText: "系统管理" }).click();
-  await expect(page.locator("[data-test=admin-users-table]").first()).toBeVisible();
-  expect(await page.locator("[data-test=admin-users-table]").innerText()).toContain("admin");
-
   // ── 新 UI user:菜单无系统管理,直达 /admin 被守卫重定向 ──
-  await loginAs(page, username, userPass);
   await page.goto("/");
   expect(await page.locator(".el-menu").innerText(), "user 菜单无系统管理").not.toContain(
     "系统管理",
