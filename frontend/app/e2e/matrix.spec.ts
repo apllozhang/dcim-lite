@@ -355,7 +355,11 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
   );
   console.log(
     "FILE-STATUS:",
-    await page.locator(".file-control > span").first().innerText().catch(() => "n/a")),
+    await page
+      .locator(".file-control > span")
+      .first()
+      .innerText()
+      .catch(() => "n/a"),
   );
   console.log(
     "TOAST:",
