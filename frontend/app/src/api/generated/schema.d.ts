@@ -2235,11 +2235,33 @@ export interface components {
             id?: string;
             code?: string;
             name?: string;
+            status?: string;
+            address?: string;
+            manager?: string;
+            contact?: string;
+            serviceProvider?: string;
+            remarks?: string;
+            sortOrder?: number;
+            version?: number;
             rooms?: {
                 /** Format: uuid */
                 id?: string;
+                /** Format: uuid */
+                dataCenterId?: string;
                 code?: string;
                 name?: string;
+                building?: string;
+                floor?: string;
+                roomNumber?: string;
+                areaSquareMeters?: number;
+                purpose?: string;
+                status?: string;
+                floorPlanEnabled?: boolean;
+                floorPlanFormat?: string;
+                racksPerRow?: number;
+                remarks?: string;
+                sortOrder?: number;
+                version?: number;
                 racks?: components["schemas"]["Rack"][];
             }[];
         };

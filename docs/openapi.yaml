@@ -1476,20 +1476,44 @@ components:
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/Rack" } }
         total: { type: integer }
+    # 树节点 = 后端完整模型序列化(service.Tree 嵌入 DataCenter/Room 全字段)。
+    # 2026-09-12 契约如实化:此前仅声明 id/code/name,漏掉 status/version 等
+    # 实际返回字段(资源层级页编辑/删除依赖 version 乐观锁)。
     TreeDataCenter:
       type: object
       properties:
         id: { type: string, format: uuid }
         code: { type: string }
         name: { type: string }
+        status: { type: string }
+        address: { type: string }
+        manager: { type: string }
+        contact: { type: string }
+        serviceProvider: { type: string }
+        remarks: { type: string }
+        sortOrder: { type: integer }
+        version: { type: integer }
         rooms:
           type: array
           items:
             type: object
             properties:
               id: { type: string, format: uuid }
+              dataCenterId: { type: string, format: uuid }
               code: { type: string }
               name: { type: string }
+              building: { type: string }
+              floor: { type: string }
+              roomNumber: { type: string }
+              areaSquareMeters: { type: number }
+              purpose: { type: string }
+              status: { type: string }
+              floorPlanEnabled: { type: boolean }
+              floorPlanFormat: { type: string }
+              racksPerRow: { type: integer }
+              remarks: { type: string }
+              sortOrder: { type: integer }
+              version: { type: integer }
               racks: { type: array, items: { $ref: "#/components/schemas/Rack" } }
     DeviceType:
       type: object

@@ -104,15 +104,12 @@ test("P1-D dual-run: 新旧 UI 在同一种子数据上渲染等价(树+设备�
   );
   await page.screenshot({ path: "test-results/dualrun-new-devices.png", fullPage: true });
 
-  // 新 UI:资源树(节点集 + 截图)
-  await page.goto("/");
-  await expect(page.locator("[data-test=resource-tree] .el-tree-node").first()).toBeVisible({
-    timeout: 15000,
-  });
-  const newTree = await page.$$eval("[data-test=resource-tree] .el-tree-node__content", (nodes) =>
-    nodes.map((n) => n.textContent?.replace(/\s+/g, " ").trim() ?? ""),
-  );
-  await page.screenshot({ path: "test-results/dualrun-new-tree.png", fullPage: true });
+  // 新 UI:资源层级页(第 6 轮起 /data-centers 为三栏资源页;种子资源按页面文本断言)
+  await page.goto("/data-centers");
+  await expect(page.locator("[data-test=resource-page]")).toBeVisible({ timeout: 15000 });
+  await expect(page.locator("[data-test=dc-item]").first()).toBeVisible();
+  const newResourceText = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+  await page.screenshot({ path: "test-results/dualrun-new-resource.png", fullPage: true });
 
   // ── 旧 UI:独立端口源(HTML5 history 模式,根路径路由) ──
   // 注入会话(旧 UI 独立 origin,localStorage 隔离;等价于用户在旧 UI 登录)
@@ -154,12 +151,9 @@ test("P1-D dual-run: 新旧 UI 在同一种子数据上渲染等价(树+设备�
     ).toBe(true);
   }
 
-  // 树节点:双跑 DC/房间/两柜在两侧都可见
+  // 资源层级:双跑 DC/房间/两柜在两侧页面文本中都可见(新侧三栏页,旧侧资源层级页)
   for (const label of ["DUAL-DC", "DUAL-KA", "DUAL-KB"]) {
-    expect(
-      newTree.some((t) => t.includes(label)),
-      `新树含 ${label}`,
-    ).toBe(true);
+    expect(newResourceText.includes(label), `新资源层级页含 ${label}`).toBe(true);
     expect(oldBody.includes(label), `旧资源层级页含 ${label}`).toBe(true);
   }
 
