@@ -418,6 +418,7 @@ const CAT_CATEGORIES = [
             placeholder="名称、编码、资产号、序列号或 IP"
             clearable
             style="width: 280px"
+            data-test="device-search"
             @change="searchDevices"
           />
           <el-select
@@ -425,6 +426,7 @@ const CAT_CATEGORIES = [
             placeholder="设备类型"
             clearable
             style="width: 170px"
+            data-test="device-type-filter"
             @change="searchDevices"
           >
             <el-option v-for="t in types" :key="t.id" :label="t.name ?? t.code" :value="t.id" />
@@ -434,6 +436,7 @@ const CAT_CATEGORIES = [
             placeholder="生命周期"
             clearable
             style="width: 140px"
+            data-test="device-status-filter"
             @change="searchDevices"
           >
             <el-option
