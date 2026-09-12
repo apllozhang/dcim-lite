@@ -178,9 +178,11 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
   });
 
   // ── 新 UI:生命周期筛选"待上架" → 只剩 DV2 ──
+  // 先注册监听再交互:click 后请求可能瞬间完成,晚注册会 miss(快环境竞态)
+  const newFiltered = page.waitForResponse((r) => r.url().includes("lifecycleStatus=WAITING_RACK"));
   await page.locator("[data-test=device-status-filter]").click();
   await page.locator(".el-select-dropdown__item", { hasText: "待上架" }).click();
-  await page.waitForResponse((r) => r.url().includes("lifecycleStatus=WAITING_RACK"));
+  await newFiltered;
   rows = await tableRows(page);
   const mtxVisible = rows.filter((r) => r.includes("MTX-DV"));
   expect(mtxVisible.length, "新 UI 筛选后 MTX 设备只剩待上架一台").toBe(1);
