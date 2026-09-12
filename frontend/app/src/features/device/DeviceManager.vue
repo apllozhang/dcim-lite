@@ -466,7 +466,7 @@ const CAT_CATEGORIES = [
         >
           <el-table-column prop="code" label="编码" min-width="130" show-overflow-tooltip />
           <el-table-column prop="name" label="名称" min-width="140" show-overflow-tooltip />
-          <el-table-column label="State" width="95">
+          <el-table-column label="状态" width="95">
             <template #default="{ row }">
               <el-tag
                 :type="lifecycleTagType(row.lifecycleStatus)"
