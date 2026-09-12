@@ -1203,11 +1203,9 @@ onBeforeUnmount(() => {
           <el-descriptions-item label="位置">
             {{ rackPositionText(selectedRack) }}
           </el-descriptions-item>
-          <el-descriptions-item label="已使用"
-            >
-{{ layoutUsed(selectedRack) }}U
-</el-descriptions-item
-          >
+          <el-descriptions-item label="已使用">
+            {{ layoutUsed(selectedRack) }}U
+          </el-descriptions-item>
           <el-descriptions-item label="剩余">
             {{ selectedMetrics(selectedRack)?.remain }}U
           </el-descriptions-item>
