@@ -308,10 +308,14 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
 
   // ── 屏6b:容量对话框 + 机柜图导出→回导校验闭环(不 commit,不写数据) ──
   await page.locator(".u-button", { hasText: "查看完整 U 位详情" }).click();
+  // 标题在 el-dialog header 插槽,body 内容在 .rack-detail-shell,分开断言
+  const capDialog = page.locator(".el-overlay:visible .el-dialog", {
+    hasText: "机柜详情与容量分析",
+  });
+  await expect(capDialog).toBeVisible({ timeout: 10000 });
   const shell = page.locator(".rack-detail-shell");
   await expect(shell).toBeVisible({ timeout: 10000 });
   const capText = await shell.innerText();
-  expect(capText, "容量对话框标题").toContain("机柜详情与容量分析");
   expect(capText, "利用率指标卡").toContain("U 位利用率");
   expect(capText, "PDU 面板").toContain("PDU 与供电连接");
   await page.keyboard.press("Escape");
