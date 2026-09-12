@@ -280,6 +280,12 @@ function onRoomChange() {
   selectedRack.value = null;
   void loadLayouts();
 }
+/** 切数据中心:自动选第一个机房(v2 changeDataCenter 口径;不残留旧 roomId) */
+function onDcChange() {
+  roomId.value = rooms.value[0]?.id ?? "";
+  selectedRack.value = null;
+  void loadLayouts();
+}
 
 /* ── U 位立面 ── */
 interface URow {
@@ -716,7 +722,13 @@ onBeforeUnmount(() => {
       </div>
       <div class="selector-section">
         <label>数据中心</label>
-        <el-select v-model="dcId" size="large" class="screen-select" data-test="screen-dc-select">
+        <el-select
+          v-model="dcId"
+          size="large"
+          class="screen-select"
+          data-test="screen-dc-select"
+          @change="onDcChange"
+        >
           <el-option v-for="d in tree" :key="d.id" :label="d.name" :value="d.id ?? ''" />
         </el-select>
         <label>机房</label>

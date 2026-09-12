@@ -477,10 +477,12 @@ export async function parseRackDiagram(
   expectRoomId: string,
   expectDcId: string,
 ): Promise<ParsedDiagram> {
+  console.debug("[diagram] parse:start", file.name, file.size);
   if (!/\.xlsx$/i.test(file.name)) {
     throw new Error("请选择由“导出机柜图”生成的 .xlsx 文件");
   }
   const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellStyles: true });
+  console.debug("[diagram] parse:read-done", wb.SheetNames);
   const canvas = wb.Sheets["机柜图"];
   const meta = wb.Sheets[META_SHEET];
   if (!canvas || !meta) {
@@ -515,6 +517,7 @@ export async function parseRackDiagram(
     void first;
   }
   const rackRecords = records.filter((r) => r.recordType === "RACK");
+  console.debug("[diagram] parse:records", records.length, "racks", rackRecords.length);
   if (!rackRecords.length) {
     throw new Error("机柜图元数据中没有机柜记录");
   }
@@ -579,6 +582,7 @@ export async function parseRackDiagram(
       void idx;
     }
   });
+  console.debug("[diagram] parse:done devices", devices.length);
   return {
     formatVersion,
     dataCenterId,

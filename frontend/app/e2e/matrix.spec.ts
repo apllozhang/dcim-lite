@@ -330,6 +330,9 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
 
   await page.locator("[data-test=screen-import-btn]").click();
   await page.waitForTimeout(600);
+  page.on("console", (m) => {
+    if (m.text().includes("[diagram]")) console.log("PAGE:", m.text().slice(0, 160));
+  });
   await page.locator("button", { hasText: "选择机柜图" }).click();
   await page.setInputFiles("input[type=file][accept='.xlsx']", xlsxPath!);
   await page.locator("[data-test=diagram-validate-btn]").click();
