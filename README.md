@@ -6,6 +6,9 @@ Lightweight DCIM backend for data-center room / rack / device inventory.
 
 中文：面向机房资源台账的轻量 DCIM 后端（数据中心 → 机房 → 机柜 → 设备 / U 位）。
 
+> **★ 专家评审入口：[docs/EXPERT-REVIEW-GUIDE-20260913.md](docs/EXPERT-REVIEW-GUIDE-20260913.md)**
+> 三大件目录地图 / 新旧 UI 对照截图（docs/review/）/ 六屏复刻差异总表 / 文档与 PR 索引 / 建议评审动线。
+
 ---
 
 ## Features
