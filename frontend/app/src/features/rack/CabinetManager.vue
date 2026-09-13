@@ -30,6 +30,7 @@ import {
   rackStatusTagType,
   rackStatusLabel,
   rackToForm,
+  submitWithAutoCode,
   type RackForm,
   type TreeRackRow,
 } from "@/features/rack/rackShared";
@@ -237,16 +238,22 @@ async function save() {
   }
   saving.value = true;
   try {
-    const code = auto ? autoCode("RACK") : form.value.code.trim();
-    if (mode.value === "create") {
-      await createRack(formRoomId.value, formToRackPayload(form.value, code) as never);
-    } else if (editId.value) {
-      await updateRack(
-        editId.value,
-        editVersion.value,
-        formToRackPayload(form.value, code) as never,
-      );
-    }
+    // 自动编码:时间戳+随机段,唯一冲突时重生成重试一次(UI-P1-04)
+    await submitWithAutoCode(
+      auto,
+      () => (auto ? autoCode("RACK") : form.value.code.trim()),
+      async (code) => {
+        if (mode.value === "create") {
+          await createRack(formRoomId.value, formToRackPayload(form.value, code) as never);
+        } else if (editId.value) {
+          await updateRack(
+            editId.value,
+            editVersion.value,
+            formToRackPayload(form.value, code) as never,
+          );
+        }
+      },
+    );
     dialogVisible.value = false;
     ElMessage.success("机柜已保存");
     await loadAll();

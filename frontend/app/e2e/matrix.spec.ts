@@ -18,7 +18,9 @@ import * as fs from "node:fs";
 
 const ADMIN = process.env.E2E_USERNAME ?? "admin";
 const ADMIN_PASS = process.env.E2E_PASSWORD ?? "";
-const OLD = "http://localhost:19501";
+// 旧 UI 对照源:CI 由 job 起在本机 19501;本地连远端栈时用 E2E_LEGACY_BASE 覆盖
+const OLD = process.env.E2E_LEGACY_BASE ?? "http://localhost:19501";
+const OLD_HOST = new URL(OLD).host;
 
 /** 五态种子(确定性顺序,任何环境可复现) */
 const FIVE = [
@@ -167,6 +169,10 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
   // ── 新 UI:五台设备 + 中文状态标签(旧 bundle zl 口径) ──
   await page.goto("/devices");
   await expect(page.locator("[data-test=device-table] tbody tr").first()).toBeVisible();
+  // 测试库可能含存量设备(脏库兼容):先按 MTX- 前缀收窄,种子断言与截图只含种子行
+  await page.fill("[data-test=device-search]", "MTX-");
+  await page.locator("[data-test=device-search-btn]").click();
+  await page.waitForTimeout(800);
   let rows = await tableRows(page);
   for (const d of FIVE) {
     const row = rows.find((r) => r.includes(d.code));
@@ -201,6 +207,72 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
   expect(newSearched.length, "新 UI 搜索 MTX-DV2 只剩一台").toBe(1);
   expect(newSearched[0]).toContain("MTX-DV2");
 
+  // ── 第 7 轮 P1-01:主表三列恢复(设备类型/资产编号/管理 IP) ──
+  const deviceHead = await page.locator("[data-test=device-table] thead").innerText();
+  for (const col of ["设备类型", "资产编号", "管理 IP"]) {
+    expect(deviceHead, `设备表恢复 ${col} 列`).toContain(col);
+  }
+
+  // ── 第 7 轮 P0-02:导出设备信息——Node 侧校验文件本身(评审验收:不能只看 download 事件)。
+  // 此刻筛选=搜索 MTX-DV2,导出应遵循当前筛选口径:仅 1 台。 ──
+  const [devExport] = await Promise.all([
+    page.waitForEvent("download", { timeout: 30000 }),
+    page.locator("button", { hasText: "导出设备信息" }).click(),
+  ]);
+  expect(devExport.suggestedFilename(), "导出文件名").toMatch(/^设备信息_.+\.xlsx$/);
+  const XLSX = await import("xlsx").then(
+    (m) => ("default" in m ? m.default : m) as typeof import("xlsx"),
+  );
+  const devWb = XLSX.readFile(await devExport.path());
+  const devGrid = XLSX.utils.sheet_to_json<string[]>(devWb.Sheets[devWb.SheetNames[0]], {
+    header: 1,
+  });
+  expect(devGrid[0]?.length, "导出表头 43 列(v2 Hl 集合)").toBe(43);
+  for (const col of ["设备编码", "设备类型", "资产编号", "管理IP", "设备分类", "上架状态"]) {
+    expect(devGrid[0], `导出表头含 ${col}`).toContain(col);
+  }
+  const devDataRows = devGrid.slice(1).filter((r) => String(r?.[0] ?? "").trim());
+  expect(devDataRows.length, "导出遵循当前筛选口径(仅 MTX-DV2)").toBe(1);
+  expect(String(devDataRows[0][0])).toBe("MTX-DV2");
+  expect(String(devDataRows[0][4]), "生命周期中文口径").toBe("待上架");
+  // 导出文件改名回传导入(应用校验 .xlsx 扩展名,path() 是无后缀 GUID 名)
+  const devXlsxRaw = await devExport.path();
+  const devXlsxPath = `${devXlsxRaw}.xlsx`;
+  fs.renameSync(devXlsxRaw, devXlsxPath);
+
+  // ── 第 7 轮 P0-01:批量导入——对话框 + xlsx 模板下载 + 导出文件回导校验预览(不提交) ──
+  await page.locator("[data-test=batch-import-btn]").click();
+  const deviceImportDialog = page.locator(".el-overlay:visible .el-dialog", {
+    hasText: "批量导入设备",
+  });
+  await expect(deviceImportDialog).toBeVisible({ timeout: 8000 });
+  const [devTpl] = await Promise.all([
+    page.waitForEvent("download", { timeout: 30000 }),
+    page.locator("[data-test=device-import-template-btn]").click(),
+  ]);
+  expect(devTpl.suggestedFilename(), "模板文件名").toBe("设备批量导入模板.xlsx");
+  const tplWb = XLSX.readFile(await devTpl.path());
+  const tplGrid = XLSX.utils.sheet_to_json<string[]>(tplWb.Sheets[tplWb.SheetNames[0]], {
+    header: 1,
+  });
+  expect(tplGrid[0], "模板 35 列(v2 st 同序)").toHaveLength(35);
+  // 表头带"（必填）"标记,解析端已容忍该后缀(matchColumn 剔除后匹配)
+  expect(
+    tplGrid[0].some((h) => String(h).startsWith("设备类型编码")),
+    "模板表头",
+  ).toBe(true);
+  expect(String(tplGrid[1]?.[0] ?? ""), "模板第二行为字段说明").toContain("启用");
+  await page.setInputFiles('input[accept=".xlsx,.xls"]', devXlsxPath);
+  await expect(page.locator("[data-test=device-import-stats]")).toBeVisible({ timeout: 20000 });
+  const importStats = await page.locator("[data-test=device-import-stats]").innerText();
+  expect(importStats, "回导总行数 1").toContain("总行数 1");
+  expect(importStats, "回导校验全过").toContain("可导入 1");
+  const previewRow = deviceImportDialog.locator(".el-table__body tr").first();
+  await expect(previewRow, "按编码匹配 → 预览为更新").toContainText("UPDATE");
+  await expect(previewRow, "匹配到 MTX-DV2").toContainText("MTX-DV2");
+  await deviceImportDialog.locator("button", { hasText: "关闭" }).click();
+  await page.waitForTimeout(400);
+
   // ── 旧 UI:五台设备 + 中文状态(独立源注入会话) ──
   const oldErrors: string[] = [];
   page.on("pageerror", (e) => oldErrors.push(String(e)));
@@ -208,6 +280,9 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
   await page.evaluate((t) => localStorage.setItem("cabinet_access_token", t), adminToken);
   await page.goto(`${OLD}/devices`);
   await page.waitForSelector(".el-table__body tr", { timeout: 20000 });
+  // 脏库兼容:同新 UI,先按 MTX- 前缀搜索收窄到种子行(查询点击读取当前输入框值)
+  await page.fill("input[placeholder*='编码']", "MTX-");
+  await page.locator("button", { hasText: "查询" }).click();
   await page.waitForTimeout(1500);
   let oldRows = await tableRows(page);
   for (const d of FIVE) {
@@ -264,6 +339,10 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
   await expect(page.locator("[data-test=rack-table] tbody tr").first()).toBeVisible({
     timeout: 15000,
   });
+  // 脏库兼容:存量机柜多,先按 MTX- 前缀搜索收窄到种子行
+  await page.fill("[data-test=rack-search]", "MTX-");
+  await page.locator("[data-test=rack-search-btn]").click();
+  await page.waitForTimeout(800);
   rows = await tableRows(page);
   for (const code of ["MTX-KA", "MTX-KB"]) {
     const row = rows.find((r) => r.includes(code));
@@ -306,6 +385,35 @@ test("五态种子:新旧 UI 状态口径对照 + 生命周期筛选差分", asy
     maxDiffPixelRatio: 0.02,
     mask: [page.locator(".clock")],
   });
+
+  // ── 第 7 轮 P1-03:大屏设备菜单(查看详情/编辑)——切到 MTX 机房(DV1 在矩阵柜A) ──
+  await page.locator("[data-test=screen-dc-select]").click();
+  await page.locator(".el-select-dropdown__item", { hasText: "矩阵机房" }).click();
+  const devBlock = page.locator(".device-block").first();
+  await expect(devBlock).toBeVisible({ timeout: 15000 });
+  await devBlock.click({ button: "right" });
+  const screenMenu = page.locator(".rack-context-menu");
+  await expect(screenMenu).toBeVisible({ timeout: 5000 });
+  const menuText = await screenMenu.innerText();
+  for (const item of ["查看设备详情", "编辑设备信息", "调整 / 迁移位置", "下架设备"]) {
+    expect(menuText, `设备菜单含「${item}」(v2 文案)`).toContain(item);
+  }
+  // 详情抽屉(v2 同名标题+分组)
+  await screenMenu.locator("[data-test=screen-device-detail-btn]").click();
+  const deviceDrawerEl = page.locator(".el-drawer", { hasText: "设备详细信息" });
+  await expect(deviceDrawerEl).toBeVisible({ timeout: 10000 });
+  await expect(deviceDrawerEl, "资产分组").toContainText("资产与规格");
+  await expect(deviceDrawerEl, "网络分组").toContainText("网络与管理");
+  await deviceDrawerEl.locator("button", { hasText: "关闭" }).click();
+  await page.waitForTimeout(500);
+  // 编辑对话框打开即关(980px screen-device-editor-dialog;不保存不写数据)
+  await devBlock.click({ button: "right" });
+  await page.locator("[data-test=screen-device-edit-btn]").click();
+  const screenEditDialog = page.locator(".el-dialog", { hasText: "编辑设备信息" });
+  await expect(screenEditDialog).toBeVisible({ timeout: 10000 });
+  await expect(screenEditDialog).toContainText("设备编码");
+  await screenEditDialog.locator("button", { hasText: "取消" }).click();
+  await page.waitForTimeout(400);
 
   // ── 屏6b:容量对话框 + 机柜图导出→回导校验闭环(不 commit,不写数据) ──
   await page.locator(".u-button", { hasText: "查看完整 U 位详情" }).click();
@@ -442,10 +550,9 @@ test("三权限矩阵:/admin 守卫与菜单的新旧对照 + API 403", async ({
   await page.goto(`${OLD}/`);
   await page.evaluate((t) => localStorage.setItem("cabinet_access_token", t), userToken);
   await page.goto(`${OLD}/admin`);
-  await page.waitForURL(
-    (u) => u.host === "localhost:19501" && (u.pathname === "/" || u.pathname === ""),
-    { timeout: 15000 },
-  );
+  await page.waitForURL((u) => u.host === OLD_HOST && (u.pathname === "/" || u.pathname === ""), {
+    timeout: 15000,
+  });
   expect(await page.locator(".el-menu").innerText(), "旧 UI user 菜单无系统管理").not.toContain(
     "系统管理",
   );

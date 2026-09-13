@@ -169,10 +169,45 @@ export function activeTemplateOptions(templates: RackTemplate[]) {
 
 /**
  * 客户端自动编码:dcim-lite 后端无 autoGenerateCode(v2 为服务端生成),
- * 保存时前端生成,前缀区分域,base36 时间戳保证短且不重复。
+ * 保存时前端生成。第 7 轮 UI-P1-04:时间戳 base36 之上叠加 crypto 随机段,
+ * 同毫秒并发碰撞域约 36^7≈780 亿,残余冲突由 submitWithAutoCode 重试兜底;
+ * 服务端序列生成仍是最终生产方案(契约差异 C-03)。
  */
 export function autoCode(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36).toUpperCase()}`;
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  const rand = buf[0].toString(36).toUpperCase().padStart(7, "0");
+  return `${prefix}-${Date.now().toString(36).toUpperCase()}-${rand}`;
+}
+
+/** 唯一冲突判定(409 状态或后端 message 提示编码已存在) */
+export function isConflictError(e: unknown): boolean {
+  const anyErr = e as {
+    status?: number;
+    response?: { status?: number; data?: { message?: string } };
+    message?: string;
+  };
+  const status = anyErr?.status ?? anyErr?.response?.status;
+  if (status === 409) return true;
+  const msg = anyErr?.response?.data?.message ?? anyErr?.message ?? "";
+  return /conflict|已存在|已被使用|already exist/i.test(msg);
+}
+
+/**
+ * 自动编码提交封装:首次用 genCode() 生成编码提交,命中唯一冲突且为自动编码时
+ * 重新生成再试一次(仅自动编码场景;手工编码冲突直接抛给用户)。
+ */
+export async function submitWithAutoCode(
+  auto: boolean,
+  genCode: () => string,
+  submit: (code: string) => Promise<void>,
+): Promise<void> {
+  try {
+    await submit(genCode());
+  } catch (e) {
+    if (!auto || !isConflictError(e)) throw e;
+    await submit(genCode());
+  }
 }
 
 /** 编辑回填:服务端 Rack → 表单(剔除关联字段,rackRow/rackColumn 映射回 row/column;v2 ce 口径) */
