@@ -84,7 +84,7 @@ CI：GitHub Actions,每个 PR 8 项检查（见 §8）；另有 nightly 差分�
 | 机柜批量导入 | IMPLEMENTED_DIFFERENT_FORMAT | CSV(可另存为 xlsx),v2 为 xlsx;校验口径同 |
 | 大屏机柜右键菜单 | NOT_IMPLEMENTED(等价入口已存在) | 编辑/删除从选中卡与工具栏可达;P2 延后 |
 | 行操作直接文字按钮(机柜/模板/设备) | ACCEPTED_DIFFERENCE(待产品确认) | 旧 UI 为省略号菜单;新 UI 直接铺开,误触风险略高 |
-| 应用壳(顶栏/侧栏结构) | VISUAL_DEVIATION_PENDING(待 UI 负责人裁定) | 旧 logo 占左上/标题自侧栏起;新顶栏全宽——六普通页共有差异 |
+| 应用壳(顶栏/侧栏结构) | IMPLEMENTED_ALIGNED(PR #58) | 已按 v2 DefaultLayout 真值对齐:logo 占左上角(侧栏顶部 60px 块,与顶栏齐平)、平台标题自侧栏右缘开始、紫线只横跨右侧段;菜单图标为已批准增强保留 |
 
 **契约如实化差异总表**（v2 前端行为 vs 本仓后端契约,以契约为准,前端适配）：
 
@@ -139,7 +139,8 @@ CI：GitHub Actions,每个 PR 8 项检查（见 §8）；另有 nightly 差分�
 | #54 | 屏6b PDU 管理 + 机柜图 Excel 导出/导入 + 容量分析 | 4f48dda |
 | #55 | 屏6b e2e 锁定（容量对话框+导出回导闭环） | 2ff888a |
 | #56 | 评审总导航 + docs/review/ 新旧对照截图 | 2d47cea |
-| #57 | 第 7 轮:评审意见闭环（2×P0+5×P1+P2-03,见 §11） | （见 CI） |
+| #57 | 第 7 轮:评审意见闭环（2×P0+5×P1+P2-03,见 §11） | 29bb51b |
+| #58 | 应用壳对齐 v2 DefaultLayout(UI-P1-02) + 批次 B 人工交互验收矩阵 | （见 CI） |
 
 ## 8. 质量门（每个 PR 必过 8 项）
 
@@ -169,7 +170,7 @@ e2e 资产：五态种子新旧对照、生命周期筛选差分、三权限矩�
 | UI-P1-03 大屏设备详情/编辑缺失 | `ScreenDeviceDrawer.vue`(720px 抽屉"设备详细信息",五分组+下架按钮)+`ScreenDeviceEditDialog.vue`(980px"编辑设备信息",复用 37 字段表单,positioned 约束),菜单文案逐字对齐 v2;保存后原地更新设备块不整屏重载 | e2e:右键菜单四项文案断言+抽屉分组断言+编辑对话框打开 |
 | UI-P1-04 autoCode 并发碰撞 | 时间戳 base36 之上叠加 crypto 7 位随机段(同毫秒碰撞域≈780 亿)+`submitWithAutoCode` 409 冲突重生成重试一次;服务端序列生成登记为最终生产方案(§5 总表 #3) | 单测:2 万条无碰撞/冲突判定/重试语义(自动重试,手工不重试,非冲突不重试) |
 | UI-P1-05 评审导航事实冲突 | 本文件修正:运行概览来源表述(§5 表,旧 UI 01-dashboard 截图对应)、设备/机柜导入分开如实登记(机柜 CSV/设备 xlsx)、新增六屏能力状态表(IMPLEMENTED/PARTIAL/NOT_IMPLEMENTED/ACCEPTED_DIFFERENCE)、契约总表补 #7 | 本文件 §5 |
-| UI-P1-02 应用壳结构差异 | 登记 `VISUAL_DEVIATION_PENDING`(能力状态表),待 UI 负责人二选一:对齐旧结构或批准为自主 UI 升级——**需用户拍板,未擅自改** | —(决策项) |
+| UI-P1-02 应用壳结构差异 | 应用壳对齐 v2 DefaultLayout(PR #58;按"必须复刻 v2 观感"既定立场选定方向):logo 占左上角(侧栏 60px 品牌块与顶栏齐平)、平台标题自侧栏右缘开始、紫线只跨右段;菜单图标按评审 3.1"已批准增强"保留 | 对照截图(docs/review/ 更新后)+批次 B 人工确认 |
 | UI-P2-03 大屏 chunk 501.90 kB | 浮层组件 defineAsyncComponent + xlsx 动态 import:RoomScreenView chunk 501.90 kB → **36.56 kB**,xlsx 独立 429.53 kB 按需 chunk | 本地 vite build 产物清单 |
 
 **评审 §1.1 其余最低条件的对应状态**：#4 六屏人工交互验收（评审批次 B,需现场执行）;#6 切换演练（评审批次 C）——两项不在本轮代码闭环范围,材料已就绪。

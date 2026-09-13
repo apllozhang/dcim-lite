@@ -85,55 +85,57 @@ async function doLogout() {
 </script>
 
 <template>
+  <!-- 应用壳对齐 v2 DefaultLayout(评审 UI-P1-02):左侧栏全高(顶部 logo 块与顶栏同高
+       60px 齐平,logo 占左上角),顶栏从侧栏右缘开始(紫色签名线只横跨右侧段)。
+       菜单图标为评审已批准增强(v2 纯文字),保留。 -->
   <el-container class="layout">
-    <!-- 顶栏复刻 v2:浅底 + 左侧平台名 + 右侧工具区;紫色签名下边线由 ale-theme.css .topbar 提供 -->
-    <el-header class="topbar" height="56px">
-      <span class="topbar-title">基础资源管理平台</span>
-      <div class="topbar-right">
-        <el-select
-          v-if="overridesUnlocked()"
-          :model-value="uiVersion"
-          size="small"
-          class="ui-switch"
-          data-test="ui-version-switch"
-          @change="switchUi"
-        >
-          <el-option label="新版界面" value="new" />
-          <el-option label="旧版界面" value="legacy" />
-        </el-select>
-        <el-dropdown v-if="session.user">
-          <span class="user" data-test="user-menu">
-            {{ session.user.displayName || session.user.username }}
-            ({{ session.isAdmin ? "管理员" : "用户" }})
-          </span>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item data-test="logout" @click="doLogout">退出登录</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-      </div>
-    </el-header>
-    <el-container>
-      <el-aside :width="'220px'" class="sidebar">
-        <!-- 文字被 ale-theme.css .sidebar .logo 置零,由伪元素渲染官方彩色 logo(与 v2 同源) -->
-        <div class="logo">ALE 机柜管理</div>
-        <el-menu :default-active="route.path" router>
-          <el-menu-item v-for="m in menu.filter((x) => x.auth)" :key="m.path" :index="m.path">
-            <svg
-              class="menu-icon"
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path :d="m.icon" />
-            </svg>
-            {{ m.label }}
-          </el-menu-item>
-        </el-menu>
-      </el-aside>
+    <el-aside :width="'220px'" class="sidebar">
+      <!-- 文字被 ale-theme.css .sidebar .logo 置零,由伪元素渲染官方彩色 logo(与 v2 同源) -->
+      <div class="logo">ALE 机柜管理</div>
+      <el-menu :default-active="route.path" router>
+        <el-menu-item v-for="m in menu.filter((x) => x.auth)" :key="m.path" :index="m.path">
+          <svg
+            class="menu-icon"
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path :d="m.icon" />
+          </svg>
+          {{ m.label }}
+        </el-menu-item>
+      </el-menu>
+    </el-aside>
+    <el-container class="right-col">
+      <el-header class="topbar" height="60px">
+        <span class="topbar-title">基础资源管理平台</span>
+        <div class="topbar-right">
+          <el-select
+            v-if="overridesUnlocked()"
+            :model-value="uiVersion"
+            size="small"
+            class="ui-switch"
+            data-test="ui-version-switch"
+            @change="switchUi"
+          >
+            <el-option label="新版界面" value="new" />
+            <el-option label="旧版界面" value="legacy" />
+          </el-select>
+          <el-dropdown v-if="session.user">
+            <span class="user" data-test="user-menu">
+              {{ session.user.displayName || session.user.username }}
+              ({{ session.isAdmin ? "管理员" : "用户" }})
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item data-test="logout" @click="doLogout">退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+      </el-header>
       <el-main class="main main-content">
         <router-view />
       </el-main>
@@ -169,17 +171,13 @@ async function doLogout() {
   color: var(--el-text-color-regular, #4b4d50);
   cursor: pointer;
 }
-.sidebar {
-  background: #ffffff;
-  border-right: 1px solid var(--el-border-color-light, #e9e8e4);
-}
 .menu-icon {
   display: inline-block;
   margin-right: 8px;
   vertical-align: -3px;
   opacity: 0.85;
 }
-.el-menu-item.is-active .menu-icon {
+:deep(.el-menu-item.is-active) .menu-icon {
   color: #6b489d;
   opacity: 1;
 }
