@@ -170,14 +170,16 @@ body {
 /* 侧栏品牌位：官方彩色 Logo（附录 D.2）
    - 浅色背景彩色版；等比 height，禁止拉伸
    - 与下方菜单文字左缘对齐（padding 0 20px，同 el-menu-item）
-   - 垂直居中；净空靠上下留白，不画侵入分隔线 */
+   - 垂直居中；净空靠上下留白，不画侵入分隔线
+   - 高度 60px = v2 DefaultLayout .logo 真值,与顶栏(el-header 60px)同高齐平——
+     应用壳结构对齐(评审 UI-P1-02):logo 占左上角,与右侧平台标题同行 */
 .sidebar .logo {
   font-size: 0 !important;
   color: transparent !important;
-  height: 68px !important;
+  height: 60px !important;
   line-height: normal !important;
   padding: 0 20px !important;
-  margin-bottom: 6px !important;
+  margin-bottom: 0 !important;
   border-bottom: none !important;
   box-sizing: border-box !important;
   display: flex !important;
