@@ -16,6 +16,7 @@ import {
   rackErrMsg,
   rackFormDefaults,
   formToRackPayload,
+  submitWithAutoCode,
   type RackForm,
   type TreeRackRow,
 } from "@/features/rack/rackShared";
@@ -355,8 +356,12 @@ async function startImport() {
   for (const row of validRows.value) {
     if (!row.form) continue;
     try {
-      const code = row.form.code || autoCode("RACK");
-      await createRack(row.roomId, formToRackPayload(row.form, code) as never);
+      // 自动编码:时间戳+随机段,唯一冲突时重生成重试一次(UI-P1-04)
+      await submitWithAutoCode(
+        !row.form.code,
+        () => autoCode("RACK"),
+        (code) => createRack(row.roomId, formToRackPayload(row.form!, code) as never),
+      );
       ok++;
       importedCount.value = ok;
     } catch (e) {

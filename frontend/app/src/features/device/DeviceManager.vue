@@ -14,8 +14,11 @@ import {
   deleteDeviceType,
   fetchULayout,
   fetchRacks,
+  fetchResourceTree,
 } from "@/features/resource/api";
 import type { Device, DeviceType, Rack, ULayoutDevice } from "@/features/resource/api";
+import DeviceImportDialog from "@/features/device/DeviceImportDialog.vue";
+import { buildRackIndex, downloadDeviceExport } from "@/features/device/deviceExport";
 import {
   lifecycleLabel,
   lifecycleTagType,
@@ -83,6 +86,49 @@ const deviceUnracked = computed(
 function searchDevices() {
   devicePage.value = 1;
   loadDevices();
+}
+
+/* ── 批量导入/导出(第 7 轮 UI-P0-01/02;v2 口径) ── */
+const importVisible = ref(false);
+const exporting = ref(false);
+async function exportDevices() {
+  if (!deviceTotal.value || exporting.value) return;
+  exporting.value = true;
+  try {
+    // 当前筛选口径(v2 ht 同款):携带 search/typeId/lifecycleStatus 分页拉全量
+    const query = {
+      search: deviceSearch.value || undefined,
+      typeId: deviceTypeFilter.value || undefined,
+      lifecycleStatus: deviceStatus.value || undefined,
+    };
+    const first = await fetchDevices({ ...query, page: 1, pageSize: 100 });
+    const items = [...first.items];
+    const pages = Math.ceil(first.total / 100);
+    for (let start = 2; start <= pages; start += 5) {
+      const batch = Array.from({ length: Math.min(5, pages - start + 1) }, (_, i) => start + i);
+      const results = await Promise.all(
+        batch.map((p) => fetchDevices({ ...query, page: p, pageSize: 100 })),
+      );
+      results.forEach((r) => items.push(...r.items));
+    }
+    const [tree, typeList] = await Promise.all([fetchResourceTree(), fetchDeviceTypes()]);
+    const typeById = new Map(
+      typeList.map((t) => [t.id ?? "", { id: t.id, name: t.name, category: t.category }]),
+    );
+    const fileName = await downloadDeviceExport(items, buildRackIndex(tree), typeById);
+    ElMessage.success(`已导出 ${items.length} 台设备（${fileName}）`);
+  } catch (e) {
+    ElMessage.error(errMsg(e, "导出失败"));
+  } finally {
+    exporting.value = false;
+  }
+}
+/** 设备类型显示名:后端列表已 Preload("Type"),缺失时回退类型表映射 */
+function typeNameOf(row: Device): string {
+  const nested = (row as Record<string, unknown>).type as { name?: string } | null | undefined;
+  return (
+    nested?.name ?? types.value.find((t) => t.id === row.typeId)?.name ?? String(row.typeId ?? "—")
+  );
 }
 onMounted(() => {
   loadDevices();
@@ -378,8 +424,16 @@ const CAT_CATEGORIES = [
       </div>
       <div class="actions" data-test="device-header-actions">
         <el-button @click="loadDevices()">刷新</el-button>
-        <el-button data-test="batch-import-btn">批量导入</el-button>
-        <el-button>导出设备信息</el-button>
+        <el-button
+          data-test="batch-import-btn"
+          :disabled="deviceTotal >= 3000"
+          @click="importVisible = true"
+        >
+          批量导入
+        </el-button>
+        <el-button :disabled="!deviceTotal" :loading="exporting" @click="exportDevices">
+          导出设备信息
+        </el-button>
         <el-button type="primary" data-test="device-create-btn" @click="openDeviceCreate">
           新增设备
         </el-button>
@@ -476,8 +530,39 @@ const CAT_CATEGORIES = [
           size="default"
           data-test="device-table"
         >
-          <el-table-column prop="code" label="编码" min-width="130" show-overflow-tooltip />
-          <el-table-column prop="name" label="名称" min-width="140" show-overflow-tooltip />
+          <el-table-column
+            prop="code"
+            label="编码"
+            min-width="130"
+            fixed="left"
+            show-overflow-tooltip
+          />
+          <el-table-column prop="name" label="设备名称" min-width="150" show-overflow-tooltip />
+          <el-table-column label="设备类型" min-width="120" show-overflow-tooltip>
+            <template #default="{ row }">{{ typeNameOf(row) }}</template>
+          </el-table-column>
+          <el-table-column
+            prop="assetNumber"
+            label="资产编号"
+            min-width="120"
+            show-overflow-tooltip
+          >
+            <template #default="{ row }">
+              <span v-if="row.assetNumber">{{ row.assetNumber }}</span>
+              <span v-else class="muted">—</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="managementIp"
+            label="管理 IP"
+            min-width="120"
+            show-overflow-tooltip
+          >
+            <template #default="{ row }">
+              <span v-if="row.managementIp">{{ row.managementIp }}</span>
+              <span v-else class="muted">—</span>
+            </template>
+          </el-table-column>
           <el-table-column label="状态" width="95">
             <template #default="{ row }">
               <el-tag
@@ -674,6 +759,9 @@ const CAT_CATEGORIES = [
         ><el-button type="primary" @click="submitDevice">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 设备批量导入(xlsx 模板/解析/预览/提交/结果回执) -->
+    <DeviceImportDialog v-model="importVisible" :types="types" @imported="loadDevices" />
   </div>
 </template>
 

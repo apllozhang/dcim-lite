@@ -16,7 +16,13 @@ import {
   type RackTemplate,
 } from "@/features/resource/api";
 import TemplateSpecForm from "@/features/rack/TemplateSpecForm.vue";
-import { autoCode, latestVersion, rackErrMsg, type TemplateSpec } from "@/features/rack/rackShared";
+import {
+  autoCode,
+  latestVersion,
+  rackErrMsg,
+  submitWithAutoCode,
+  type TemplateSpec,
+} from "@/features/rack/rackShared";
 
 const list = ref<RackTemplate[]>([]);
 const loading = ref(false);
@@ -139,14 +145,20 @@ async function save() {
   saving.value = true;
   try {
     if (mode.value === "create") {
-      await createRackTemplate({
-        code: auto ? autoCode("RTPL") : editingForm.value.code.trim(),
-        name: editingForm.value.name,
-        description: editingForm.value.description,
-        status: editingForm.value.status,
-        remarks: editingForm.value.remarks,
-        version: { ...current.value },
-      } as never);
+      // 自动编码:时间戳+随机段,唯一冲突时重生成重试一次(UI-P1-04)
+      await submitWithAutoCode(
+        auto,
+        () => (auto ? autoCode("RTPL") : editingForm.value.code.trim()),
+        (code) =>
+          createRackTemplate({
+            code,
+            name: editingForm.value.name,
+            description: editingForm.value.description,
+            status: editingForm.value.status,
+            remarks: editingForm.value.remarks,
+            version: { ...current.value },
+          } as never),
+      );
     } else {
       await updateRackTemplate(editingForm.value.id, editingForm.value.version, {
         name: editingForm.value.name,

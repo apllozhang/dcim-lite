@@ -6,11 +6,12 @@
  * 设备类型图例/当前选中卡/返回+全屏。右侧:屏头(面包屑+实时时钟)/画布工具栏
  * (搜索+新增+编辑+详情)/筛选 chips/机房边界(网格底+排参考线+固定槽位框+
  * 机柜卡片:U 位立面图 9px/格,设备块按分类着色)。
- * 交互:机柜卡标题拖动交换槽位(持久化 xCoordinate/yCoordinate)、U 位点击/右键
- * 上架、设备块点击/右键 查看/迁移/下架、机柜新增/编辑/删除/详情。
- * 机柜图 Excel 导出/导入依赖 SheetJS,本版入口置灰禁用(见 PR 说明)。
+ * 交互:机柜卡标题拖动交换槽位(持久化 xCoordinate/yCoordinate)、U 位右键
+ * 上架、设备块右键 查看详情/编辑/迁移/下架(第 7 轮 UI-P1-03 补齐)、
+ * 机柜新增/编辑/删除/详情。
+ * 机柜图 Excel 导出/导入与设备浮层均为按需加载(xlsx 动态 import,UI-P2-03)。
  */
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
@@ -30,9 +31,19 @@ import {
   type TreeDataCenter,
 } from "@/features/resource/api";
 import type { ULayoutResponse } from "@/features/resource/api";
-import RackDetailDialog from "@/features/screen/RackDetailDialog.vue";
-import RackDiagramImportDialog from "@/features/screen/RackDiagramImportDialog.vue";
-import { exportRackDiagram } from "@/features/screen/rackDiagram";
+// 浮层组件按需加载(xlsx/PDU/容量分析不进首屏 chunk;第 7 轮 UI-P2-03)
+const RackDetailDialog = defineAsyncComponent(
+  () => import("@/features/screen/RackDetailDialog.vue"),
+);
+const RackDiagramImportDialog = defineAsyncComponent(
+  () => import("@/features/screen/RackDiagramImportDialog.vue"),
+);
+const ScreenDeviceDrawer = defineAsyncComponent(
+  () => import("@/features/screen/ScreenDeviceDrawer.vue"),
+);
+const ScreenDeviceEditDialog = defineAsyncComponent(
+  () => import("@/features/screen/ScreenDeviceEditDialog.vue"),
+);
 import {
   CLOCK_WEEKDAYS,
   COL_PITCH,
@@ -278,13 +289,14 @@ async function loadLayouts() {
 
 function onRoomChange() {
   selectedRack.value = null;
-  void loadLayouts();
+  // 布局就绪后重新自动选中(v2 同款:大屏常有一台当前选中;否则编辑/详情永远禁用)
+  void loadLayouts().then(ensureSelection);
 }
 /** 切数据中心:自动选第一个机房(v2 changeDataCenter 口径;不残留旧 roomId) */
 function onDcChange() {
   roomId.value = rooms.value[0]?.id ?? "";
   selectedRack.value = null;
-  void loadLayouts();
+  void loadLayouts().then(ensureSelection);
 }
 
 /* ── U 位立面 ── */
@@ -428,20 +440,31 @@ const ctxMenu = reactive({
   u: 0,
   device: null as ULayoutResponse["devices"][number] | null,
 });
+/** 菜单出现位置夹紧到视口内(右键点在画布右/下边缘时菜单不溢出、可点击) */
+function clampMenuPos(x: number, y: number): { x: number; y: number } {
+  const menuW = 264;
+  const menuH = 300;
+  return {
+    x: Math.max(8, Math.min(x, window.innerWidth - menuW)),
+    y: Math.max(8, Math.min(y, window.innerHeight - menuH)),
+  };
+}
 function openUMenu(ev: MouseEvent, rack: TreeRack, u: number, occupied: boolean) {
   if (occupied) return;
+  const pos = clampMenuPos(ev.clientX, ev.clientY);
   ctxMenu.visible = true;
-  ctxMenu.x = ev.clientX;
-  ctxMenu.y = ev.clientY;
+  ctxMenu.x = pos.x;
+  ctxMenu.y = pos.y;
   ctxMenu.kind = "u";
   ctxMenu.rack = rack;
   ctxMenu.u = u;
   ctxMenu.device = null;
 }
 function openDeviceMenu(ev: MouseEvent, rack: TreeRack, d: ULayoutResponse["devices"][number]) {
+  const pos = clampMenuPos(ev.clientX, ev.clientY);
   ctxMenu.visible = true;
-  ctxMenu.x = ev.clientX;
-  ctxMenu.y = ev.clientY;
+  ctxMenu.x = pos.x;
+  ctxMenu.y = pos.y;
   ctxMenu.kind = "device";
   ctxMenu.rack = rack;
   ctxMenu.u = d.startU;
@@ -523,18 +546,71 @@ async function offlineDevice() {
   const d = ctxMenu.device;
   closeCtx();
   if (!d) return;
+  await decommissionById(d.id, `“${d.name}”`);
+}
+
+/** 下架(右键菜单与详情抽屉共用);确认+调用+刷新 */
+async function decommissionById(deviceId: string, label: string) {
   try {
-    await ElMessageBox.confirm(`确认将“${d.name}”下架吗？`, "下架确认", { type: "warning" });
+    await ElMessageBox.confirm(`确认将${label}下架吗？`, "下架确认", { type: "warning" });
   } catch {
     return;
   }
   try {
-    await decommissionDevice(d.id, "机房大屏下架");
+    await decommissionDevice(deviceId, "机房大屏下架");
     ElMessage.success("已下架");
+    deviceDrawer.visible = false;
     await reloadLayouts();
   } catch (e) {
     ElMessage.error(rackErrMsg(e));
   }
+}
+
+/* ── 设备详情/编辑(第 7 轮 UI-P1-03;v2 On/Bn/Wn 口径) ── */
+const deviceDrawer = reactive({ visible: false, deviceId: "" });
+const deviceEditor = reactive({ visible: false, deviceId: "" });
+const deviceDrawerToken = ref(0);
+function openDeviceDetail() {
+  const d = ctxMenu.device;
+  closeCtx();
+  if (!d) return;
+  deviceDrawer.deviceId = d.id;
+  deviceDrawer.visible = true;
+}
+function openDeviceEditor() {
+  const d = ctxMenu.device;
+  closeCtx();
+  if (!d) return;
+  deviceEditor.deviceId = d.id;
+  deviceEditor.visible = true;
+}
+/** 编辑保存后原地更新设备块(v2 Wn:不整屏重载;高度变更由后端占用校验把关) */
+function onDeviceSaved(saved: Device) {
+  for (const key of Object.keys(layouts)) {
+    const lay = layouts[key];
+    const idx = (lay?.devices ?? []).findIndex((d) => d.id === saved.id);
+    if (!lay || idx < 0) continue;
+    const old = lay.devices[idx];
+    const type = ext(saved as unknown as object, "type") as { category?: string } | null;
+    const category = type?.category ?? old.category;
+    lay.devices[idx] = {
+      ...old,
+      name: saved.name ?? old.name,
+      code: saved.code ?? old.code,
+      heightU: saved.heightU ?? old.heightU,
+      version: saved.version ?? old.version,
+      serialNumber: saved.serialNumber ?? old.serialNumber,
+      ratedPowerW: saved.ratedPowerW ?? old.ratedPowerW,
+      typeId: saved.typeId ?? old.typeId,
+      category,
+      color: category ? deviceColor(category) : old.color,
+    };
+  }
+  // 详情抽屉开着则重拉最新详情
+  if (deviceDrawer.visible) deviceDrawerToken.value += 1;
+}
+function onDrawerOffline(device: Device) {
+  void decommissionById(device.id ?? "", `“${device.name ?? ""}”`);
 }
 async function reloadLayouts() {
   Object.keys(layouts).forEach((k) => delete layouts[k]);
@@ -650,6 +726,8 @@ async function doExport() {
     roomRacks.value.forEach((r) => {
       lay[r.id ?? ""] = layouts[r.id ?? ""];
     });
+    // SheetJS 按需加载,不占首屏(UI-P2-03)
+    const { exportRackDiagram } = await import("@/features/screen/rackDiagram");
     exportRackDiagram({
       dataCenter: {
         id: dcId.value,
@@ -701,10 +779,13 @@ onMounted(() => {
   void loadTree(false);
   clockTimer = window.setInterval(() => (now.value = new Date()), 1000);
   document.addEventListener("fullscreenchange", onFsChange);
+  // 右键菜单外点关闭(菜单内 @click.stop 不冒泡)
+  document.addEventListener("click", closeCtx);
 });
 onBeforeUnmount(() => {
   window.clearInterval(clockTimer);
   document.removeEventListener("fullscreenchange", onFsChange);
+  document.removeEventListener("click", closeCtx);
   document.body.classList.remove("is-rack-dragging");
 });
 </script>
@@ -1187,18 +1268,26 @@ onBeforeUnmount(() => {
         </div>
         <template v-if="ctxMenu.kind === 'u'">
           <button type="button" @click="assignAt(ctxMenu.u)">
-            <b>上架设备到此位置</b>
-            <span>选择一台待上架/已下架设备放置到 U{{ ctxMenu.u }}</span>
+            <b>上架设备到此 U 位</b>
+            <span>选择待上架设备并确认占用高度</span>
           </button>
         </template>
         <template v-else>
+          <button type="button" data-test="screen-device-detail-btn" @click="openDeviceDetail()">
+            <b>查看设备详情</b>
+            <span>资产、网络与业务信息</span>
+          </button>
+          <button type="button" data-test="screen-device-edit-btn" @click="openDeviceEditor()">
+            <b>编辑设备信息</b>
+            <span>修改名称、编码、规格、功耗与台账信息</span>
+          </button>
           <button type="button" @click="openMove()">
-            <b>迁移设备</b>
-            <span>移动到其它机柜的指定 U 位</span>
+            <b>调整 / 迁移位置</b>
+            <span>变更机柜或 U 位</span>
           </button>
           <button type="button" class="danger" @click="offlineDevice()">
             <b>下架设备</b>
-            <span>设备将转为已下架并释放 U 位</span>
+            <span>直接执行设备下架操作</span>
           </button>
         </template>
       </div>
@@ -1273,6 +1362,19 @@ onBeforeUnmount(() => {
       :room-id="roomId"
       :dc-id="dcId"
       @imported="loadTree()"
+    />
+
+    <!-- 设备详情抽屉/编辑对话框(第 7 轮 UI-P1-03) -->
+    <ScreenDeviceDrawer
+      v-model="deviceDrawer.visible"
+      :device-id="deviceDrawer.deviceId"
+      :reload-token="deviceDrawerToken"
+      @offline="onDrawerOffline"
+    />
+    <ScreenDeviceEditDialog
+      v-model="deviceEditor.visible"
+      :device-id="deviceEditor.deviceId"
+      @saved="onDeviceSaved"
     />
 
     <!-- 机柜新增/编辑 -->
